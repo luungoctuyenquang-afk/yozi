@@ -2,7 +2,7 @@
   "name": "虚拟手机",
   "short_name": "虚拟手机",
   "description": "与AI伴侣零的虚拟世界",
-  "start_url": "/index.html",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#667eea",
   "theme_color": "#764ba2",
