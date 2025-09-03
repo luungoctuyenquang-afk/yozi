@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>虚拟手机</title>
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="虚拟手机">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="mobile-container">
+        <main id="home-screen" class="screen">
+            <h1>主页</h1>
+            <p>你好，我是 <span id="ai-name-display">...</span></p>
+            <div class="app-grid">
+                <div class="app-icon" id="open-chat-app"><div class="app-icon-bg">💬</div><span class="app-name">聊天</span></div>
+                <div class="app-icon" id="open-wallet-app"><div class="app-icon-bg">💰</div><span class="app-name">钱包</span></div>
+                <div class="app-icon" id="open-store-app"><div class="app-icon-bg">🛒</div><span class="app-name">商店</span></div>
+                <div class="app-icon" id="open-backpack-app"><div class="app-icon-bg">🎒</div><span class="app-name">背包</span></div>
+                <div class="app-icon" id="open-world-book-app"><div class="app-icon-bg">📖</div><span class="app-name">世界书</span></div>
+                <div class="app-icon" id="open-settings-app"><div class="app-icon-bg">⚙️</div><span class="app-name">API设置</span></div>
+                <div class="app-icon" id="open-general-settings-app"><div class="app-icon-bg">🔧</div><span class="app-name">通用设置</span></div>
+            </div>
+        </main>
+
+        <section id="chat-screen" class="screen">
+            <header class="chat-header"><button id="back-to-home-btn" class="back-btn">‹</button><h2 id="chat-header-title">与零的聊天</h2></header>
+            <div id="message-container" class="message-container"></div>
+            <form id="chat-input-form" class="chat-input-form">
+                <button type="button" id="send-image-btn" class="chat-action-btn">📷</button>
+                <input type="text" id="chat-input" placeholder="输入消息...">
+                <button type="submit">发送</button>
+            </form>
+            <input type="file" id="image-input" accept="image/*" style="display: none;">
+        </section>
+
+        <section id="wallet-screen" class="screen"> <header class="wallet-header"><button id="wallet-back-btn" class="back-btn">‹</button><h2>我的钱包</h2></header> <div class="wallet-content"><div class="balance-card"><h3>你的余额</h3><p><span id="player-money-display">0</span> 金币</p></div><div class="balance-card"><h3><span id="ai-name-wallet-display">AI</span>的余额</h3><p><span id="ai-money-display">0</span> 金币</p></div></div> </section>
+        <section id="store-screen" class="screen"> <header class="store-header"><button id="store-back-btn" class="back-btn">‹</button><h2>商店</h2></header> <div class="store-content"><p>你的余额: <span id="store-player-money-display">0</span> 金币</p><div id="item-list" class="item-list"></div></div> </section>
+        <section id="backpack-screen" class="screen"> <header class="backpack-header"><button id="backpack-back-btn" class="back-btn">‹</button><h2>我的背包</h2></header> <div id="inventory-list" class="inventory-list"></div> </section>
+        <section id="world-book-screen" class="screen"> <header class="world-book-header"><button id="world-book-back-btn" class="back-btn">‹</button><h2>世界书</h2></header> <div id="rule-list" class="rule-list"></div> </section>
+        <section id="settings-screen" class="screen">
+            <header class="settings-header">
+                <button id="settings-back-btn" class="back-btn">‹</button>
+                <h2>API 设置</h2>
+            </header>
+            <div class="settings-content">
+                <div class="form-group preset-manager">
+                    <label for="api-preset-select">API 预设</label>
+                    <div class="preset-controls">
+                        <select id="api-preset-select"></select>
+                        <button id="new-preset-btn" class="preset-btn">+</button>
+                        <button id="delete-preset-btn" class="preset-btn">-</button>
+                    </div>
+                </div>
+                <hr class="separator">
+                <div class="form-group">
+                    <label for="preset-name-input">预设名称</label>
+                    <input type="text" id="preset-name-input" placeholder="例如：我的Gemini">
+                </div>
+                <div class="form-group">
+                    <label for="api-provider-select">API 服务商</label>
+                    <select id="api-provider-select">
+                        <option value="gemini">Google Gemini</option>
+                        <option value="openai">OpenAI</option>
+                        <option value="openai-compatible">OpenAI 兼容 (中转)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="api-endpoint-input">API 地址 / 中转站</label>
+                    <input type="text" id="api-endpoint-input" placeholder="例如：https://api.openai.com/v1/chat/completions">
+                </div>
+                <div class="form-group">
+                    <label for="api-key-input">API 密钥</label>
+                    <input type="password" id="api-key-input" placeholder="在此输入你的密钥">
+                </div>
+                <div class="form-group">
+                    <label for="api-model-input">模型名称</label>
+                    <input list="api-models-list" id="api-model-input" name="model" placeholder="点击选择或手动输入...">
+                    <datalist id="api-models-list"></datalist>
+                    <button id="fetch-models-btn" class="form-button-secondary" style="margin-top: 10px;">拉取可用模型</button>
+                </div>
+                <div class="api-test-container">
+                    <button id="test-api-btn" class="form-button-secondary">测试连接</button>
+                    <span id="api-status-indicator"></span>
+                </div>
+                <button id="save-settings-btn" class="form-button">保存当前预设</button>
+
+                <hr class="separator">
+                <div class="form-group">
+                    <label>数据备份与恢复</label>
+                    <button id="export-data-btn" class="form-button-secondary">导出备份文件</button>
+                    <button id="import-data-btn" class="form-button-secondary" style="margin-top: 10px;">导入备份文件</button>
+                    <input type="file" id="import-file-input" accept=".json" style="display: none;">
+                </div>
+                </div>
+        </section>
+
+        <section id="general-settings-screen" class="screen">
+            <header class="settings-header">
+                <button id="general-settings-back-btn" class="back-btn">‹</button>
+                <h2>通用设置</h2>
+            </header>
+            <div class="settings-content">
+                <div class="form-group">
+                    <label for="ai-persona-textarea">AI 核心性格 (AI Persona)</label>
+                    <textarea id="ai-persona-textarea" rows="4" placeholder="定义AI的性格、背景故事、说话风格..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="my-persona-textarea">我的虚拟形象 (My Persona)</label>
+                    <textarea id="my-persona-textarea" rows="3" placeholder="告诉AI，你希望它如何看待你..."></textarea>
+                </div>
+                <hr class="separator">
+                <div class="form-group">
+                    <label>关联世界书 (为当前聊天)</label>
+                    <div id="world-book-linking-container" style="padding: 10px; background: #f0f0f0; border-radius: 6px; min-height: 50px;">
+                        </div>
+                </div>
+                 <hr class="separator">
+                <div class="form-group" style="display: flex; justify-content: space-between; align-items: center;">
+                    <label for="chain-of-thought-switch" style="margin-bottom: 0;">启用思维链 (总开关)</label>
+                    <input type="checkbox" id="chain-of-thought-switch" style="width: auto; height: 20px;">
+                </div>
+                <div class="form-group" style="display: flex; justify-content: space-between; align-items: center; margin-top: -10px; padding-left: 20px;">
+                    <label for="show-thought-alert-switch" style="margin-bottom: 0; font-size: 13px; color: #666;">弹窗显示思维链</label>
+                    <input type="checkbox" id="show-thought-alert-switch" style="width: auto; height: 18px;">
+                </div>
+                <button id="save-general-settings-btn" class="form-button">保存通用设置</button>
+            </div>
+        </section>
+
+        <section id="lock-screen" class="screen">
+            <div class="time-display">10:24</div>
+            <div class="unlock-prompt">点击屏幕以解锁</div>
+        </section>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
