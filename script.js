@@ -144,10 +144,22 @@ worldState.worldBook = (worldBook && worldBook.length > 0)
             const moneyEarned = timePassedMinutes * incomePerMinute;
             worldState.ai.money += moneyEarned;
             worldState.session = { minutesAway: timePassedMinutes, moneyEarned };
-            worldState.lastOnlineTimestamp = Date.now();
-            await saveWorldState();
-            renderWalletScreen();
-        }
+worldState.session = { minutesAway: 0, moneyEarned: 0 };
+const timePassedMs = Date.now() - worldState.lastOnlineTimestamp;
+const timePassedMinutes = Math.floor(timePassedMs / 1000 / 60);
+const incomeRule = worldState.worldBook.find(rule => rule.id === 'rule001');
+const incomePerMinute = incomeRule ? incomeRule.value : 0;
+if (timePassedMinutes > 0 && incomePerMinute > 0) {
+    const moneyEarned = timePassedMinutes * incomePerMinute;
+    worldState.ai.money += moneyEarned;
+    worldState.session = { minutesAway: timePassedMinutes, moneyEarned };
+    worldState.lastOnlineTimestamp = Date.now();
+    await saveWorldState();
+    renderWalletScreen();
+}
+        worldState.lastOnlineTimestamp = Date.now();
+        await saveWorldState();
+        renderWalletScreen();
     }
 
     async function migrateFromLocalStorage() { 
@@ -806,7 +818,16 @@ ${activeChat.settings.enableChainOfThought ? '5. **[思维链已开启]** 在最
             actions.className = 'wb-edit-actions';
             actions.innerHTML = `
                 <button type="button" class="wb-save-btn" onclick="saveWorldBookEntry('${rule.id}')">保存</button>
-                <button type="button" class="wb-cancel-btn" data-rule-id="${rule.id}" onclick="renderWorldBookScreen()">取消</button>
+actions.innerHTML = `
+    <button type="button" class="wb-save-btn"
+            onclick="saveWorldBookEntry('${rule.id}')">保存</button>
+    <button type="button" class="wb-cancel-btn"
+            data-rule-id="${rule.id}"
+            onclick="renderWorldBookScreen()">取消</button>
+    <button type="button" class="wb-delete-btn"
+            onclick="deleteWorldBookEntry('${rule.id}')">删除</button>
+`;
+
                 <button type="button" class="wb-delete-btn" onclick="deleteWorldBookEntry('${rule.id}')">删除</button>
             `;
             
