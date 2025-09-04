@@ -74,3 +74,180 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
 .separator { border: none; border-top: 1px solid #e0e0e0; margin: 20px 0; }
 .settings-content textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; box-sizing: border-box; font-family: inherit; resize: vertical; }
 #world-book-linking-container label { display: block; margin-bottom: 5px; }
+/* === 世界书样式 === */
+.world-book-toolbar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.world-book-entry {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: box-shadow 0.2s;
+}
+
+.world-book-entry:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.wb-entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+}
+
+.wb-entry-content {
+    flex: 1;
+}
+
+.wb-entry-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.wb-entry-name {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.wb-entry-category {
+    background: #eee;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.wb-entry-priority {
+    color: #999;
+    font-size: 12px;
+}
+
+.wb-entry-triggers {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.wb-entry-triggers code {
+    background: #f0f0f0;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.wb-entry-text {
+    color: #333;
+    margin: 8px 0;
+    background: #f9f9f9;
+    padding: 8px;
+    border-radius: 4px;
+}
+
+.wb-entry-comment {
+    color: #999;
+    font-size: 12px;
+    font-style: italic;
+}
+
+/* 世界书编辑表单 */
+.wb-edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.wb-edit-row {
+    display: flex;
+    gap: 10px;
+}
+
+.wb-edit-input {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.wb-edit-select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.wb-edit-textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.wb-edit-checkboxes {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.wb-edit-checkboxes label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.wb-edit-priority {
+    width: 80px;
+    padding: 4px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.wb-edit-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.wb-save-btn {
+    flex: 1;
+    padding: 8px;
+    background: #4cd964;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.wb-cancel-btn {
+    flex: 1;
+    padding: 8px;
+    background: #ccc;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.wb-delete-btn {
+    padding: 8px 16px;
+    background: #ff3b30;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.wb-edit-btn {
+    padding: 8px 12px;
+    background: #007aff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
