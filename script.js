@@ -1021,7 +1021,39 @@ ${activeChat.settings.enableChainOfThought ? '5. **[思维链已开启]** 在最
     safeBind(inventoryListContainer, 'click', (event) => { if (event.target.classList.contains('use-btn')) { const itemName = event.target.dataset.itemName; useItem(itemName); } });
     safeBind(openWorldBookAppButton, 'click', () => { showScreen('world-book-screen'); renderWorldBookScreen(); });
     safeBind(worldBookBackButton, 'click', () => showScreen('home-screen'));
-    safeBind(ruleListContainer, 'click', async (event) => { const target = event.target; const ruleId = target.dataset.ruleId; if (target.classList.contains('edit-btn')) { renderWorldBookScreen(ruleId); } if (target.classList.contains('cancel-btn')) { renderWorldBookScreen(); } if (target.classList.contains('save-btn')) { const inputElement = document.getElementById(`edit-input-${ruleId}`); const newValue = inputElement.value; const ruleToUpdate = worldState.worldBook.find(rule => rule.id === ruleId); if (ruleToUpdate) { ruleToUpdate.value = isNaN(parseFloat(newValue)) ? newValue : parseFloat(newValue); await saveWorldState(); renderWorldBookScreen(); } } });
+    safeBind(ruleListContainer, 'click', async (event) => { 
+    const target = event.target;
+    
+    // 处理编辑按钮（使用更宽松的选择器）
+    if (target.classList.contains('wb-edit-btn') || target.dataset.ruleId) {
+        const ruleId = target.dataset.ruleId;
+        if (ruleId) {
+            renderWorldBookScreen(ruleId);
+            return;
+        }
+    }
+    
+    // 处理保存按钮
+    if (target.classList.contains('wb-save-btn')) {
+        const ruleId = target.getAttribute('onclick')?.match(/saveWorldBookEntry\('(.+?)'\)/)?.[1];
+        if (ruleId && window.saveWorldBookEntry) {
+            await window.saveWorldBookEntry(ruleId);
+        }
+    }
+    
+    // 处理取消按钮
+    if (target.classList.contains('wb-cancel-btn')) {
+        renderWorldBookScreen();
+    }
+    
+    // 处理删除按钮
+    if (target.classList.contains('wb-delete-btn')) {
+        const ruleId = target.getAttribute('onclick')?.match(/deleteWorldBookEntry\('(.+?)'\)/)?.[1];
+        if (ruleId && window.deleteWorldBookEntry) {
+            await window.deleteWorldBookEntry(ruleId);
+        }
+    }
+});
     safeBind(openSettingsAppButton, 'click', () => { showScreen('settings-screen'); renderSettingsScreen(); });
     safeBind(settingsBackButton, 'click', () => showScreen('home-screen'));
     safeBind(saveSettingsButton, 'click', async () => { saveSettingsButton.textContent = '保存中...'; saveSettingsButton.disabled = true; try { await saveCurrentPreset(); } finally { saveSettingsButton.textContent = '保存当前预设'; saveSettingsButton.disabled = false; } });
