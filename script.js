@@ -367,6 +367,9 @@ function replaceVariables(text) {
 function refreshVarsDemo() {
   const el = document.getElementById('vars-demo-result');
   if (!el || typeof window.replaceVariables !== 'function') return;
+  
+  // 添加worldState存在性检查
+  if (!worldState || !worldState.ai || !worldState.player) return;
 
   const tpl = `现在是 {{time.hour}}:{{time.minute}}，{{ai.name}} 心情 {{ai.mood}}。
 你有 {{player.inventory.length:0}} 件物品，聊天条数：{{chat.count}}，
@@ -842,6 +845,9 @@ text.textContent = preview.substring(0, 100) + (preview.length > 100 ? '...' : '
             renderWorldBookScreen();
         }
     };
+    
+    // 将renderWorldBookScreen添加到全局对象
+    window.renderWorldBookScreen = renderWorldBookScreen;
 }
 
     function renderSettingsScreen() { 
@@ -1156,14 +1162,23 @@ text.textContent = preview.substring(0, 100) + (preview.length > 100 ? '...' : '
     safeBind(importFileInput, 'change', importData);
 
     // --- 6. 程序入口 ---
-    async function main() {
+  async function main() {
   await loadWorldState();
-  if (window.refreshVarsDemo) window.refreshVarsDemo();
-  // —— 如果页面里放了那个“模板/渲染结果”的 Demo，就在这里刷新它 —— //
+  
+  // 确保数据加载完成后再刷新演示
+  setTimeout(() => {
+    if (window.refreshVarsDemo) window.refreshVarsDemo();
+  }, 100);
  
   updateClock();
   setInterval(updateClock, 30000);
-  showScreen('lock-screen');
+  
+  // 确保锁屏正确显示
+  const lockScreenEl = document.getElementById('lock-screen');
+  if (lockScreenEl) {
+    lockScreenEl.style.display = 'flex';
+  }
+  
   renderHomeScreen();
 }
 
