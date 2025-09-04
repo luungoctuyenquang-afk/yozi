@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await db.general.put({ id: 'main', lastOnlineTimestamp: Date.now() });
                 await db.player.put({ id: 'main', ...worldState.player });
                 await db.ai.put({ id: 'main', ...worldState.ai });
+                await db.worldBook.clear();
                 await db.worldBook.bulkPut(worldState.worldBook);
                 await db.events.put({ id: 'main', ...worldState.events });
                 await db.apiConfig.put({ id: 'main', ...worldState.apiConfig });
