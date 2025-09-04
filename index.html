@@ -137,5 +137,28 @@
         </section>
     </div>
     <script src="script.js"></script>
+    <!-- 模板变量·全局演示块（贴一次就好） -->
+<div id="vars-demo" style="margin-top:14px;padding:10px;border:1px dashed #bbb;border-radius:8px;font-size:14px;">
+  <div><strong>模板（原文）</strong>：
+    现在是 {{time.hour}}:{{time.minute}}，{{ai.name}} 心情 {{ai.mood}}。
+    你有 {{player.inventory.length:0}} 件物品，聊天条数：{{chat.count}}，
+    离线收益/分：{{worldBook.rule001.value:1}}，随机数：{{random.10}}
+  </div>
+  <div style="margin-top:8px;"><strong>渲染结果</strong>：<span id="vars-demo-result">（加载中…）</span></div>
+</div>
+
+<script>
+  // 确保 script.js 已加载（replaceVariables 可用）
+  window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      if (typeof replaceVariables === 'function') {
+        const tpl = `现在是 {{time.hour}}:{{time.minute}}，{{ai.name}} 心情 {{ai.mood}}。你有 {{player.inventory.length:0}} 件物品，聊天条数：{{chat.count}}，离线收益/分：{{worldBook.rule001.value:1}}，随机数：{{random.10}}`;
+        const out = replaceVariables(tpl);
+        const el = document.getElementById('vars-demo-result');
+        if (el) el.textContent = out;
+      }
+    }, 0);
+  });
+</script>
 </body>
 </html>
