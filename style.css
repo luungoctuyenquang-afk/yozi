@@ -74,92 +74,119 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
 .separator { border: none; border-top: 1px solid #e0e0e0; margin: 20px 0; }
 .settings-content textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; box-sizing: border-box; font-family: inherit; resize: vertical; }
 #world-book-linking-container label { display: block; margin-bottom: 5px; }
-/* === 世界书样式 === */
+/* === 世界书优化样式 === */
 .world-book-toolbar {
     display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
+    gap: 8px;
+    margin-bottom: 15px;
     flex-wrap: wrap;
+    padding: 10px;
+    background: #f8f8f8;
+    border-radius: 8px;
 }
 
 .world-book-entry {
     background: white;
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 10px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    transition: box-shadow 0.2s;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    border: 1px solid #e8e8e8;
 }
 
-.world-book-entry:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+.world-book-entry:active {
+    transform: scale(0.98);
 }
 
+/* PWA模式优化 */
+@media (display-mode: standalone) {
+    .world-book-entry {
+        margin-bottom: 15px;
+        padding: 15px;
+    }
+    
+    .world-book-toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+}
+
+/* 折叠式显示 */
 .wb-entry-header {
     display: flex;
     justify-content: space-between;
-    align-items: start;
+    align-items: flex-start;
+    cursor: pointer;
 }
 
 .wb-entry-content {
     flex: 1;
+    margin-right: 10px;
 }
 
 .wb-entry-title {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
+    gap: 8px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
 }
 
 .wb-entry-name {
-    font-size: 16px;
-    font-weight: bold;
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
 }
 
 .wb-entry-category {
-    background: #eee;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
 }
 
 .wb-entry-priority {
     color: #999;
-    font-size: 12px;
+    font-size: 11px;
+    margin-left: auto;
 }
 
 .wb-entry-triggers {
     color: #666;
-    font-size: 14px;
-    margin-bottom: 5px;
+    font-size: 13px;
+    margin: 4px 0;
 }
 
 .wb-entry-triggers code {
-    background: #f0f0f0;
-    padding: 2px 4px;
-    border-radius: 3px;
+    background: #f5f5f5;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
 }
 
 .wb-entry-text {
-    color: #333;
+    color: #555;
+    font-size: 13px;
+    line-height: 1.4;
     margin: 8px 0;
-    background: #f9f9f9;
     padding: 8px;
-    border-radius: 4px;
+    background: #fafafa;
+    border-radius: 6px;
+    border-left: 3px solid #667eea;
 }
 
-.wb-entry-comment {
-    color: #999;
-    font-size: 12px;
-    font-style: italic;
-}
-
-/* 世界书编辑表单 */
+/* 编辑表单优化 */
 .wb-edit-form {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
+    padding: 5px;
 }
 
 .wb-edit-row {
@@ -167,87 +194,31 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
     gap: 10px;
 }
 
-.wb-edit-input {
-    flex: 1;
-    padding: 8px;
+.wb-edit-input, .wb-edit-select, .wb-edit-textarea {
+    padding: 10px;
     border: 1px solid #ddd;
-    border-radius: 4px;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.2s;
 }
 
-.wb-edit-select {
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-
-.wb-edit-textarea {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-sizing: border-box;
-    font-family: inherit;
-    resize: vertical;
-}
-
-.wb-edit-checkboxes {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-}
-
-.wb-edit-checkboxes label {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.wb-edit-priority {
-    width: 80px;
-    padding: 4px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-
-.wb-edit-actions {
-    display: flex;
-    gap: 10px;
-}
-
-.wb-save-btn {
-    flex: 1;
-    padding: 8px;
-    background: #4cd964;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.wb-cancel-btn {
-    flex: 1;
-    padding: 8px;
-    background: #ccc;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.wb-delete-btn {
-    padding: 8px 16px;
-    background: #ff3b30;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
+.wb-edit-input:focus, .wb-edit-select:focus, .wb-edit-textarea:focus {
+    border-color: #667eea;
+    outline: none;
 }
 
 .wb-edit-btn {
-    padding: 8px 12px;
-    background: #007aff;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.wb-edit-btn:active {
+    transform: scale(0.95);
 }
