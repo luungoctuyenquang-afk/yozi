@@ -37,8 +37,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 await db.general.put({ id: 'main', lastOnlineTimestamp: Date.now() });
                 await db.player.put({ id: 'main', ...worldState.player });
                 await db.ai.put({ id: 'main', ...worldState.ai });
-                await db.worldBook.clear();
-                await db.worldBook.bulkPut(worldState.worldBook);
+                // 更智能地保存世界书，避免清空导致的数据丢失
+                const existingBooks = await db.worldBook.toArray();
+                const existingIds = existingBooks.map(b => b.id);
+
+                // 删除不再存在的条目
+                for (const oldId of existingIds) {
+                    if (!worldState.worldBook.find(b => b.id === oldId)) {
+                        await db.worldBook.delete(oldId);
+                    }
+                }
+
+                // 添加或更新当前条目
+                for (const book of worldState.worldBook) {
+                    await db.worldBook.put(book);
+                }
                 await db.events.put({ id: 'main', ...worldState.events });
                 await db.apiConfig.put({ id: 'main', ...worldState.apiConfig });
                 for (const chatId in worldState.chats) {
@@ -136,30 +149,24 @@ worldState.worldBook = (worldBook && worldBook.length > 0)
                 } 
             };
         }
+        // 计算离线收入
         const timePassedMs = Date.now() - worldState.lastOnlineTimestamp;
         const timePassedMinutes = Math.floor(timePassedMs / 1000 / 60);
         const incomeRule = worldState.worldBook.find(rule => rule.id === 'rule001');
-        const incomePerMinute = incomeRule ? incomeRule.value : 0;
+        const incomePerMinute = incomeRule ? (incomeRule.value || 0) : 0;
+
         if (timePassedMinutes > 0 && incomePerMinute > 0) {
             const moneyEarned = timePassedMinutes * incomePerMinute;
             worldState.ai.money += moneyEarned;
-            worldState.session = { minutesAway: timePassedMinutes, moneyEarned };
-worldState.session = { minutesAway: 0, moneyEarned: 0 };
-const timePassedMs = Date.now() - worldState.lastOnlineTimestamp;
-const timePassedMinutes = Math.floor(timePassedMs / 1000 / 60);
-const incomeRule = worldState.worldBook.find(rule => rule.id === 'rule001');
-const incomePerMinute = incomeRule ? incomeRule.value : 0;
-if (timePassedMinutes > 0 && incomePerMinute > 0) {
-    const moneyEarned = timePassedMinutes * incomePerMinute;
-    worldState.ai.money += moneyEarned;
-    worldState.session = { minutesAway: timePassedMinutes, moneyEarned };
-    worldState.lastOnlineTimestamp = Date.now();
-    await saveWorldState();
-    renderWalletScreen();
-}
+            worldState.session.minutesAway = timePassedMinutes;
+            worldState.session.moneyEarned = moneyEarned;
+        } else {
+            worldState.session.minutesAway = 0;
+            worldState.session.moneyEarned = 0;
+        }
+
+        // 更新时间戳但不要在这里保存，避免循环
         worldState.lastOnlineTimestamp = Date.now();
-        await saveWorldState();
-        renderWalletScreen();
     }
 
     async function migrateFromLocalStorage() { 
@@ -818,16 +825,7 @@ ${activeChat.settings.enableChainOfThought ? '5. **[思维链已开启]** 在最
             actions.className = 'wb-edit-actions';
             actions.innerHTML = `
                 <button type="button" class="wb-save-btn" onclick="saveWorldBookEntry('${rule.id}')">保存</button>
-actions.innerHTML = `
-    <button type="button" class="wb-save-btn"
-            onclick="saveWorldBookEntry('${rule.id}')">保存</button>
-    <button type="button" class="wb-cancel-btn"
-            data-rule-id="${rule.id}"
-            onclick="renderWorldBookScreen()">取消</button>
-    <button type="button" class="wb-delete-btn"
-            onclick="deleteWorldBookEntry('${rule.id}')">删除</button>
-`;
-
+                <button type="button" class="wb-cancel-btn" data-rule-id="${rule.id}" onclick="renderWorldBookScreen()">取消</button>
                 <button type="button" class="wb-delete-btn" onclick="deleteWorldBookEntry('${rule.id}')">删除</button>
             `;
             
@@ -1126,7 +1124,30 @@ window.renderWorldBookScreen = renderWorldBookScreen;
             if (importedData.player) await db.player.put({ id: 'main', ...importedData.player });
             if (importedData.ai) await db.ai.put({ id: 'main', ...importedData.ai });
             if (importedData.chat && importedData.chat.history) await db.chatHistory.bulkAdd(importedData.chat.history);
-            if (importedData.worldBook) await db.worldBook.bulkPut(importedData.worldBook);
+            // 处理世界书格式升级
+            if (importedData.worldBook) {
+                const upgradeWorldBook = (oldBook) => {
+                    return oldBook.map(rule => {
+                        if (rule.triggers) return rule; // 已经是新格式
+                        return {
+                            id: rule.id,
+                            name: rule.key || '未命名规则',
+                            category: rule.category || '通用',
+                            triggers: [rule.key || ''],
+                            content: String(rule.value || rule.description || ''),
+                            enabled: true,
+                            constant: false,
+                            position: 'after',
+                            priority: 100,
+                            variables: true,
+                            value: rule.value || 1,
+                            comment: rule.description || ''
+                        };
+                    });
+                };
+                const upgradedWorldBook = upgradeWorldBook(importedData.worldBook);
+                await db.worldBook.bulkPut(upgradedWorldBook);
+            }
             if (importedData.events) await db.events.put({ id: 'main', ...importedData.events });
             if (importedData.apiConfig) await db.apiConfig.put({ id: 'main', ...importedData.apiConfig });
             if (importedData.chats) {
