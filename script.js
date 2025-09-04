@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await db.general.put({ id: 'main', lastOnlineTimestamp: Date.now() });
                 await db.player.put({ id: 'main', ...worldState.player });
                 await db.ai.put({ id: 'main', ...worldState.ai });
+                await db.worldBook.clear();
                 await db.worldBook.bulkPut(worldState.worldBook);
                 await db.events.put({ id: 'main', ...worldState.events });
                 await db.apiConfig.put({ id: 'main', ...worldState.apiConfig });
@@ -143,7 +144,19 @@ worldState.worldBook = (worldBook && worldBook.length > 0)
             const moneyEarned = timePassedMinutes * incomePerMinute;
             worldState.ai.money += moneyEarned;
             worldState.session = { minutesAway: timePassedMinutes, moneyEarned };
-        }
+worldState.session = { minutesAway: 0, moneyEarned: 0 };
+const timePassedMs = Date.now() - worldState.lastOnlineTimestamp;
+const timePassedMinutes = Math.floor(timePassedMs / 1000 / 60);
+const incomeRule = worldState.worldBook.find(rule => rule.id === 'rule001');
+const incomePerMinute = incomeRule ? incomeRule.value : 0;
+if (timePassedMinutes > 0 && incomePerMinute > 0) {
+    const moneyEarned = timePassedMinutes * incomePerMinute;
+    worldState.ai.money += moneyEarned;
+    worldState.session = { minutesAway: timePassedMinutes, moneyEarned };
+    worldState.lastOnlineTimestamp = Date.now();
+    await saveWorldState();
+    renderWalletScreen();
+}
         worldState.lastOnlineTimestamp = Date.now();
         await saveWorldState();
         renderWalletScreen();
@@ -673,7 +686,7 @@ ${activeChat.settings.enableChainOfThought ? '5. **[思维链已开启]** 在最
     const addBtn = document.createElement('button');
     addBtn.className = 'form-button';
     addBtn.textContent = '➕ 新建条目';
-    addBtn.onclick = async () => {
+    addBtn.onclick = () => {
         const newRule = {
             id: `rule_${Date.now()}`,
             name: '新条目',
@@ -685,10 +698,10 @@ ${activeChat.settings.enableChainOfThought ? '5. **[思维链已开启]** 在最
             position: 'after',
             priority: 100,
             variables: true,
-            comment: ''
+            comment: '',
+            isNew: true
         };
         worldState.worldBook.push(newRule);
-        await saveWorldState();
         renderWorldBookScreen(newRule.id);
     };
     
@@ -805,7 +818,16 @@ ${activeChat.settings.enableChainOfThought ? '5. **[思维链已开启]** 在最
             actions.className = 'wb-edit-actions';
             actions.innerHTML = `
                 <button type="button" class="wb-save-btn" onclick="saveWorldBookEntry('${rule.id}')">保存</button>
-                <button type="button" class="wb-cancel-btn" onclick="renderWorldBookScreen()">取消</button>
+actions.innerHTML = `
+    <button type="button" class="wb-save-btn"
+            onclick="saveWorldBookEntry('${rule.id}')">保存</button>
+    <button type="button" class="wb-cancel-btn"
+            data-rule-id="${rule.id}"
+            onclick="renderWorldBookScreen()">取消</button>
+    <button type="button" class="wb-delete-btn"
+            onclick="deleteWorldBookEntry('${rule.id}')">删除</button>
+`;
+
                 <button type="button" class="wb-delete-btn" onclick="deleteWorldBookEntry('${rule.id}')">删除</button>
             `;
             
@@ -916,6 +938,7 @@ text.textContent = preview.substring(0, 100) + (preview.length > 100 ? '...' : '
         rule.priority = parseInt(document.getElementById(`wb-priority-${ruleId}`).value) || 100;
         rule.comment = document.getElementById(`wb-comment-${ruleId}`).value;
         
+        delete rule.isNew;
         await saveWorldState();
         renderWorldBookScreen();
     };
@@ -1216,6 +1239,12 @@ window.renderWorldBookScreen = renderWorldBookScreen;
     
     // 处理取消按钮
     if (target.classList.contains('wb-cancel-btn')) {
+        const ruleId = target.dataset.ruleId;
+        const rule = worldState.worldBook.find(r => r.id === ruleId);
+        if (rule && rule.isNew) {
+            worldState.worldBook = worldState.worldBook.filter(r => r.id !== ruleId);
+            await saveWorldState();
+        }
         renderWorldBookScreen();
     }
     
