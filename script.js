@@ -1,5 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
-    
+    // 捕获未处理的 Promise 错误，避免控制台出现红色报错
+    window.addEventListener('unhandledrejection', event => {
+        console.warn('未处理的 Promise 错误：', event.reason);
+        event.preventDefault();
+    });
+
     // --- 0. 数据库 (Data) ---
     const db = new Dexie('myVirtualWorldDB');
     db.version(1).stores({
@@ -138,6 +143,7 @@ worldState.worldBook = (worldBook && worldBook.length > 0)
             const moneyEarned = timePassedMinutes * incomePerMinute;
             worldState.ai.money += moneyEarned;
             worldState.session = { minutesAway: timePassedMinutes, moneyEarned: moneyEarned };
+            await saveWorldState();
         }
     }
 
@@ -796,9 +802,9 @@ ${activeChat.settings.enableChainOfThought ? '5. **[思维链已开启]** 在最
             const actions = document.createElement('div');
             actions.className = 'wb-edit-actions';
             actions.innerHTML = `
-                <button class="wb-save-btn" onclick="saveWorldBookEntry('${rule.id}')">保存</button>
-                <button class="wb-cancel-btn" onclick="renderWorldBookScreen()">取消</button>
-                <button class="wb-delete-btn" onclick="deleteWorldBookEntry('${rule.id}')">删除</button>
+                <button type="button" class="wb-save-btn" onclick="saveWorldBookEntry('${rule.id}')">保存</button>
+                <button type="button" class="wb-cancel-btn" onclick="renderWorldBookScreen()">取消</button>
+                <button type="button" class="wb-delete-btn" onclick="deleteWorldBookEntry('${rule.id}')">删除</button>
             `;
             
             form.appendChild(row1);
