@@ -1237,6 +1237,9 @@ window.renderWorldBookScreen = renderWorldBookScreen;
 
     // --- 6. 程序入口 ---
  async function main() {
+     // 立即绑定全局函数
+  window.renderWorldBookScreen = renderWorldBookScreen;
+     
   try {
     await loadWorldState();
     
