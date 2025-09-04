@@ -550,6 +550,80 @@ ${activeChat.settings.enableChainOfThought ? '5. **[思维链已开启]** 在最
         event.target.value = null; 
     }
 
+    function renderWalletScreen() {
+        if(playerMoneyDisplay) playerMoneyDisplay.textContent = worldState.player.money;
+        if(aiMoneyDisplay) aiMoneyDisplay.textContent = worldState.ai.money;
+        if(aiNameWalletDisplay) aiNameWalletDisplay.textContent = worldState.ai.name;
+    }
+
+    function renderStoreScreen() {
+        if(storePlayerMoneyDisplay) storePlayerMoneyDisplay.textContent = worldState.player.money;
+        if(!itemListContainer) return;
+        itemListContainer.innerHTML = '';
+        storeItems.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            card.innerHTML = `
+                <h3>${item.name}</h3>
+                <p>${item.price} 金币</p>
+                <button class="buy-btn" data-item-id="${item.id}">购买</button>
+            `;
+            itemListContainer.appendChild(card);
+        });
+    }
+
+    function renderBackpackScreen() {
+        if(!inventoryListContainer) return;
+        inventoryListContainer.innerHTML = '';
+        if (worldState.player.inventory.length === 0) {
+            inventoryListContainer.innerHTML = '<div class="inventory-empty-msg">背包是空的</div>';
+            return;
+        }
+        worldState.player.inventory.forEach(itemName => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'inventory-item';
+            const effect = itemEffects[itemName];
+            const description = effect ? effect.description : '一个普通的物品。';
+            itemDiv.innerHTML = `
+                <div>
+                    <div style="font-weight: bold;">${itemName}</div>
+                    <div style="font-size: 12px; color: #666; margin-top: 4px;">${description}</div>
+                </div>
+                <button class="use-btn" data-item-name="${itemName}">使用</button>
+            `;
+            inventoryListContainer.appendChild(itemDiv);
+        });
+    }
+
+    async function buyItem(itemId) {
+        const item = storeItems.find(i => i.id === itemId);
+        if (!item) return;
+        
+        if (worldState.player.money >= item.price) {
+            worldState.player.money -= item.price;
+            worldState.player.inventory.push(item.name);
+            await saveWorldState();
+            renderStoreScreen();
+            alert(`成功购买了 ${item.name}！`);
+        } else {
+            alert('金币不足！');
+        }
+    }
+
+    async function useItem(itemName) {
+        const effect = itemEffects[itemName];
+        if (!effect) {
+            alert('这个物品暂时无法使用。');
+            return;
+        }
+        
+        const result = effect.effect(worldState);
+        worldState.player.inventory = worldState.player.inventory.filter(item => item !== itemName);
+        await saveWorldState();
+        renderBackpackScreen();
+        alert(result);
+    }
+
     function renderGeneralSettingsScreen() {
         const activeChat = worldState.chats['chat_default'];
         if (!activeChat || !activeChat.settings) return;
@@ -1162,25 +1236,28 @@ text.textContent = preview.substring(0, 100) + (preview.length > 100 ? '...' : '
     safeBind(importFileInput, 'change', importData);
 
     // --- 6. 程序入口 ---
-  async function main() {
-  await loadWorldState();
-  
-  // 确保数据加载完成后再刷新演示
-  setTimeout(() => {
-    if (window.refreshVarsDemo) window.refreshVarsDemo();
-  }, 100);
- 
-  updateClock();
-  setInterval(updateClock, 30000);
-  
-  // 确保锁屏正确显示
-  const lockScreenEl = document.getElementById('lock-screen');
-  if (lockScreenEl) {
-    lockScreenEl.style.display = 'flex';
+ async function main() {
+  try {
+    await loadWorldState();
+    
+    // 确保数据加载完成后再刷新演示
+    setTimeout(() => {
+      if (window.refreshVarsDemo) window.refreshVarsDemo();
+    }, 100);
+   
+    updateClock();
+    setInterval(updateClock, 30000);
+    
+    // 先渲染主屏幕（但不显示）
+    renderHomeScreen();
+    
+    // 然后显示锁屏
+    showScreen('lock-screen');
+    
+  } catch (error) {
+    console.error('应用初始化失败:', error);
+    alert('应用启动失败，请刷新页面重试');
   }
-  
-  renderHomeScreen();
 }
-
     main();
 });
