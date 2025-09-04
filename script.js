@@ -59,7 +59,42 @@ document.addEventListener('DOMContentLoaded', () => {
         worldState.player = player || { name: "你", money: 1000, inventory: [] };
         worldState.ai = ai || { name: "零", mood: "开心", money: 1500, inventory: [] };
         worldState.chat = { history: chatHistory || [] };
-        worldState.worldBook = (worldBook && worldBook.length > 0) ? worldBook : [{ id: 'rule001', category: '经济', key: 'AI每分钟收入', value: 1, description: 'AI在离线时每分钟获得的金币数量。' }];
+        // 升级旧格式的世界书到新格式
+const upgradeWorldBook = (oldBook) => {
+    return oldBook.map(rule => {
+        if (rule.triggers) return rule; // 已经是新格式
+        return {
+            id: rule.id,
+            name: rule.key || '未命名规则',
+            category: rule.category || '通用',
+            triggers: [rule.key || ''], // 触发关键词
+            content: String(rule.value || rule.description || ''),
+            enabled: true,
+            constant: false, // 是否总是激活
+            position: 'after', // before/after - 在历史记录前还是后
+            priority: 100, // 优先级（数字越大越优先）
+            variables: true, // 是否启用变量替换
+            comment: rule.description || ''
+        };
+    });
+};
+
+worldState.worldBook = (worldBook && worldBook.length > 0) 
+    ? upgradeWorldBook(worldBook) 
+    : [{
+        id: 'rule001',
+        name: 'AI离线收入规则',
+        category: '经济',
+        triggers: ['收入', '金币', '离线'],
+        content: 'AI每分钟获得{{worldBook.rule001.value:1}}金币的离线收入',
+        enabled: true,
+        constant: false,
+        position: 'after',
+        priority: 100,
+        variables: true,
+        value: 1, // 额外数据字段
+        comment: 'AI在离线时每分钟获得的金币数量'
+    }];
         worldState.events = events || { aiNoticedMovieTicket: false };
         worldState.session = { minutesAway: 0, moneyEarned: 0 };
         if (apiConfig && Array.isArray(apiConfig.presets) && apiConfig.presets.length > 0) {
@@ -256,7 +291,66 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) { console.error("API 调用失败:", error); if (error.name === 'AbortError') { return '（抱歉，AI思考超时了……）'; } return `【调试信息】请求失败: ${error.name} - ${error.message}`; }
     }
+
+    // 变量替换系统
+function replaceVariables(text) {
+    if (!text || typeof text !== 'string') return text;
     
+    // 定义可用变量
+    const variables = {
+        'player.name': worldState.player?.name || '你',
+        'player.money': worldState.player?.money || 0,
+        'player.inventory': worldState.player?.inventory?.join('、') || '空',
+        'ai.name': worldState.ai?.name || '零',
+        'ai.money': worldState.ai?.money || 0,
+        'ai.mood': worldState.ai?.mood || '平静',
+        'time.now': new Date().toLocaleTimeString('zh-CN'),
+        'time.date': new Date().toLocaleDateString('zh-CN'),
+        'time.weekday': ['周日','周一','周二','周三','周四','周五','周六'][new Date().getDay()],
+    };
+    
+    // 处理世界书变量
+    worldState.worldBook?.forEach(rule => {
+        if (rule.value !== undefined) {
+            variables[`worldBook.${rule.id}.value`] = rule.value;
+        }
+    });
+    
+    // 替换变量 {{variable}} 或 {{variable:default}}
+    return text.replace(/\{\{([^}:]+)(?::([^}]+))?\}\}/g, (match, varName, defaultValue) => {
+        const value = variables[varName.trim()];
+        return value !== undefined ? value : (defaultValue || match);
+    });
+}
+
+// 获取激活的世界书条目
+function getActiveWorldBookEntries(userInput) {
+    const input = (userInput || '').toLowerCase();
+    const activeEntries = [];
+    
+    worldState.worldBook?.forEach(entry => {
+        if (!entry.enabled) return;
+        
+        // 常量条目总是激活
+        if (entry.constant) {
+            activeEntries.push(entry);
+            return;
+        }
+        
+        // 检查触发词
+        if (entry.triggers && entry.triggers.length > 0) {
+            const triggered = entry.triggers.some(trigger => 
+                trigger && input.includes(trigger.toLowerCase())
+            );
+            if (triggered) {
+                activeEntries.push(entry);
+            }
+        }
+    });
+    
+    // 按优先级排序
+    return activeEntries.sort((a, b) => b.priority - a.priority);
+}
     function buildOpenAiMessages(currentUserInputParts, activeChat, recentHistory) {
         const parts = Array.isArray(currentUserInputParts)
             ? currentUserInputParts
@@ -424,110 +518,246 @@ ${activeChat.settings.enableChainOfThought ? '5. **[思维链已开启]** 在最
         }
     }
 
-    function renderWalletScreen() { if(playerMoneyDisplay) playerMoneyDisplay.textContent = worldState.player.money; if(aiMoneyDisplay) aiMoneyDisplay.textContent = worldState.ai.money; if(aiNameWalletDisplay) aiNameWalletDisplay.textContent = worldState.ai.name; }
-    function renderStoreScreen() { if(storePlayerMoneyDisplay) storePlayerMoneyDisplay.textContent = worldState.player.money; if(itemListContainer) { itemListContainer.innerHTML = ''; storeItems.forEach(item => { const itemCard = document.createElement('div'); itemCard.className = 'item-card'; itemCard.innerHTML = `<h3>${item.name}</h3><p>${item.price} 金币</p><button class="buy-btn" data-item-id="${item.id}">购买</button>`; itemListContainer.appendChild(itemCard); }); } }
-    async function buyItem(itemId) { const item = storeItems.find(i => i.id === itemId); if (!item) return; if (worldState.player.money >= item.price) { worldState.player.money -= item.price; worldState.player.inventory.push(item.name); await saveWorldState(); renderStoreScreen(); renderWalletScreen(); alert(`购买“${item.name}”成功！`); } else { alert('金币不足！'); } }
-    function renderBackpackScreen() { if(inventoryListContainer) { inventoryListContainer.innerHTML = ''; if (worldState.player.inventory.length === 0) { inventoryListContainer.innerHTML = `<p class="inventory-empty-msg">你的背包是空的...</p>`; return; } worldState.player.inventory.forEach(itemName => { const itemDiv = document.createElement('div'); itemDiv.className = 'inventory-item'; const nameSpan = document.createElement('span'); nameSpan.textContent = itemName; itemDiv.appendChild(nameSpan); if (itemEffects[itemName]) { const useButton = document.createElement('button'); useButton.className = 'use-btn'; useButton.textContent = '使用'; useButton.dataset.itemName = itemName; itemDiv.appendChild(useButton); } inventoryListContainer.appendChild(itemDiv); }); } }
-    async function useItem(itemName) { const itemEffect = itemEffects[itemName]; if (!itemEffect) return; const itemIndex = worldState.player.inventory.findIndex(item => item === itemName); if (itemIndex === -1) return; const resultMessage = itemEffect.effect(worldState); worldState.player.inventory.splice(itemIndex, 1); await saveWorldState(); renderBackpackScreen(); alert(resultMessage); }
-    
     function renderWorldBookScreen(editingRuleId = null) { 
-        if(!ruleListContainer) return;
-        ruleListContainer.innerHTML = '';
-        const addNewBtn = document.createElement('button');
-        addNewBtn.className = 'form-button';
-        addNewBtn.style.marginBottom = '10px';
-        addNewBtn.textContent = '+ 添加新规则';
-        addNewBtn.onclick = async () => {
-            const category = prompt('规则分类（如：物品、经济、事件）：', '自定义');
-            if (category === null) return;
-            const key = prompt('规则名称：', '新规则');
-            if (key === null) return;
-            const value = prompt('规则值或描述：');
-            if (value === null) return;
-            const newRule = { id: `rule_${Date.now()}`, category: category || '自定义', key: key || '新规则', value: value || '', description: '' };
-            if (newRule.key) {
-                worldState.worldBook.push(newRule);
-                await saveWorldState();
-                renderWorldBookScreen();
-            }
+    if(!ruleListContainer) return;
+    ruleListContainer.innerHTML = '';
+    
+    // 工具栏
+    const toolbar = document.createElement('div');
+    toolbar.className = 'world-book-toolbar';
+    
+    const addBtn = document.createElement('button');
+    addBtn.className = 'form-button';
+    addBtn.textContent = '➕ 新建条目';
+    addBtn.onclick = async () => {
+        const newRule = {
+            id: `rule_${Date.now()}`,
+            name: '新条目',
+            category: '通用',
+            triggers: [],
+            content: '',
+            enabled: true,
+            constant: false,
+            position: 'after',
+            priority: 100,
+            variables: true,
+            comment: ''
         };
-        ruleListContainer.appendChild(addNewBtn);
-        const toolBar = document.createElement('div');
-        toolBar.style.cssText = 'display: flex; gap: 10px; margin-bottom: 20px;';
-        const exportBtn = document.createElement('button');
-        exportBtn.className = 'form-button-secondary';
-        exportBtn.textContent = '导出规则';
-        exportBtn.onclick = () => {
-            const dataStr = JSON.stringify(worldState.worldBook, null, 2);
-            const blob = new Blob([dataStr], {type: 'application/json'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `虚拟手机-世界书规则-${new Date().toLocaleDateString().replace(/\//g, '-')}.json`;
-            a.click();
-            URL.revokeObjectURL(a.href);
-        };
-        const importBtn = document.createElement('button');
-        importBtn.className = 'form-button-secondary';
-        importBtn.textContent = '导入规则';
-        importBtn.onclick = () => {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json';
-            input.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const text = await file.text();
-                    try {
-                        const rules = JSON.parse(text);
-                        if (Array.isArray(rules)) {
-                            worldState.worldBook = rules;
-                            await saveWorldState();
-                            renderWorldBookScreen();
-                            alert('规则导入成功！');
-                        } else {
-                            alert('导入失败：文件内容不是有效的规则数组。');
-                        }
-                    } catch (err) {
-                        alert('导入失败：文件格式错误');
+        worldState.worldBook.push(newRule);
+        await saveWorldState();
+        renderWorldBookScreen(newRule.id);
+    };
+    
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'form-button-secondary';
+    exportBtn.textContent = '📤 导出';
+    exportBtn.onclick = () => {
+        const dataStr = JSON.stringify(worldState.worldBook, null, 2);
+        const blob = new Blob([dataStr], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `世界书_${new Date().toLocaleDateString().replace(/\//g, '-')}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+    
+    const importBtn = document.createElement('button');
+    importBtn.className = 'form-button-secondary';
+    importBtn.textContent = '📥 导入';
+    importBtn.onclick = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                const text = await file.text();
+                const rules = JSON.parse(text);
+                if (Array.isArray(rules)) {
+                    if (confirm('要替换现有规则还是追加？\n确定=替换，取消=追加')) {
+                        worldState.worldBook = rules;
+                    } else {
+                        worldState.worldBook.push(...rules);
                     }
+                    await saveWorldState();
+                    renderWorldBookScreen();
+                    alert('导入成功！');
                 }
-            };
-            input.click();
-        };
-        toolBar.appendChild(exportBtn);
-        toolBar.appendChild(importBtn);
-        ruleListContainer.appendChild(toolBar);
-        worldState.worldBook.forEach(rule => {
-            const ruleCard = document.createElement('div');
-            ruleCard.className = 'rule-card';
-            const ruleValue = document.createElement('p');
-            ruleValue.className = 'rule-value';
-            ruleValue.textContent = rule.value;
-            const ruleKeySpan = document.createElement('span');
-            ruleKeySpan.className = 'rule-key';
-            ruleKeySpan.textContent = rule.key;
-            const ruleCategorySpan = document.createElement('span');
-            ruleCategorySpan.className = 'rule-category';
-            ruleCategorySpan.textContent = rule.category;
-            if (rule.id === editingRuleId) {
-                ruleCard.innerHTML = `<div class="rule-card-header"></div> <div class="rule-body"> <input type="text" class="rule-edit-input" style="width:100%" id="edit-input-${rule.id}" value=""> <div class="rule-actions"> <button class="save-btn" data-rule-id="${rule.id}">保存</button> <button class="cancel-btn" data-rule-id="${rule.id}">取消</button> </div> </div>`;
-                ruleCard.querySelector('.rule-card-header').appendChild(ruleKeySpan);
-                ruleCard.querySelector('.rule-card-header').appendChild(ruleCategorySpan);
-                ruleCard.querySelector(`#edit-input-${rule.id}`).value = rule.value;
-            } else {
-                ruleCard.innerHTML = `<div class="rule-card-header"></div> <div class="rule-body"></div>`;
-                ruleCard.querySelector('.rule-card-header').appendChild(ruleKeySpan);
-                ruleCard.querySelector('.rule-card-header').appendChild(ruleCategorySpan);
-                ruleCard.querySelector('.rule-body').appendChild(ruleValue);
-                const actionsDiv = document.createElement('div');
-                actionsDiv.className = 'rule-actions';
-                actionsDiv.innerHTML = `<button class="edit-btn" data-rule-id="${rule.id}">编辑</button>`;
-                ruleCard.querySelector('.rule-body').appendChild(actionsDiv);
+            } catch (err) {
+                alert('导入失败：' + err.message);
             }
-            ruleListContainer.appendChild(ruleCard);
-        });
-    }
+        };
+        input.click();
+    };
+    
+    toolbar.appendChild(addBtn);
+    toolbar.appendChild(exportBtn);
+    toolbar.appendChild(importBtn);
+    ruleListContainer.appendChild(toolbar);
+    
+    // 渲染条目列表
+    worldState.worldBook.sort((a, b) => b.priority - a.priority).forEach(rule => {
+        const card = document.createElement('div');
+        card.className = 'world-book-entry';
+        
+        if (rule.id === editingRuleId) {
+            // 编辑模式
+            const form = document.createElement('div');
+            form.className = 'wb-edit-form';
+            
+            // 第一行：名称和分类
+            const row1 = document.createElement('div');
+            row1.className = 'wb-edit-row';
+            row1.innerHTML = `
+                <input type="text" id="wb-name-${rule.id}" class="wb-edit-input" value="${rule.name}" placeholder="条目名称">
+                <select id="wb-category-${rule.id}" class="wb-edit-select">
+                    <option value="通用">通用</option>
+                    <option value="角色">角色</option>
+                    <option value="场景">场景</option>
+                    <option value="物品">物品</option>
+                    <option value="经济">经济</option>
+                    <option value="事件">事件</option>
+                </select>
+            `;
+            
+            // 触发词
+            const triggers = document.createElement('input');
+            triggers.type = 'text';
+            triggers.id = `wb-triggers-${rule.id}`;
+            triggers.className = 'wb-edit-input';
+            triggers.value = rule.triggers.join(', ');
+            triggers.placeholder = '触发词（逗号分隔）';
+            
+            // 内容
+            const content = document.createElement('textarea');
+            content.id = `wb-content-${rule.id}`;
+            content.className = 'wb-edit-textarea';
+            content.rows = 4;
+            content.placeholder = '内容（支持变量：{{player.money}} 等）';
+            content.value = rule.content;
+            
+            // 选项
+            const options = document.createElement('div');
+            options.className = 'wb-edit-checkboxes';
+            options.innerHTML = `
+                <label><input type="checkbox" id="wb-enabled-${rule.id}" ${rule.enabled ? 'checked' : ''}> 启用</label>
+                <label><input type="checkbox" id="wb-constant-${rule.id}" ${rule.constant ? 'checked' : ''}> 始终激活</label>
+                <label><input type="checkbox" id="wb-variables-${rule.id}" ${rule.variables ? 'checked' : ''}> 变量替换</label>
+                <input type="number" id="wb-priority-${rule.id}" class="wb-edit-priority" value="${rule.priority}" placeholder="优先级">
+            `;
+            
+            // 备注
+            const comment = document.createElement('input');
+            comment.type = 'text';
+            comment.id = `wb-comment-${rule.id}`;
+            comment.className = 'wb-edit-input';
+            comment.value = rule.comment;
+            comment.placeholder = '备注（可选）';
+            
+            // 按钮
+            const actions = document.createElement('div');
+            actions.className = 'wb-edit-actions';
+            actions.innerHTML = `
+                <button class="wb-save-btn" onclick="saveWorldBookEntry('${rule.id}')">保存</button>
+                <button class="wb-cancel-btn" onclick="renderWorldBookScreen()">取消</button>
+                <button class="wb-delete-btn" onclick="deleteWorldBookEntry('${rule.id}')">删除</button>
+            `;
+            
+            form.appendChild(row1);
+            form.appendChild(triggers);
+            form.appendChild(content);
+            form.appendChild(options);
+            form.appendChild(comment);
+            form.appendChild(actions);
+            card.appendChild(form);
+            
+            // 设置当前值
+            setTimeout(() => {
+                document.getElementById(`wb-category-${rule.id}`).value = rule.category;
+            }, 0);
+        } else {
+            // 显示模式
+            const header = document.createElement('div');
+            header.className = 'wb-entry-header';
+            
+            const content = document.createElement('div');
+            content.className = 'wb-entry-content';
+            
+            const title = document.createElement('div');
+            title.className = 'wb-entry-title';
+            title.innerHTML = `
+                <span class="wb-entry-name">${rule.name}</span>
+                <span class="wb-entry-category">${rule.category}</span>
+                <span>${rule.enabled ? '✅' : '❌'}</span>
+                ${rule.constant ? '<span>📌</span>' : ''}
+                <span class="wb-entry-priority">优先级: ${rule.priority}</span>
+            `;
+            
+            const triggers = document.createElement('div');
+            triggers.className = 'wb-entry-triggers';
+            const triggersText = rule.triggers.length > 0 ? rule.triggers.join(', ') : '(无触发词)';
+            triggers.innerHTML = `触发词: <code>${triggersText}</code>`;
+            
+            const text = document.createElement('div');
+            text.className = 'wb-entry-text';
+            text.textContent = rule.content.substring(0, 100) + (rule.content.length > 100 ? '...' : '');
+            
+            content.appendChild(title);
+            content.appendChild(triggers);
+            content.appendChild(text);
+            
+            if (rule.comment) {
+                const comment = document.createElement('div');
+                comment.className = 'wb-entry-comment';
+                comment.textContent = rule.comment;
+                content.appendChild(comment);
+            }
+            
+            const editBtn = document.createElement('button');
+            editBtn.className = 'wb-edit-btn';
+            editBtn.textContent = '编辑';
+            editBtn.dataset.ruleId = rule.id;
+            
+            header.appendChild(content);
+            header.appendChild(editBtn);
+            card.appendChild(header);
+        }
+        
+        ruleListContainer.appendChild(card);
+    });
+    
+    // 添加全局函数到window对象
+    window.saveWorldBookEntry = async (ruleId) => {
+        const rule = worldState.worldBook.find(r => r.id === ruleId);
+        if (!rule) return;
+        
+        rule.name = document.getElementById(`wb-name-${ruleId}`).value || '未命名';
+        rule.category = document.getElementById(`wb-category-${ruleId}`).value;
+        rule.triggers = document.getElementById(`wb-triggers-${ruleId}`).value
+            .split(',')
+            .map(t => t.trim())
+            .filter(t => t);
+        rule.content = document.getElementById(`wb-content-${ruleId}`).value;
+        rule.enabled = document.getElementById(`wb-enabled-${ruleId}`).checked;
+        rule.constant = document.getElementById(`wb-constant-${ruleId}`).checked;
+        rule.variables = document.getElementById(`wb-variables-${ruleId}`).checked;
+        rule.priority = parseInt(document.getElementById(`wb-priority-${ruleId}`).value) || 100;
+        rule.comment = document.getElementById(`wb-comment-${ruleId}`).value;
+        
+        await saveWorldState();
+        renderWorldBookScreen();
+    };
+    
+    window.deleteWorldBookEntry = async (ruleId) => {
+        if (confirm('确定要删除这个条目吗？')) {
+            worldState.worldBook = worldState.worldBook.filter(r => r.id !== ruleId);
+            await saveWorldState();
+            renderWorldBookScreen();
+        }
+    };
+}
 
     function renderSettingsScreen() { 
         if(!apiPresetSelect) return;
