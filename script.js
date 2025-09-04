@@ -292,34 +292,70 @@ worldState.worldBook = (worldBook && worldBook.length > 0)
         } catch (error) { console.error("API 调用失败:", error); if (error.name === 'AbortError') { return '（抱歉，AI思考超时了……）'; } return `【调试信息】请求失败: ${error.name} - ${error.message}`; }
     }
 
-    // 变量替换系统
+   // 变量替换系统（升级版：通用路径解析）
 function replaceVariables(text) {
-    if (!text || typeof text !== 'string') return text;
-    
-    // 定义可用变量
-    const variables = {
-        'player.name': worldState.player?.name || '你',
-        'player.money': worldState.player?.money || 0,
-        'player.inventory': worldState.player?.inventory?.join('、') || '空',
-        'ai.name': worldState.ai?.name || '零',
-        'ai.money': worldState.ai?.money || 0,
-        'ai.mood': worldState.ai?.mood || '平静',
-        'time.now': new Date().toLocaleTimeString('zh-CN'),
-        'time.date': new Date().toLocaleDateString('zh-CN'),
-        'time.weekday': ['周日','周一','周二','周三','周四','周五','周六'][new Date().getDay()],
+    if (text == null) return text;
+    if (typeof text !== 'string') text = String(text);
+
+    const now = new Date();
+    const ctx = {
+        // 世界主状态（安全地兜底）
+        player: { ...(worldState.player || {}), inventory: worldState.player?.inventory || [] },
+        ai:     { ...(worldState.ai || {}),     inventory: worldState.ai?.inventory || [] },
+        chat:   { count: worldState.chat?.history?.length || 0 },
+        session:{ ...(worldState.session || {}) },
+
+        // 时间
+        time: {
+            now: now.toLocaleTimeString('zh-CN'),
+            date: now.toLocaleDateString('zh-CN'),
+            weekday: ['周日','周一','周二','周三','周四','周五','周六'][now.getDay()],
+            hour: now.getHours(),
+            minute: now.getMinutes(),
+        },
+
+        // 随机数（按需扩展）
+        random: {
+            '100': Math.floor(Math.random() * 100),
+            '10' : Math.floor(Math.random() * 10),
+        },
+
+        // 世界书值
+        worldBook: {}
     };
-    
-    // 处理世界书变量
-    worldState.worldBook?.forEach(rule => {
-        if (rule.value !== undefined) {
-            variables[`worldBook.${rule.id}.value`] = rule.value;
-        }
+
+    // 暴露 worldBook.<id>.value
+    (worldState.worldBook || []).forEach(rule => {
+        if (!ctx.worldBook[rule.id]) ctx.worldBook[rule.id] = {};
+        if ('value' in rule) ctx.worldBook[rule.id].value = rule.value;
     });
-    
-    // 替换变量 {{variable}} 或 {{variable:default}}
-    return text.replace(/\{\{([^}:]+)(?::([^}]+))?\}\}/g, (match, varName, defaultValue) => {
-        const value = variables[varName.trim()];
-        return value !== undefined ? value : (defaultValue || match);
+
+    // 通用路径读取：a.b.c
+    const getByPath = (obj, path) => {
+        const parts = path.split('.');
+        let cur = obj;
+        for (const p of parts) {
+            if (cur == null) return undefined;
+            cur = cur[p];
+        }
+        return cur;
+    };
+
+    return text.replace(/\{\{([^}:]+)(?::([^}]+))?\}\}/g, (_, rawName, defVal) => {
+        const name = rawName.trim();
+        let val = getByPath(ctx, name);
+
+        // 兼容别名：player.inventory.count -> player.inventory.length
+        if (val === undefined && name === 'player.inventory.count') {
+            val = getByPath(ctx, 'player.inventory.length');
+        }
+
+        if (val === undefined) {
+            // 保持默认值或原样返回占位符
+            return (defVal !== undefined) ? defVal : `{{${rawName}${defVal ? ':' + defVal : ''}}}`;
+        }
+        if (Array.isArray(val)) val = val.join('、');
+        return String(val);
     });
 }
 
@@ -358,9 +394,15 @@ function getActiveWorldBookEntries(userInput) {
 
         const aiPersona = activeChat.settings.aiPersona || `你是AI伴侣'零'。`;
         const userPersona = activeChat.settings.myPersona || `我是一个正在和AI聊天的人类。`;
-        const linkedBooks = worldState.worldBook.filter(rule => 
-            activeChat.settings.linkedWorldBookIds && activeChat.settings.linkedWorldBookIds.includes(rule.id)
-        );
+        const linkedBooks = worldState.worldBook
+  .filter(rule => activeChat.settings.linkedWorldBookIds && activeChat.settings.linkedWorldBookIds.includes(rule.id))
+  .map(rule => ({
+      id: rule.id,
+      name: rule.name,
+      category: rule.category,
+      priority: rule.priority,
+      text: rule.variables ? replaceVariables(rule.content) : rule.content
+  }));
         const now = new Date();
         const timeInfo = {
             currentTime: `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`,
@@ -669,6 +711,29 @@ ${activeChat.settings.enableChainOfThought ? '5. **[思维链已开启]** 在最
             form.appendChild(triggers);
             form.appendChild(content);
             form.appendChild(options);
+            // —— 实时预览容器 —— //
+const previewWrap = document.createElement('div');
+previewWrap.className = 'wb-live-preview';
+previewWrap.innerHTML = `
+  <div class="wb-live-title">实时预览</div>
+  <div id="wb-preview-${rule.id}" class="wb-live-body"></div>
+`;
+form.appendChild(previewWrap);
+
+// —— 预览刷新函数（依赖已存在的 content 与 options） —— //
+const updateWbPreview = () => {
+  const pv = document.getElementById(`wb-preview-${rule.id}`);
+  const useVars = document.getElementById(`wb-variables-${rule.id}`)?.checked;
+  const raw = content.value || '';
+  pv.textContent = useVars ? replaceVariables(raw) : raw;
+};
+
+// 初始渲染 & 监听输入/勾选变化
+setTimeout(() => {
+  updateWbPreview();
+  content.addEventListener('input', updateWbPreview);
+  document.getElementById(`wb-variables-${rule.id}`)?.addEventListener('change', updateWbPreview);
+}, 0);
             form.appendChild(comment);
             form.appendChild(actions);
             card.appendChild(form);
@@ -701,8 +766,11 @@ ${activeChat.settings.enableChainOfThought ? '5. **[思维链已开启]** 在最
             triggers.innerHTML = `触发词: <code>${triggersText}</code>`;
             
             const text = document.createElement('div');
-            text.className = 'wb-entry-text';
-            text.textContent = rule.content.substring(0, 100) + (rule.content.length > 100 ? '...' : '');
+text.className = 'wb-entry-text';
+
+// 先做变量替换，再截断，列表里就能看到“替换后的摘要”
+const preview = rule.variables ? replaceVariables(rule.content) : rule.content;
+text.textContent = preview.substring(0, 100) + (preview.length > 100 ? '...' : '');
             
             content.appendChild(title);
             content.appendChild(triggers);
