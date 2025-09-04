@@ -1,5 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
-    
+    // 捕获未处理的 Promise 错误，避免控制台出现红色报错
+    window.addEventListener('unhandledrejection', event => {
+        console.warn('未处理的 Promise 错误：', event.reason);
+        event.preventDefault();
+    });
+
     // --- 0. 数据库 (Data) ---
     const db = new Dexie('myVirtualWorldDB');
     db.version(1).stores({
@@ -137,7 +142,10 @@ worldState.worldBook = (worldBook && worldBook.length > 0)
         if (timePassedMinutes > 0 && incomePerMinute > 0) {
             const moneyEarned = timePassedMinutes * incomePerMinute;
             worldState.ai.money += moneyEarned;
-            worldState.session = { minutesAway: timePassedMinutes, moneyEarned: moneyEarned };
+            worldState.session = { minutesAway: timePassedMinutes, moneyEarned };
+            worldState.lastOnlineTimestamp = Date.now();
+            await saveWorldState();
+            renderWalletScreen();
         }
     }
 
@@ -665,7 +673,7 @@ ${activeChat.settings.enableChainOfThought ? '5. **[思维链已开启]** 在最
     const addBtn = document.createElement('button');
     addBtn.className = 'form-button';
     addBtn.textContent = '➕ 新建条目';
-    addBtn.onclick = async () => {
+    addBtn.onclick = () => {
         const newRule = {
             id: `rule_${Date.now()}`,
             name: '新条目',
@@ -677,10 +685,10 @@ ${activeChat.settings.enableChainOfThought ? '5. **[思维链已开启]** 在最
             position: 'after',
             priority: 100,
             variables: true,
-            comment: ''
+            comment: '',
+            isNew: true
         };
         worldState.worldBook.push(newRule);
-        await saveWorldState();
         renderWorldBookScreen(newRule.id);
     };
     
@@ -796,9 +804,9 @@ ${activeChat.settings.enableChainOfThought ? '5. **[思维链已开启]** 在最
             const actions = document.createElement('div');
             actions.className = 'wb-edit-actions';
             actions.innerHTML = `
-                <button class="wb-save-btn" onclick="saveWorldBookEntry('${rule.id}')">保存</button>
-                <button class="wb-cancel-btn" onclick="renderWorldBookScreen()">取消</button>
-                <button class="wb-delete-btn" onclick="deleteWorldBookEntry('${rule.id}')">删除</button>
+                <button type="button" class="wb-save-btn" onclick="saveWorldBookEntry('${rule.id}')">保存</button>
+                <button type="button" class="wb-cancel-btn" data-rule-id="${rule.id}" onclick="renderWorldBookScreen()">取消</button>
+                <button type="button" class="wb-delete-btn" onclick="deleteWorldBookEntry('${rule.id}')">删除</button>
             `;
             
             form.appendChild(row1);
@@ -908,6 +916,7 @@ text.textContent = preview.substring(0, 100) + (preview.length > 100 ? '...' : '
         rule.priority = parseInt(document.getElementById(`wb-priority-${ruleId}`).value) || 100;
         rule.comment = document.getElementById(`wb-comment-${ruleId}`).value;
         
+        delete rule.isNew;
         await saveWorldState();
         renderWorldBookScreen();
     };
@@ -1208,6 +1217,12 @@ window.renderWorldBookScreen = renderWorldBookScreen;
     
     // 处理取消按钮
     if (target.classList.contains('wb-cancel-btn')) {
+        const ruleId = target.dataset.ruleId;
+        const rule = worldState.worldBook.find(r => r.id === ruleId);
+        if (rule && rule.isNew) {
+            worldState.worldBook = worldState.worldBook.filter(r => r.id !== ruleId);
+            await saveWorldState();
+        }
         renderWorldBookScreen();
     }
     
