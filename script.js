@@ -1,5 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
-    
+    // 捕获未处理的 Promise 错误，避免控制台出现红色报错
+    window.addEventListener('unhandledrejection', event => {
+        console.warn('未处理的 Promise 错误：', event.reason);
+        event.preventDefault();
+    });
+
     // --- 0. 数据库 (Data) ---
     const db = new Dexie('myVirtualWorldDB');
     db.version(1).stores({
