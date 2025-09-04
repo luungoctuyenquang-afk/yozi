@@ -358,7 +358,8 @@ function replaceVariables(text) {
         return String(val);
     });
 }
-
+    window.replaceVariables = replaceVariables;
+    
 // 获取激活的世界书条目
 function getActiveWorldBookEntries(userInput) {
     const input = (userInput || '').toLowerCase();
@@ -551,7 +552,7 @@ ${activeChat.settings.enableChainOfThought ? '5. **[思维链已开启]** 在最
                     checkbox.value = rule.id;
                     checkbox.checked = isChecked;
                     label.appendChild(checkbox);
-                    label.appendChild(document.createTextNode(` ${rule.key} (${rule.category})`));
+                    label.appendChild(document.createTextNode(` ${rule.name} (${rule.category})`));
                     worldBookLinkingContainer.appendChild(label);
                 });
             } else {
@@ -711,7 +712,7 @@ ${activeChat.settings.enableChainOfThought ? '5. **[思维链已开启]** 在最
             form.appendChild(triggers);
             form.appendChild(content);
             form.appendChild(options);
-            // —— 实时预览容器 —— //
+            // —— 在这里插入实时预览 —— ✅
 const previewWrap = document.createElement('div');
 previewWrap.className = 'wb-live-preview';
 previewWrap.innerHTML = `
@@ -1140,12 +1141,19 @@ text.textContent = preview.substring(0, 100) + (preview.length > 100 ? '...' : '
 
     // --- 6. 程序入口 ---
     async function main() {
-        await loadWorldState();
-        updateClock();
-        setInterval(updateClock, 30000);
-        showScreen('lock-screen');
-        renderHomeScreen();
-    }
+  await loadWorldState();
+  // —— 如果页面里放了那个“模板/渲染结果”的 Demo，就在这里刷新它 —— //
+  const demo = document.getElementById('vars-demo-result');
+  if (demo && typeof window.replaceVariables === 'function') {
+    const tpl = `现在是 {{time.hour}}:{{time.minute}}，{{ai.name}} 心情 {{ai.mood}}。你有 {{player.inventory.length:0}} 件物品，聊天条数：{{chat.count}}，离线收益/分：{{worldBook.rule001.value:1}}，随机数：{{random.10}}`;
+    demo.textContent = window.replaceVariables(tpl);
+  }
+
+  updateClock();
+  setInterval(updateClock, 30000);
+  showScreen('lock-screen');
+  renderHomeScreen();
+}
 
     main();
 });
