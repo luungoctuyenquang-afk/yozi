@@ -154,8 +154,25 @@
         </section>
     </div>
 
-    <!-- 正确闭合的脚本标签 -->
-    <script src="script.js"></script>
+   <!-- 模块化的脚本引入 -->
+    <!-- 核心模块 -->
+    <script src="js/config.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/database.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/ai.js"></script>
+    
+    <!-- 界面模块 -->
+    <script src="js/screens/chat.js"></script>
+    <script src="js/screens/wallet.js"></script>
+    <script src="js/screens/store.js"></script>
+    <script src="js/screens/backpack.js"></script>
+    <script src="js/screens/worldbook.js"></script>
+    <script src="js/screens/settings.js"></script>
+    <script src="js/screens/general-settings.js"></script>
+    
+    <!-- 主入口（必须最后加载） -->
+    <script src="js/main.js"></script>
 
 </body>
 </html>
