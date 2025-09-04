@@ -16,7 +16,7 @@
         <main id="home-screen" class="screen">
             <h1>主页</h1>
             <p>你好，我是 <span id="ai-name-display">...</span></p>
-            <div class="app-grid">
+               <div class="app-grid">
                 <div class="app-icon" id="open-chat-app"><div class="app-icon-bg">💬</div><span class="app-name">聊天</span></div>
                 <div class="app-icon" id="open-wallet-app"><div class="app-icon-bg">💰</div><span class="app-name">钱包</span></div>
                 <div class="app-icon" id="open-store-app"><div class="app-icon-bg">🛒</div><span class="app-name">商店</span></div>
@@ -24,35 +24,21 @@
                 <div class="app-icon" id="open-world-book-app"><div class="app-icon-bg">📖</div><span class="app-name">世界书</span></div>
                 <div class="app-icon" id="open-settings-app"><div class="app-icon-bg">⚙️</div><span class="app-name">API设置</span></div>
                 <div class="app-icon" id="open-general-settings-app"><div class="app-icon-bg">🔧</div><span class="app-name">通用设置</span></div>
-                </div>
+            </div> <!-- app-grid 结束 -->
 
-            script>
-    <!-- 模板变量·全局演示块（贴一次就好） -->
-<div id="vars-demo" style="margin-top:14px;padding:10px;border:1px dashed #bbb;border-radius:8px;font-size:14px;">
-  <div><strong>模板（原文）</strong>：
-    现在是 {{time.hour}}:{{time.minute}}，{{ai.name}} 心情 {{ai.mood}}。
-    你有 {{player.inventory.length:0}} 件物品，聊天条数：{{chat.count}}，
-    离线收益/分：{{worldBook.rule001.value:1}}，随机数：{{random.10}}
-  </div>
-  <div style="margin-top:8px;"><strong>渲染结果</strong>：<span id="vars-demo-result">（加载中…）</span></div>
-</div>
-
-<script>
-  // 确保 script.js 已加载（replaceVariables 可用）
-  window.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-      if (typeof replaceVariables === 'function') {
-        const tpl = `现在是 {{time.hour}}:{{time.minute}}，{{ai.name}} 心情 {{ai.mood}}。你有 {{player.inventory.length:0}} 件物品，聊天条数：{{chat.count}}，离线收益/分：{{worldBook.rule001.value:1}}，随机数：{{random.10}}`;
-        const out = replaceVariables(tpl);
-        const el = document.getElementById('vars-demo-result');
-        if (el) el.textContent = out;
-      }
-    }, 0);
-  });
-</script>
-            
+            <!-- 变量替换 Demo（只在首页显示） -->
+            <div id="vars-demo" style="margin-top:14px;padding:10px;border:1px dashed #bbb;border-radius:8px;font-size:14px;">
+              <div><strong>模板（原文）</strong>：
+                现在是 {{time.hour}}:{{time.minute}}，{{ai.name}} 心情 {{ai.mood}}。
+                你有 {{player.inventory.length:0}} 件物品，聊天条数：{{chat.count}}，
+                离线收益/分：{{worldBook.rule001.value:1}}，随机数：{{random.10}}
+              </div>
+              <div style="margin-top:8px;"><strong>渲染结果</strong>：
+                <span id="vars-demo-result">（加载中…）</span>
+              </div>
+            </div>
         </main>
-
+        
         <section id="chat-screen" class="screen">
             <header class="chat-header"><button id="back-to-home-btn" class="back-btn">‹</button><h2 id="chat-header-title">与零的聊天</h2></header>
             <div id="message-container" class="message-container"></div>
@@ -157,11 +143,14 @@
                 <button id="save-general-settings-btn" class="form-button">保存通用设置</button>
             </div>
         </section>
-        <section id="lock-screen" class="screen">
+                <section id="lock-screen" class="screen">
             <div class="time-display">10:24</div>
             <div class="unlock-prompt">点击屏幕以解锁</div>
         </section>
     </div>
-    <script src="script.js"></
+
+    <!-- 正确闭合的脚本标签 -->
+    <script src="script.js"></script>
+
 </body>
 </html>
