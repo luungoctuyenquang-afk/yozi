@@ -912,17 +912,17 @@ text.textContent = preview.substring(0, 100) + (preview.length > 100 ? '...' : '
         renderWorldBookScreen();
     };
     
-    window.deleteWorldBookEntry = async (ruleId) => {
+window.deleteWorldBookEntry = async (ruleId) => {
         if (confirm('确定要删除这个条目吗？')) {
             worldState.worldBook = worldState.worldBook.filter(r => r.id !== ruleId);
             await saveWorldState();
             renderWorldBookScreen();
         }
     };
-    
-    // 将renderWorldBookScreen添加到全局对象
-    window.renderWorldBookScreen = renderWorldBookScreen;
 }
+
+// 将renderWorldBookScreen添加到全局对象（移到函数外部）
+window.renderWorldBookScreen = renderWorldBookScreen;
 
     function renderSettingsScreen() { 
         if(!apiPresetSelect) return;
