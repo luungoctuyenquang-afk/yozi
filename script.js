@@ -41,6 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 await db.chatHistory.clear();
                 await db.chatHistory.bulkAdd(worldState.chat.history);
             });
+
+            window.refreshVarsDemo?.();
+
         } catch (e) {
             console.error('使用IndexedDB存档失败:', e);
             alert('存档失败！数据可能未能成功保存到本地数据库。');
@@ -359,6 +362,19 @@ function replaceVariables(text) {
     });
 }
     window.replaceVariables = replaceVariables;
+
+    // —— Vars Demo 刷新助手（可选） —— //
+function refreshVarsDemo() {
+  const el = document.getElementById('vars-demo-result');
+  if (!el || typeof window.replaceVariables !== 'function') return;
+
+  const tpl = `现在是 {{time.hour}}:{{time.minute}}，{{ai.name}} 心情 {{ai.mood}}。
+你有 {{player.inventory.length:0}} 件物品，聊天条数：{{chat.count}}，
+离线收益/分：{{worldBook.rule001.value:1}}，随机数：{{random.10}}`;
+
+  el.textContent = window.replaceVariables(tpl);
+}
+window.refreshVarsDemo = refreshVarsDemo;
     
 // 获取激活的世界书条目
 function getActiveWorldBookEntries(userInput) {
@@ -1142,13 +1158,9 @@ text.textContent = preview.substring(0, 100) + (preview.length > 100 ? '...' : '
     // --- 6. 程序入口 ---
     async function main() {
   await loadWorldState();
+  if (window.refreshVarsDemo) window.refreshVarsDemo();
   // —— 如果页面里放了那个“模板/渲染结果”的 Demo，就在这里刷新它 —— //
-  const demo = document.getElementById('vars-demo-result');
-  if (demo && typeof window.replaceVariables === 'function') {
-    const tpl = `现在是 {{time.hour}}:{{time.minute}}，{{ai.name}} 心情 {{ai.mood}}。你有 {{player.inventory.length:0}} 件物品，聊天条数：{{chat.count}}，离线收益/分：{{worldBook.rule001.value:1}}，随机数：{{random.10}}`;
-    demo.textContent = window.replaceVariables(tpl);
-  }
-
+ 
   updateClock();
   setInterval(updateClock, 30000);
   showScreen('lock-screen');
