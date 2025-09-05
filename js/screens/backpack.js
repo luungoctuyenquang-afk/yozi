@@ -27,7 +27,7 @@ const BackpackScreen = {
         });
     },
     
-    async useItem(itemName) {
+  async useItem(itemName) {
         const state = StateManager.get();
         const effect = CONFIG.itemEffects[itemName];
         if (!effect) {
@@ -35,9 +35,13 @@ const BackpackScreen = {
             return;
         }
         
-        const result = effect.effect(state);
+        // 从背包移除物品
         state.player.inventory = state.player.inventory.filter(item => item !== itemName);
-        await Database.saveWorldState();
+        
+        // 执行物品效果（现在是异步的）
+        const result = await effect.effect(state);
+        
+        // 渲染界面
         this.render();
         alert(result);
     }
