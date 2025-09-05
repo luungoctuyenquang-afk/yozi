@@ -134,7 +134,7 @@ const WorldBookScreen = {
         content.placeholder = '内容（支持变量：{{player.money}} 等）';
         content.value = rule.content;
         
-        // 选项
+       // 选项
         const options = document.createElement('div');
         options.className = 'wb-edit-checkboxes';
         options.innerHTML = `
@@ -142,6 +142,12 @@ const WorldBookScreen = {
             <label><input type="checkbox" id="wb-constant-${rule.id}" ${rule.constant ? 'checked' : ''}> 始终激活</label>
             <label><input type="checkbox" id="wb-variables-${rule.id}" ${rule.variables ? 'checked' : ''}> 变量替换</label>
             <input type="number" id="wb-priority-${rule.id}" class="wb-edit-priority" value="${rule.priority}" placeholder="优先级">
+            ${rule.id === 'rule001' ? `
+                <div style="margin-top: 10px;">
+                    <label>离线收益值: <input type="number" id="wb-value-${rule.id}" 
+                        value="${rule.value || 1}" min="0" style="width: 60px;"> 金币/分钟</label>
+                </div>
+            ` : ''}
         `;
         
         // 备注
@@ -250,7 +256,7 @@ const WorldBookScreen = {
         }
     },
     
-    async saveEntry(ruleId) {
+  async saveEntry(ruleId) {
         const state = StateManager.get();
         const rule = state.worldBook.find(r => r.id === ruleId);
         if (!rule) return;
@@ -267,6 +273,19 @@ const WorldBookScreen = {
         rule.variables = document.getElementById(`wb-variables-${ruleId}`).checked;
         rule.priority = parseInt(document.getElementById(`wb-priority-${ruleId}`).value) || 100;
         rule.comment = document.getElementById(`wb-comment-${ruleId}`).value;
+        
+        // 特殊处理离线收益规则的value
+        if (rule.id === 'rule001') {
+            const valueInput = document.getElementById(`wb-value-${ruleId}`);
+            if (valueInput) {
+                rule.value = parseInt(valueInput.value) || 1;
+                // 更新content中的默认值
+                rule.content = rule.content.replace(
+                    /{{worldBook\.rule001\.value:\d+}}/,
+                    `{{worldBook.rule001.value:${rule.value}}}`
+                );
+            }
+        }
         
         delete rule.isNew;
         await Database.saveWorldState();
