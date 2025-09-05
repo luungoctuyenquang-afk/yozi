@@ -67,22 +67,45 @@ const AI = {
                 rawResponseText = data.choices[0]?.message?.content || '';
             }
             
-            // 处理思维链
-            if (activeChat.settings.enableChainOfThought && rawResponseText.includes('<thought>')) {
-                const thoughtMatch = rawResponseText.match(/<thought>([\s\S]*?)<\/thought>/);
-                if (thoughtMatch && thoughtMatch[1]) {
-                    const thoughtText = thoughtMatch[1].trim();
-                    console.groupCollapsed(`[AI 思维链] 来自 ${state.ai.name} 的思考过程`);
-                    console.log(thoughtText);
-                    console.groupEnd();
-                    
-                    if (activeChat.settings.showThoughtAsAlert) {
-                        alert(`[AI 思维链]\n------------------\n${thoughtText}`);
+            // 处理思维链 - 增强版
+            if (activeChat.settings.enableChainOfThought) {
+                // 尝试匹配多种可能的思维链格式
+                const thoughtPatterns = [
+                    /<thought>([\s\S]*?)<\/thought>/i,
+                    /<thinking>([\s\S]*?)<\/thinking>/i,
+                    /\[思考\]([\s\S]*?)\[\/思考\]/,
+                    /\*thinking\*([\s\S]*?)\*\/thinking\*/i
+                ];
+
+                let thoughtText = null;
+                let cleanedResponse = rawResponseText;
+
+                for (const pattern of thoughtPatterns) {
+                    const match = rawResponseText.match(pattern);
+                    if (match && match[1]) {
+                        thoughtText = match[1].trim();
+                        cleanedResponse = rawResponseText.replace(pattern, '').trim();
+                        break;
                     }
                 }
-                return rawResponseText.replace(/<thought>[\s\S]*?<\/thought>/, '').trim();
+
+                if (thoughtText) {
+                    // 总是在控制台显示（用于调试）
+                    console.groupCollapsed(`%c[AI 思维链] ${state.ai.name} 的思考过程`, 'color: #667eea; font-weight: bold;');
+                    console.log(thoughtText);
+                    console.groupEnd();
+
+                    // 如果开启了弹窗显示
+                    if (activeChat.settings.showThoughtAsAlert) {
+                        // 创建更好看的弹窗
+                        const thoughtAlert = `🤔 AI思维链分析\n━━━━━━━━━━━━━━━━━━\n${thoughtText}\n━━━━━━━━━━━━━━━━━━\n点击确定继续`;
+                        alert(thoughtAlert);
+                    }
+
+                    return { text: cleanedResponse, thought: thoughtText };
+                }
             }
-            
+
             return rawResponseText.trim();
             
         } catch (error) {
@@ -161,7 +184,14 @@ ${JSON.stringify(stateForPrompt, null, 2)}
 2. **绝对不要**复述或解释上面的JSON状态信息，要自然地将这些信息融入你的对话中。
 3. **针对"当前重要事件"**: 如果有事件发生（比如用户刚回来，或背包里有特殊物品），请根据你的性格，自然地对此作出反应，而不是生硬地播报。
 4. 你的回复必须是纯文本。
-${activeChat.settings.enableChainOfThought ? '5. **[思维链已开启]** 在最终回复前，请用"<thought></thought>"标签包裹思考过程。' : ''}
+${activeChat.settings.enableChainOfThought ? `5. **[思维链已开启]** 你必须在回复前先进行思考。
+   请使用 <thought> 标签包裹你的思考过程，格式如下：
+   <thought>
+   在这里写下你的思考过程...
+   分析用户的问题...
+   考虑如何回应...
+   </thought>
+   然后再写你的正式回复。` : ''}
 `;
         
         const messages = [{ role: 'system', content: systemPrompt }];

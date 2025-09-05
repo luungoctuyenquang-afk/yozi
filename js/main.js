@@ -81,11 +81,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // 处理离线后的欢迎消息
             if (state.session.minutesAway > 0) {
-                const aiGreeting = await AI.getResponse([{text: ''}]);
+                const aiResponse = await AI.getResponse([{text: ''}]);
+                const aiGreeting = aiResponse.text || aiResponse;
                 if (aiGreeting) {
                     state.chat.history.push({
                         sender: 'ai',
                         content: [{text: aiGreeting}],
+                        thoughtText: aiResponse.thought || null,
                         timestamp: Date.now()
                     });
                     ChatScreen.render();

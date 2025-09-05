@@ -169,11 +169,28 @@ const WorldBookScreen = {
         // 按钮
         const actions = document.createElement('div');
         actions.className = 'wb-edit-actions';
-        actions.innerHTML = `
-            <button type="button" class="wb-save-btn" data-rule-id="${rule.id}">保存</button>
-            <button type="button" class="wb-cancel-btn" data-rule-id="${rule.id}">取消</button>
-            <button type="button" class="wb-delete-btn" data-rule-id="${rule.id}">删除</button>
-        `;
+
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'wb-save-btn';
+        saveBtn.textContent = '保存';
+        saveBtn.onclick = () => this.saveEntry(rule.id);
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'wb-cancel-btn';
+        cancelBtn.textContent = '取消';
+        cancelBtn.onclick = () => this.cancelEdit(rule.id);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'wb-delete-btn';
+        deleteBtn.textContent = '删除';
+        deleteBtn.onclick = () => this.deleteEntry(rule.id);
+
+        actions.appendChild(saveBtn);
+        actions.appendChild(cancelBtn);
+        actions.appendChild(deleteBtn);
         
         form.appendChild(row1);
         form.appendChild(triggers);
@@ -260,7 +277,7 @@ const WorldBookScreen = {
         const state = StateManager.get();
         const rule = state.worldBook.find(r => r.id === ruleId);
         if (!rule) return;
-        
+
         rule.name = document.getElementById(`wb-name-${ruleId}`).value || '未命名';
         rule.category = document.getElementById(`wb-category-${ruleId}`).value;
         rule.triggers = document.getElementById(`wb-triggers-${ruleId}`).value
@@ -273,23 +290,29 @@ const WorldBookScreen = {
         rule.variables = document.getElementById(`wb-variables-${ruleId}`).checked;
         rule.priority = parseInt(document.getElementById(`wb-priority-${ruleId}`).value) || 100;
         rule.comment = document.getElementById(`wb-comment-${ruleId}`).value;
-        
-        // 特殊处理离线收益规则的value
+
+        // 特殊处理离线收益规则的value字段
         if (rule.id === 'rule001') {
             const valueInput = document.getElementById(`wb-value-${ruleId}`);
             if (valueInput) {
-                rule.value = parseInt(valueInput.value) || 1;
-                // 更新content中的默认值
-                rule.content = rule.content.replace(
-                    /{{worldBook\.rule001\.value:\d+}}/,
-                    `{{worldBook.rule001.value:${rule.value}}}`
-                );
+                const newValue = parseInt(valueInput.value) || 1;
+                rule.value = newValue;
+                // 同步更新content中的值
+                if (!rule.content.includes('{{worldBook.rule001.value')) {
+                    rule.content = `AI每分钟获得{{worldBook.rule001.value:${newValue}}}金币的离线收入`;
+                } else {
+                    rule.content = rule.content.replace(
+                        /\{\{worldBook\.rule001\.value:\d+\}\}/g,
+                        `{{worldBook.rule001.value:${newValue}}}`
+                    );
+                }
             }
         }
-        
+
         delete rule.isNew;
         await Database.saveWorldState();
         this.render();
+        alert('保存成功！');
     },
     
     async deleteEntry(ruleId) {

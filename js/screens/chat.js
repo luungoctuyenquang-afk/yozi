@@ -23,7 +23,7 @@ const ChatScreen = {
             (state.chat.history || []).forEach(msg => {
                 const bubble = document.createElement('div');
                 bubble.className = `message-bubble ${msg.sender === 'user' ? 'user-message' : 'ai-message'}`;
-                
+
                 const contentParts = Array.isArray(msg.content) ? msg.content : [{ text: String(msg.content || '') }];
                 contentParts.forEach(part => {
                     if (part.text && part.text.trim() !== '') {
@@ -37,7 +37,20 @@ const ChatScreen = {
                         bubble.appendChild(imgNode);
                     }
                 });
-                
+
+                // 如果是AI消息且包含思维链，显示可折叠的思维链
+                if (msg.sender === 'ai' && msg.thoughtText) {
+                    const thoughtDetails = document.createElement('details');
+                    thoughtDetails.style.cssText = 'margin-top: 5px; font-size: 12px; color: #999;';
+                    thoughtDetails.innerHTML = `
+                        <summary style="cursor: pointer;">🤔 查看AI思考过程</summary>
+                        <div style="padding: 10px; background: #f5f5f5; border-radius: 8px; margin-top: 5px; color: #666;">
+                            ${msg.thoughtText.replace(/\n/g, '<br>')}
+                        </div>
+                    `;
+                    bubble.appendChild(thoughtDetails);
+                }
+
                 if (bubble.hasChildNodes()) {
                     messageContainer.appendChild(bubble);
                 }
@@ -64,19 +77,20 @@ const ChatScreen = {
         
         await Database.saveWorldState();
         
-        const aiReplyText = await AI.getResponse(userMessage.content);
-        
+        const aiResponse = await AI.getResponse(userMessage.content);
+
         if (state.session.minutesAway > 0) {
             state.session.minutesAway = 0;
             state.session.moneyEarned = 0;
         }
-        
+
         const aiMessage = {
             sender: 'ai',
-            content: [{ text: aiReplyText }],
+            content: [{ text: aiResponse.text || aiResponse }],
+            thoughtText: aiResponse.thought || null,
             timestamp: Date.now()
         };
-        
+
         state.chat.history.push(aiMessage);
         this.render();
         await Database.saveWorldState();
@@ -105,13 +119,14 @@ const ChatScreen = {
             chatInput.value = '';
             await Database.saveWorldState();
             
-            const aiReplyText = await AI.getResponse(userMessage.content);
+            const aiResponse = await AI.getResponse(userMessage.content);
             const aiMessage = {
                 sender: 'ai',
-                content: [{ text: aiReplyText }],
+                content: [{ text: aiResponse.text || aiResponse }],
+                thoughtText: aiResponse.thought || null,
                 timestamp: Date.now()
             };
-            
+
             state.chat.history.push(aiMessage);
             this.render();
             await Database.saveWorldState();
