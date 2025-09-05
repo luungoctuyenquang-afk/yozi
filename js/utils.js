@@ -127,7 +127,7 @@ const Utils = {
                 position: 'after',
                 priority: 100,
                 variables: true,
-                value: rule.value || 1,
+                value: rule.value ?? 1,
                 comment: rule.description || ''
             };
             if (triggers.length) newRule.triggers = triggers;
