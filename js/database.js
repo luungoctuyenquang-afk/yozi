@@ -27,17 +27,14 @@ const Database = {
                     throw new Error("核心数据丢失，无法存档。");
                 }
                 
-                // 限制聊天历史长度
                 if (state.chat.history.length > 100) {
                     state.chat.history = state.chat.history.slice(-50);
                 }
                 
-                // 保存各个数据
                 await this.db.general.put({ id: 'main', lastOnlineTimestamp: Date.now() });
                 await this.db.player.put({ id: 'main', ...state.player });
                 await this.db.ai.put({ id: 'main', ...state.ai });
                 
-                // 智能保存世界书
                 const existingBooks = await this.db.worldBook.toArray();
                 const existingIds = existingBooks.map(b => b.id);
                 
@@ -55,7 +52,10 @@ const Database = {
                 await this.db.apiConfig.put({ id: 'main', ...state.apiConfig });
                 
                 for (const chatId in state.chats) {
-                    await this.db.chatSettings.put({ id: chatId, settings: state.chats[chatId].settings });
+                    await this.db.chatSettings.put({ 
+                        id: chatId, 
+                        settings: state.chats[chatId].settings 
+                    });
                 }
                 
                 await this.db.chatHistory.clear();
@@ -70,12 +70,10 @@ const Database = {
         }
     },
     
-    // 加载世界状态（这个函数比较长，我简化一下关键部分）
+    // 加载世界状态
     async loadWorldState() {
-        // 先检查是否需要迁移旧数据
         await this.migrateFromLocalStorage();
         
-        // 从数据库加载所有数据
         const [general, player, ai, chatHistory, worldBook, events, apiConfig, chatSettings] = 
             await Promise.all([
                 this.db.general.get('main'),
@@ -88,40 +86,159 @@ const Database = {
                 this.db.chatSettings.toArray()
             ]);
         
-        // 构建世界状态
-        const newState = {
-            lastOnlineTimestamp: general ? general.lastOnlineTimestamp : Date.now(),
-            player: player || CONFIG.defaults.player,
-            ai: ai || CONFIG.defaults.ai,
-            chat: { history: chatHistory || [] },
-            worldBook: worldBook || [],
-            events: events || { aiNoticedMovieTicket: false },
-            session: { minutesAway: 0, moneyEarned: 0 },
-            apiConfig: apiConfig || this.getDefaultApiConfig(),
-            chats: this.buildChatsFromSettings(chatSettings)
-        };
+        const newState = {};
+        newState.lastOnlineTimestamp = general ? general.lastOnlineTimestamp : Date.now();
+        newState.player = player || CONFIG.defaults.player;
+        newState.ai = ai || CONFIG.defaults.ai;
+        newState.chat = { history: chatHistory || [] };
+        
+        // 升级世界书格式
+        newState.worldBook = (worldBook && worldBook.length > 0) 
+            ? Utils.upgradeWorldBook(worldBook) 
+            : [{
+                id: 'rule001',
+                name: 'AI离线收入规则',
+                category: '经济',
+                triggers: ['收入', '金币', '离线'],
+                content: 'AI每分钟获得{{worldBook.rule001.value:1}}金币的离线收入',
+                enabled: true,
+                constant: false,
+                position: 'after',
+                priority: 100,
+                variables: true,
+                value: 1,
+                comment: 'AI在离线时每分钟获得的金币数量'
+            }];
+        
+        newState.events = events || { aiNoticedMovieTicket: false };
+        newState.session = { minutesAway: 0, moneyEarned: 0 };
+        
+        // 处理API配置
+        if (apiConfig && Array.isArray(apiConfig.presets) && apiConfig.presets.length > 0) {
+            newState.apiConfig = apiConfig;
+            newState.apiConfig.presets = apiConfig.presets.map(preset => ({
+                id: preset.id || `preset_${Date.now()}_${Math.random()}`,
+                name: preset.name || '未命名预设',
+                provider: preset.provider || 'gemini',
+                endpoint: preset.endpoint || '',
+                apiKey: preset.apiKey || '',
+                model: preset.model || 'gemini-1.5-flash-latest'
+            }));
+            
+            if (!newState.apiConfig.activePresetId || 
+                !newState.apiConfig.presets.find(p => p.id === newState.apiConfig.activePresetId)) {
+                newState.apiConfig.activePresetId = newState.apiConfig.presets[0].id;
+            }
+        } else {
+            const presetId = `preset_${Date.now()}`;
+            newState.apiConfig = {
+                presets: [{
+                    id: presetId,
+                    name: '默认 Gemini',
+                    provider: 'gemini',
+                    endpoint: '',
+                    apiKey: '',
+                    model: 'gemini-1.5-flash-latest'
+                }],
+                activePresetId: presetId
+            };
+        }
+        
+        // 处理聊天设置
+        newState.chats = {};
+        if (chatSettings && chatSettings.length > 0) {
+            chatSettings.forEach(cs => {
+                newState.chats[cs.id] = { settings: cs.settings };
+            });
+        }
+        
+        if (!newState.chats['chat_default']) {
+            newState.chats['chat_default'] = {
+                settings: {
+                    aiPersona: CONFIG.defaults.aiPersona,
+                    myPersona: CONFIG.defaults.myPersona,
+                    linkedWorldBookIds: [],
+                    enableChainOfThought: false,
+                    showThoughtAsAlert: false
+                }
+            };
+        }
         
         // 计算离线收入
-        this.calculateOfflineIncome(newState);
+        const timePassedMs = Date.now() - newState.lastOnlineTimestamp;
+        const timePassedMinutes = Math.floor(timePassedMs / 1000 / 60);
+        const incomeRule = newState.worldBook.find(rule => rule.id === 'rule001');
+        const incomePerMinute = incomeRule ? (incomeRule.value || 0) : 0;
+        
+        if (timePassedMinutes > 0 && incomePerMinute > 0) {
+            const moneyEarned = timePassedMinutes * incomePerMinute;
+            newState.ai.money += moneyEarned;
+            newState.session.minutesAway = timePassedMinutes;
+            newState.session.moneyEarned = moneyEarned;
+        } else {
+            newState.session.minutesAway = 0;
+            newState.session.moneyEarned = 0;
+        }
+        
+        newState.lastOnlineTimestamp = Date.now();
         
         StateManager.set(newState);
         return newState;
     },
     
-    // 其他辅助函数...
-    migrateFromLocalStorage() {
-        // 迁移旧数据的代码
-    },
-    
-    getDefaultApiConfig() {
-        // 默认API配置
-    },
-    
-    buildChatsFromSettings(chatSettings) {
-        // 构建聊天设置
-    },
-    
-    calculateOfflineIncome(state) {
-        // 计算离线收入
+    // 从LocalStorage迁移数据
+    async migrateFromLocalStorage() {
+        const oldSaveData = localStorage.getItem('myVirtualWorldSave');
+        if (!oldSaveData) return;
+        
+        try {
+            console.log("检测到旧存档，开始数据迁移...");
+            alert("正在进行首次数据升级，请稍候...");
+            const loadedState = JSON.parse(oldSaveData);
+            
+            await this.db.transaction('rw', this.db.tables, async () => {
+                await this.db.general.put({ 
+                    id: 'main', 
+                    lastOnlineTimestamp: loadedState.lastOnlineTimestamp || Date.now() 
+                });
+                
+                if (loadedState.player) {
+                    await this.db.player.put({ id: 'main', ...loadedState.player });
+                }
+                if (loadedState.ai) {
+                    await this.db.ai.put({ id: 'main', ...loadedState.ai });
+                }
+                if (loadedState.chat && loadedState.chat.history) {
+                    await this.db.chatHistory.bulkAdd(loadedState.chat.history);
+                }
+                if (loadedState.worldBook) {
+                    await this.db.worldBook.bulkPut(loadedState.worldBook);
+                }
+                if (loadedState.events) {
+                    await this.db.events.put({ id: 'main', ...loadedState.events });
+                }
+                if (loadedState.apiConfig) {
+                    await this.db.apiConfig.put({ id: 'main', ...loadedState.apiConfig });
+                }
+                if (loadedState.chats) {
+                    for (const chatId in loadedState.chats) {
+                        if (loadedState.chats[chatId].settings) {
+                            await this.db.chatSettings.put({ 
+                                id: chatId, 
+                                settings: loadedState.chats[chatId].settings 
+                            });
+                        }
+                    }
+                }
+            });
+            
+            localStorage.removeItem('myVirtualWorldSave');
+            console.log("数据迁移成功！旧存档已移除。");
+            alert("数据升级完成！您的所有进度都已保留。");
+        } catch (error) {
+            console.error("数据迁移失败:", error);
+            alert("数据迁移过程中发生错误！应用将尝试使用新存档启动。");
+            localStorage.removeItem('myVirtualWorldSave');
+        }
     }
 };
