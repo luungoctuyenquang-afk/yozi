@@ -116,11 +116,11 @@ const Utils = {
     upgradeWorldBook(oldBook) {
         return oldBook.map(rule => {
             if (rule.triggers) return rule; // 已经是新格式
-            return {
+            const triggers = rule.key ? [rule.key] : [];
+            const newRule = {
                 id: rule.id,
                 name: rule.key || '未命名规则',
                 category: rule.category || '通用',
-                triggers: [rule.key || ''],
                 content: String(rule.value || rule.description || ''),
                 enabled: true,
                 constant: false,
@@ -130,6 +130,8 @@ const Utils = {
                 value: rule.value || 1,
                 comment: rule.description || ''
             };
+            if (triggers.length) newRule.triggers = triggers;
+            return newRule;
         });
     }
 };
