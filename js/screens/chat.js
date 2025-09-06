@@ -57,11 +57,17 @@ const ChatScreen = {
                     contentDiv.textContent = msg.thoughtText;
                     contentDiv.style.display = 'none'; // 默认隐藏
 
-                    summarySpan.onclick = () => {
+                    const toggleThought = () => {
                         const isOpen = detailsDiv.classList.toggle('open');
                         contentDiv.style.display = isOpen ? 'block' : 'none';
                         summarySpan.setAttribute('aria-expanded', isOpen);
                     };
+
+                    summarySpan.onclick = toggleThought;
+                    summarySpan.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        toggleThought();
+                    });
                     
                     detailsDiv.appendChild(summarySpan);
                     detailsDiv.appendChild(contentDiv);
