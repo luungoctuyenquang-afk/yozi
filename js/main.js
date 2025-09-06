@@ -124,23 +124,48 @@ document.addEventListener('DOMContentLoaded', () => {
         Utils.safeBind(document.getElementById('open-chat-app'), 'click', async () => {
             Utils.showScreen('chat-screen');
             ChatScreen.render();
-            
+
             // 处理离线后的欢迎消息
             if (state.session.minutesAway > 0) {
-                const aiResponse = await AI.getResponse([{text: ''}]);
-                const aiGreeting = aiResponse.text || aiResponse;
-                if (aiGreeting) {
+                // 先检查是否有有效的API配置
+                const activePresetId = state.apiConfig.activePresetId;
+                const config = state.apiConfig.presets.find(p => p.id === activePresetId);
+
+                if (config && config.apiKey && config.model) {
+                    const aiResponse = await AI.getResponse([{text: ''}]);
+                    let aiGreeting, thoughtText;
+
+                    if (typeof aiResponse === 'object' && aiResponse.text) {
+                        aiGreeting = aiResponse.text;
+                        thoughtText = aiResponse.thought;
+                    } else {
+                        aiGreeting = aiResponse;
+                        thoughtText = null;
+                    }
+
+                    if (aiGreeting && !aiGreeting.includes('系统提示') && !aiGreeting.includes('调试信息')) {
+                        state.chat.history.push({
+                            sender: 'ai',
+                            content: [{text: aiGreeting}],
+                            thoughtText: thoughtText,
+                            timestamp: Date.now()
+                        });
+                        ChatScreen.render();
+                    }
+                } else {
+                    // 如果没有API配置，显示简单的欢迎消息
+                    const offlineMessage = `欢迎回来！你离开了${state.session.minutesAway}分钟，我赚了${state.session.moneyEarned}金币呢～`;
                     state.chat.history.push({
                         sender: 'ai',
-                        content: [{text: aiGreeting}],
-                        thoughtText: aiResponse.thought || null,
+                        content: [{text: offlineMessage}],
                         timestamp: Date.now()
                     });
                     ChatScreen.render();
-                    state.session.minutesAway = 0;
-                    state.session.moneyEarned = 0;
-                    await Database.saveWorldState();
                 }
+
+                state.session.minutesAway = 0;
+                state.session.moneyEarned = 0;
+                await Database.saveWorldState();
             }
         });
         

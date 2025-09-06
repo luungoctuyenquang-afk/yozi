@@ -102,6 +102,7 @@ const AI = {
                         alert(thoughtAlert);
                     }
 
+                    // 返回包含思维链的对象
                     return { text: cleanedResponse, thought: thoughtText };
                 }
             }
