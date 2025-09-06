@@ -76,7 +76,7 @@ const Database = {
     async loadWorldState() {
         await this.migrateFromLocalStorage();
         
-        const [general, player, ai, chatHistory, worldBook, events, apiConfig, chatSettings] = 
+        const [general, player, ai, chatHistory, worldBook, events, apiConfig, chatSettings] =
             await Promise.all([
                 this.db.general.get('main'),
                 this.db.player.get('main'),
@@ -92,7 +92,8 @@ const Database = {
         newState.lastOnlineTimestamp = general ? general.lastOnlineTimestamp : Date.now();
         newState.player = player || CONFIG.defaults.player;
         newState.ai = ai || CONFIG.defaults.ai;
-        newState.chat = { history: chatHistory || [] };
+        const upgradedHistory = Utils.upgradeChatHistory(chatHistory || []);
+        newState.chat = { history: upgradedHistory };
         
         // 升级世界书格式
         newState.worldBook = (worldBook && worldBook.length > 0) 
