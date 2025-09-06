@@ -131,6 +131,11 @@ const SettingsScreen = {
             
             const data = await response.json();
             const apiModelsList = document.getElementById('api-models-list');
+            if (!apiModelsList) {
+                indicator.textContent = '❌ 找不到模型列表元素';
+                indicator.className = 'error';
+                return;
+            }
             apiModelsList.innerHTML = '';
             
             const models = provider === 'gemini' ? data.models : data.data;
