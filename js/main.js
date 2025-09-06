@@ -392,6 +392,44 @@ document.addEventListener('DOMContentLoaded', () => {
             GeneralSettingsScreen.render();
             alert('数据修复完成！');
         });
+
+        Utils.safeBind(document.getElementById('clean-thought-btn'), 'click', async () => {
+            const state = StateManager.get();
+
+            // 清理所有聊天记录中的思维链标签
+            state.chat.history = state.chat.history.map(msg => {
+                if (msg.sender === 'ai' && msg.content) {
+                    const thoughtPatterns = [
+                        /<thought>[\s\S]*?<\/thought>/gi,
+                        /<thinking>[\s\S]*?<\/thinking>/gi
+                    ];
+
+                    msg.content = msg.content.map(part => {
+                        if (part.text) {
+                            let cleanText = part.text;
+                            for (const pattern of thoughtPatterns) {
+                                const match = cleanText.match(pattern);
+                                if (match) {
+                                    const thoughtMatch = cleanText.match(/<thought>([\s\S]*?)<\/thought>/i) ||
+                                                        cleanText.match(/<thinking>([\s\S]*?)<\/thinking>/i);
+                                    if (thoughtMatch && thoughtMatch[1] && !msg.thoughtText) {
+                                        msg.thoughtText = thoughtMatch[1].trim();
+                                    }
+                                    cleanText = cleanText.replace(pattern, '').trim();
+                                }
+                            }
+                            part.text = cleanText;
+                        }
+                        return part;
+                    });
+                }
+                return msg;
+            });
+
+            await Database.saveWorldState();
+            ChatScreen.render();
+            alert('思维链显示问题已清理！');
+        });
     }
     
     // 启动应用
