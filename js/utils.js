@@ -116,22 +116,20 @@ const Utils = {
     upgradeWorldBook(oldBook) {
         return oldBook.map(rule => {
             if (rule.triggers) return rule; // 已经是新格式
-            const triggers = rule.key ? [rule.key] : [];
-            const newRule = {
+            return {
                 id: rule.id,
                 name: rule.key || '未命名规则',
                 category: rule.category || '通用',
+                triggers: [rule.key || ''],
                 content: String(rule.value || rule.description || ''),
                 enabled: true,
                 constant: false,
                 position: 'after',
                 priority: 100,
                 variables: true,
-                value: rule.value ?? 1,
+                value: rule.value !== undefined ? rule.value : 1, // 保留原值或默认1
                 comment: rule.description || ''
             };
-            if (triggers.length) newRule.triggers = triggers;
-            return newRule;
         });
     }
 };

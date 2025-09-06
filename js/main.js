@@ -32,6 +32,52 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // 绑定所有事件
             bindEvents();
+
+            // 实时收益系统（每分钟执行一次）
+            setInterval(async () => {
+                const state = StateManager.get();
+                const incomeRule = state.worldBook.find(rule => rule.id === 'rule001');
+                const incomePerMinute = incomeRule ? (incomeRule.value || 0) : 0;
+
+                if (incomePerMinute > 0) {
+                    state.ai.money += incomePerMinute;
+                    console.log(`[实时收益] AI获得了 ${incomePerMinute} 金币，当前余额：${state.ai.money}`);
+
+                    // 如果当前在钱包界面，立即更新显示
+                    const walletScreen = document.getElementById('wallet-screen');
+                    if (walletScreen && walletScreen.style.display !== 'none') {
+                        WalletScreen.render();
+                    }
+
+                    // 保存状态
+                    await Database.saveWorldState();
+                }
+            }, 60000); // 每60秒执行一次
+
+            // 测试用：每10秒更新一次（可以更快看到效果）
+            // 正式使用时可以删除这段
+            setInterval(async () => {
+                const state = StateManager.get();
+                const incomeRule = state.worldBook.find(rule => rule.id === 'rule001');
+                const incomePerMinute = incomeRule ? (incomeRule.value || 0) : 0;
+
+                if (incomePerMinute > 0) {
+                    // 按比例计算10秒的收益
+                    const income10Seconds = Math.floor(incomePerMinute / 6);
+                    if (income10Seconds > 0) {
+                        state.ai.money += income10Seconds;
+                        console.log(`[测试收益] AI获得了 ${income10Seconds} 金币（10秒），当前余额：${state.ai.money}`);
+
+                        // 如果当前在钱包界面，立即更新显示
+                        const walletScreen = document.getElementById('wallet-screen');
+                        if (walletScreen && walletScreen.style.display !== 'none') {
+                            WalletScreen.render();
+                        }
+
+                        await Database.saveWorldState();
+                    }
+                }
+            }, 10000); // 每10秒执行一次（测试用）
             
         } catch (error) {
             console.error('应用初始化失败:', error);
@@ -130,9 +176,15 @@ document.addEventListener('DOMContentLoaded', () => {
             Utils.showScreen('wallet-screen');
             WalletScreen.render();
         });
-        
+
         Utils.safeBind(document.getElementById('wallet-back-btn'), 'click', () => {
             Utils.showScreen('home-screen');
+        });
+
+        // 钱包刷新按钮
+        Utils.safeBind(document.getElementById('wallet-refresh-btn'), 'click', () => {
+            WalletScreen.render();
+            console.log('钱包余额已刷新');
         });
         
         // 商店应用
