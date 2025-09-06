@@ -67,7 +67,11 @@ const AI = {
                 rawResponseText = data.choices[0]?.message?.content || '';
             }
             
-            // 处理思维链 - 增强版
+            // 处理思维链
+            let thoughtText = null;
+            let cleanedResponse = rawResponseText;
+
+            // 只有启用思维链时才解析
             if (activeChat.settings.enableChainOfThought) {
                 // 尝试匹配多种可能的思维链格式
                 const thoughtPatterns = [
@@ -76,9 +80,6 @@ const AI = {
                     /\[思考\]([\s\S]*?)\[\/思考\]/,
                     /\*thinking\*([\s\S]*?)\*\/thinking\*/i
                 ];
-
-                let thoughtText = null;
-                let cleanedResponse = rawResponseText;
 
                 for (const pattern of thoughtPatterns) {
                     const match = rawResponseText.match(pattern);
@@ -95,18 +96,21 @@ const AI = {
                     console.log(thoughtText);
                     console.groupEnd();
 
-                    // 如果开启了弹窗显示
+                    // 只有开启显示时才返回思维链并弹窗
                     if (activeChat.settings.showThoughtAsAlert) {
-                        // 创建更好看的弹窗
                         const thoughtAlert = `🤔 AI思维链分析\n━━━━━━━━━━━━━━━━━━\n${thoughtText}\n━━━━━━━━━━━━━━━━━━\n点击确定继续`;
                         alert(thoughtAlert);
+
+                        // 返回包含思维链的对象（在对话框显示折叠内容）
+                        return { text: cleanedResponse, thought: thoughtText };
                     }
 
-                    // 返回包含思维链的对象
-                    return { text: cleanedResponse, thought: thoughtText };
+                    // 只启用思维链但不显示，返回纯文本
+                    return cleanedResponse;
                 }
             }
 
+            // 未启用思维链或未找到思维链标签
             return rawResponseText.trim();
             
         } catch (error) {
