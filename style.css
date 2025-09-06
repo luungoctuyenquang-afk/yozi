@@ -252,3 +252,13 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
 #wallet-refresh-btn:active {
     transform: rotate(180deg) scale(0.9);
 }
+
+/* Thought details styles */
+.thought-summary {
+    cursor: pointer;
+    display: inline-block;
+}
+
+.thought-details.open .thought-content {
+    display: block;
+}
