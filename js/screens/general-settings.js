@@ -22,10 +22,10 @@ const GeneralSettingsScreen = {
         if (chainOfThoughtSwitch) {
             chainOfThoughtSwitch.checked = activeChat.settings.enableChainOfThought;
         }
-        
+
         // 显示思维过程开关（弹窗 + 对话框）
         const showThoughtAlertSwitch = document.getElementById('show-thought-alert-switch');
-        if (showThoughtAlertSwitch) {
+        if (showThoughtAlertSwitch && chainOfThoughtSwitch) {
             showThoughtAlertSwitch.checked = activeChat.settings.showThoughtAsAlert;
             showThoughtAlertSwitch.disabled = !chainOfThoughtSwitch.checked;
         }
@@ -60,8 +60,8 @@ const GeneralSettingsScreen = {
     toggleChainOfThought() {
         const chainOfThoughtSwitch = document.getElementById('chain-of-thought-switch');
         const showThoughtAlertSwitch = document.getElementById('show-thought-alert-switch');
-        
-        if (showThoughtAlertSwitch) {
+
+        if (showThoughtAlertSwitch && chainOfThoughtSwitch) {
             showThoughtAlertSwitch.disabled = !chainOfThoughtSwitch.checked;
             if (!chainOfThoughtSwitch.checked) {
                 showThoughtAlertSwitch.checked = false;
