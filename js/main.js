@@ -365,6 +365,20 @@ document.addEventListener('DOMContentLoaded', () => {
             GeneralSettingsScreen.toggleChainOfThought();
         });
 
+        Utils.safeBind(document.getElementById('debug-settings-btn'), 'click', () => {
+            const state = StateManager.get();
+            const settings = state.chats['chat_default'].settings;
+            console.log('当前设置状态：', {
+                启用思维链: settings.enableChainOfThought,
+                显示思维链: settings.showThoughtAsAlert,
+                开关状态: {
+                    启用开关: document.getElementById('chain-of-thought-switch').checked,
+                    显示开关: document.getElementById('show-thought-alert-switch').checked
+                }
+            });
+            alert(`设置状态：\n启用思维链: ${settings.enableChainOfThought}\n显示思维链: ${settings.showThoughtAsAlert}`);
+        });
+
         Utils.safeBind(document.getElementById('fix-data-btn'), 'click', async () => {
             const state = StateManager.get();
             state.chat.history = Utils.upgradeChatHistory(state.chat.history);

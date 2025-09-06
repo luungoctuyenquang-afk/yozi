@@ -73,41 +73,49 @@ const GeneralSettingsScreen = {
         const state = StateManager.get();
         const activeChat = state.chats['chat_default'];
         if (!activeChat) return;
-        
+
         const saveButton = document.getElementById('save-general-settings-btn');
         saveButton.textContent = '保存中...';
         saveButton.disabled = true;
-        
+
         try {
             // 保存AI人格
             const aiPersonaTextarea = document.getElementById('ai-persona-textarea');
             activeChat.settings.aiPersona = aiPersonaTextarea.value;
-            
+
             // 保存用户人格
             const myPersonaTextarea = document.getElementById('my-persona-textarea');
             activeChat.settings.myPersona = myPersonaTextarea.value;
-            
-            // 保存思维链设置
+
+            // 保存思维链设置 - 强制读取当前状态
             const chainOfThoughtSwitch = document.getElementById('chain-of-thought-switch');
             activeChat.settings.enableChainOfThought = chainOfThoughtSwitch.checked;
 
             const showThoughtAlertSwitch = document.getElementById('show-thought-alert-switch');
+            // 只有启用思维链时，弹窗显示才有效
             if (chainOfThoughtSwitch.checked) {
                 activeChat.settings.showThoughtAsAlert = showThoughtAlertSwitch.checked;
             } else {
                 activeChat.settings.showThoughtAsAlert = false;
             }
-            
+
             // 保存世界书关联
             const selectedBookIds = [];
             const worldBookLinkingContainer = document.getElementById('world-book-linking-container');
             const checkboxes = worldBookLinkingContainer.querySelectorAll('input[type="checkbox"]:checked');
             checkboxes.forEach(cb => selectedBookIds.push(cb.value));
             activeChat.settings.linkedWorldBookIds = selectedBookIds;
-            
+
+            // 确保状态正确更新
+            state.chats['chat_default'] = activeChat;
+            StateManager.set(state);
+
             await Database.saveWorldState();
             alert('通用设置已保存！');
-            
+
+            // 重新渲染确保显示正确
+            this.render();
+
         } finally {
             saveButton.textContent = '保存通用设置';
             saveButton.disabled = false;

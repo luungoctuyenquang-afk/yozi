@@ -7,27 +7,27 @@ const ChatScreen = {
         const state = StateManager.get();
         state.activeChatId = 'chat_default';
         const activeChat = state.chats[state.activeChatId];
-        
+
         if (!activeChat || !activeChat.settings || !state.chat) {
             console.error("无法渲染聊天，核心数据丢失");
             return;
         }
-        
+
         const persona = activeChat.settings.aiPersona || state.ai?.name || '零';
         const aiNameInTitle = persona.split('。')[0]
             .replace("你是AI伴侣'", "")
             .replace("'", "");
-        
+
         const chatHeaderTitle = document.getElementById('chat-header-title');
         if (chatHeaderTitle) chatHeaderTitle.textContent = `与 ${aiNameInTitle} 的聊天`;
-        
+
         const messageContainer = document.getElementById('message-container');
         if (messageContainer) {
             messageContainer.innerHTML = '';
-            (state.chat.history || []).forEach(msg => {
+            (state.chat.history || []).forEach((msg, msgIndex) => {
                 const bubble = document.createElement('div');
                 bubble.className = `message-bubble ${msg.sender === 'user' ? 'user-message' : 'ai-message'}`;
-                
+
                 const contentWrapper = document.createElement('div');
                 const contentParts = Array.isArray(msg.content) ? msg.content : [{ text: String(msg.content || '') }];
                 contentParts.forEach(part => {
@@ -42,46 +42,42 @@ const ChatScreen = {
                         contentWrapper.appendChild(imgNode);
                     }
                 });
-                
+
                 if (contentWrapper.hasChildNodes()) {
                     bubble.appendChild(contentWrapper);
                 }
-                
+
                 // 如果是AI消息且包含思维链，显示可折叠的思维链
                 if (msg.sender === 'ai' && msg.thoughtText) {
                     const thoughtContainer = document.createElement('div');
                     thoughtContainer.className = 'thought-container';
-                    
+
                     const thoughtToggle = document.createElement('div');
                     thoughtToggle.className = 'thought-toggle';
                     thoughtToggle.innerHTML = '🤔 查看AI思考过程 ▼';
-                    
+                    thoughtToggle.dataset.msgIndex = msgIndex;
+
                     const thoughtContent = document.createElement('div');
                     thoughtContent.className = 'thought-content';
+                    thoughtContent.id = `thought-content-${msgIndex}`;
                     thoughtContent.style.display = 'none';
                     thoughtContent.innerHTML = msg.thoughtText.replace(/\n/g, '<br>');
-                    
-                    // 使用闭包保存状态
-                    (function() {
-                        let isOpen = false;
-                        const toggle = () => {
-                            isOpen = !isOpen;
-                            thoughtContent.style.display = isOpen ? 'block' : 'none';
-                            thoughtToggle.innerHTML = isOpen ? '🤔 隐藏AI思考过程 ▲' : '🤔 查看AI思考过程 ▼';
-                        };
-                        
-                        thoughtToggle.onclick = toggle;
-                        thoughtToggle.addEventListener('touchstart', (e) => {
-                            e.preventDefault();
-                            toggle();
-                        });
-                    })();
-                    
+
+                    thoughtToggle.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const content = document.getElementById(`thought-content-${msgIndex}`);
+                        if (content) {
+                            const isOpen = content.style.display === 'block';
+                            content.style.display = isOpen ? 'none' : 'block';
+                            this.innerHTML = isOpen ? '🤔 查看AI思考过程 ▼' : '🤔 隐藏AI思考过程 ▲';
+                        }
+                    });
+
                     thoughtContainer.appendChild(thoughtToggle);
                     thoughtContainer.appendChild(thoughtContent);
                     bubble.appendChild(thoughtContainer);
                 }
-                
+
                 if (bubble.hasChildNodes()) {
                     messageContainer.appendChild(bubble);
                 }
