@@ -23,7 +23,7 @@ const GeneralSettingsScreen = {
             chainOfThoughtSwitch.checked = activeChat.settings.enableChainOfThought;
         }
         
-        // 弹窗显示思维链开关
+        // 显示思维过程开关（弹窗 + 对话框）
         const showThoughtAlertSwitch = document.getElementById('show-thought-alert-switch');
         if (showThoughtAlertSwitch) {
             showThoughtAlertSwitch.checked = activeChat.settings.showThoughtAsAlert;
