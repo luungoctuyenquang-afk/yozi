@@ -279,24 +279,15 @@ const SettingsScreen = {
             if (importedData.apiConfig) await db.apiConfig.put({ id: 'main', ...importedData.apiConfig });
             if (importedData.chats) {
                 for (const chatId in importedData.chats) {
-if (importedData.chats) {
-    for (const chatId in importedData.chats) {
-        const settings = importedData.chats[chatId].settings || {};
-        settings.enableChainOfThought ??= false;
-        settings.showThoughtAsAlert ??= false;
-        if (!settings.enableChainOfThought) {
-            settings.showThoughtAsAlert = false;
-        }
-        await db.chatSettings.put({
-            id: chatId,
-            settings,
-        });
-    }
-}
-
+                    const settings = importedData.chats[chatId].settings || {};
+                    settings.enableChainOfThought ??= false;
+                    settings.showThoughtAsAlert ??= false;
+                    if (!settings.enableChainOfThought) {
+                        settings.showThoughtAsAlert = false;
+                    }
                     await db.chatSettings.put({
                         id: chatId,
-                        settings,
+                        settings
                     });
                 }
             }

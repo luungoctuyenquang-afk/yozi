@@ -118,39 +118,48 @@ const Utils = {
 
         return records.map(record => {
             const newRecord = { ...record };
-            const contentParts = [];
-            const thoughtTexts = record.thoughtText ? [record.thoughtText] : [];
 
-            const extractThought = (text) => {
-                if (typeof text !== 'string') text = String(text || '');
-                const regex = /<(thought|thinking)>([\s\S]*?)<\/(thought|thinking)>/gi;
-                text = text.replace(regex, (_, __, inner) => {
-                    if (inner.trim()) thoughtTexts.push(inner.trim());
-                    return '';
-                });
-                if (text.trim() !== '') {
-                    contentParts.push({ text: text.trim() });
+            if (!Array.isArray(record.content)) {
+                if (typeof record.content === 'string') {
+                    newRecord.content = [{ text: record.content }];
+                } else if (record.text) {
+                    newRecord.content = [{ text: record.text }];
+                } else {
+                    newRecord.content = [{ text: '' }];
                 }
-            };
-
-            if (Array.isArray(record.content)) {
-                record.content.forEach(part => {
-                    if (part && typeof part === 'object' && 'inline_data' in part) {
-                        contentParts.push(part);
-                    } else if (part && typeof part === 'object' && 'text' in part) {
-                        extractThought(part.text);
-                    } else if (typeof part === 'string') {
-                        extractThought(part);
-                    }
-                });
-            } else if (typeof record.content === 'string') {
-                extractThought(record.content);
-            } else if (typeof record.text === 'string') {
-                extractThought(record.text);
+            } else {
+                newRecord.content = record.content.map(part =>
+                    typeof part === 'string' ? { text: part } : part
+                );
             }
 
-            newRecord.content = contentParts;
-            newRecord.thoughtText = thoughtTexts.join('\n');
+            if (record.sender === 'ai' && !record.thoughtText) {
+                const contentText = newRecord.content
+                    .filter(c => c.text)
+                    .map(c => c.text)
+                    .join('');
+
+                const thoughtPatterns = [
+                    /<thought>([\s\S]*?)<\/thought>/i,
+                    /<thinking>([\s\S]*?)<\/thinking>/i
+                ];
+
+                for (const pattern of thoughtPatterns) {
+                    const match = contentText.match(pattern);
+                    if (match && match[1]) {
+                        newRecord.thoughtText = match[1].trim();
+                        newRecord.content = newRecord.content.map(c => {
+                            if (c.text) {
+                                c.text = c.text.replace(pattern, '').trim();
+                            }
+                            return c;
+                        });
+                        break;
+                    }
+                }
+            }
+
+            newRecord.thoughtText = newRecord.thoughtText || '';
             delete newRecord.text;
             return newRecord;
         });
