@@ -265,7 +265,8 @@ const SettingsScreen = {
             if (importedData.player) await db.player.put({ id: 'main', ...importedData.player });
             if (importedData.ai) await db.ai.put({ id: 'main', ...importedData.ai });
             if (importedData.chat && importedData.chat.history) {
-                await db.chatHistory.bulkAdd(importedData.chat.history);
+                const upgradedHistory = Utils.upgradeChatHistory(importedData.chat.history);
+                await db.chatHistory.bulkAdd(upgradedHistory);
             }
             
             // 处理世界书格式升级
