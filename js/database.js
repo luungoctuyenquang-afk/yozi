@@ -23,14 +23,14 @@ const Database = {
         const state = StateManager.get();
         try {
             await this.db.transaction('rw', this.db.tables, async () => {
-                if (!state.player || !state.ai || !state.apiConfig || !state.chats) {
+                if (!state.player || !state.ai || !state.apiConfig || !state.chats || !state.chat) {
                     throw new Error("核心数据丢失，无法存档。");
                 }
-                
-                if (state.chat.history.length > 100) {
+
+                if (state.chat && state.chat.history && state.chat.history.length > 100) {
                     state.chat.history = state.chat.history.slice(-50);
                 }
-                
+
                 await this.db.general.put({ id: 'main', lastOnlineTimestamp: Date.now() });
                 await this.db.player.put({ id: 'main', ...state.player });
                 await this.db.ai.put({ id: 'main', ...state.ai });
@@ -59,7 +59,9 @@ const Database = {
                 }
                 
                 await this.db.chatHistory.clear();
-                await this.db.chatHistory.bulkAdd(state.chat.history);
+                if (state.chat && state.chat.history) {
+                    await this.db.chatHistory.bulkAdd(state.chat.history);
+                }
             });
             
             window.refreshVarsDemo?.();
