@@ -151,7 +151,17 @@ const Database = {
         newState.chats = {};
         if (chatSettings && chatSettings.length > 0) {
             chatSettings.forEach(cs => {
-                newState.chats[cs.id] = { settings: cs.settings };
+                const settings = cs.settings || {};
+                if (typeof settings.enableChainOfThought !== 'boolean') {
+                    settings.enableChainOfThought = false;
+                }
+                if (typeof settings.showThoughtAsAlert !== 'boolean') {
+                    settings.showThoughtAsAlert = false;
+                }
+                if (!settings.enableChainOfThought) {
+                    settings.showThoughtAsAlert = false;
+                }
+                newState.chats[cs.id] = { settings };
             });
         }
         
