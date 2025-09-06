@@ -185,13 +185,20 @@ ${JSON.stringify(stateForPrompt, null, 2)}
 3. **针对"当前重要事件"**: 如果有事件发生（比如用户刚回来，或背包里有特殊物品），请根据你的性格，自然地对此作出反应，而不是生硬地播报。
 4. 你的回复必须是纯文本。
 ${activeChat.settings.enableChainOfThought ? `5. **[思维链已开启]** 你必须在回复前先进行思考。
-   请使用 <thought> 标签包裹你的思考过程，格式如下：
+   严格遵循以下格式：
+
    <thought>
-   在这里写下你的思考过程...
-   分析用户的问题...
-   考虑如何回应...
+   这里写你的思考过程
+   分析用户的意图
+   考虑如何回应
    </thought>
-   然后再写你的正式回复。` : ''}
+
+   这里写你的正式回复
+
+   注意：
+   - <thought>标签必须在最开始
+   - </thought>标签必须正确闭合
+   - 正式回复不要包含任何标签` : ''}
 `;
         
         const messages = [{ role: 'system', content: systemPrompt }];
