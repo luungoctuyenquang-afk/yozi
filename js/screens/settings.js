@@ -286,7 +286,7 @@ const SettingsScreen = {
                         if (typeof settings.showThoughtAsAlert !== 'boolean') {
                             settings.showThoughtAsAlert = false;
                         }
-                        if (!settings.enableChainOfThought && settings.showThoughtAsAlert) {
+                        if (!settings.enableChainOfThought) {
                             settings.showThoughtAsAlert = false;
                         }
                         await db.chatSettings.put({

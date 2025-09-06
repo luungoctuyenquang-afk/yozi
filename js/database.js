@@ -157,7 +157,7 @@ const Database = {
                 if (typeof settings.showThoughtAsAlert !== 'boolean') {
                     settings.showThoughtAsAlert = false;
                 }
-                if (!settings.enableChainOfThought && settings.showThoughtAsAlert) {
+                if (!settings.enableChainOfThought) {
                     settings.showThoughtAsAlert = false;
                 }
                 newState.chats[cs.id] = { settings };
