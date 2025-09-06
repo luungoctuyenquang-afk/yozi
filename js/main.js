@@ -360,9 +360,23 @@ document.addEventListener('DOMContentLoaded', () => {
         Utils.safeBind(document.getElementById('save-general-settings-btn'), 'click', () => {
             GeneralSettingsScreen.save();
         });
-        
+
         Utils.safeBind(document.getElementById('chain-of-thought-switch'), 'change', () => {
             GeneralSettingsScreen.toggleChainOfThought();
+        });
+
+        Utils.safeBind(document.getElementById('fix-data-btn'), 'click', async () => {
+            const state = StateManager.get();
+            state.chat.history = Utils.upgradeChatHistory(state.chat.history);
+            const settings = state.chats['chat_default'].settings;
+            settings.enableChainOfThought ??= false;
+            settings.showThoughtAsAlert ??= false;
+            if (!settings.enableChainOfThought) {
+                settings.showThoughtAsAlert = false;
+            }
+            await Database.saveWorldState();
+            GeneralSettingsScreen.render();
+            alert('数据修复完成！');
         });
     }
     
