@@ -55,7 +55,23 @@
             <input type="file" id="image-input" accept="image/*" style="display: none;">
         </section>
 
-        <section id="wallet-screen" class="screen"> <header class="wallet-header"><button id="wallet-back-btn" class="back-btn">‹</button><h2>我的钱包</h2></header> <div class="wallet-content"><div class="balance-card"><h3>你的余额</h3><p><span id="player-money-display">0</span> 金币</p></div><div class="balance-card"><h3><span id="ai-name-wallet-display">AI</span>的余额</h3><p><span id="ai-money-display">0</span> 金币</p></div></div> </section>
+        <section id="wallet-screen" class="screen">
+            <header class="wallet-header">
+                <button id="wallet-back-btn" class="back-btn">‹</button>
+                <h2>我的钱包</h2>
+                <button id="wallet-refresh-btn" style="margin-left: auto; background: none; border: none; font-size: 20px; cursor: pointer;">🔄</button>
+            </header>
+            <div class="wallet-content">
+                <div class="balance-card">
+                    <h3>你的余额</h3>
+                    <p><span id="player-money-display">0</span> 金币</p>
+                </div>
+                <div class="balance-card">
+                    <h3><span id="ai-name-wallet-display">AI</span>的余额</h3>
+                    <p><span id="ai-money-display">0</span> 金币</p>
+                </div>
+            </div>
+        </section>
         <section id="store-screen" class="screen"> <header class="store-header"><button id="store-back-btn" class="back-btn">‹</button><h2>商店</h2></header> <div class="store-content"><p>你的余额: <span id="store-player-money-display">0</span> 金币</p><div id="item-list" class="item-list"></div></div> </section>
         <section id="backpack-screen" class="screen"> <header class="backpack-header"><button id="backpack-back-btn" class="back-btn">‹</button><h2>我的背包</h2></header> <div id="inventory-list" class="inventory-list"></div> </section>
         <section id="world-book-screen" class="screen"> <header class="world-book-header"><button id="world-book-back-btn" class="back-btn">‹</button><h2>世界书</h2></header> <div id="rule-list" class="rule-list"></div> </section>
