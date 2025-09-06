@@ -176,363 +176,444 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
     }
 }
 
-/* ========== 世界书 V2 (SillyTavern风格) ========== */
+/* ========== 世界书 V3 - 简约高级风格 ========== */
 
 .wb-container {
-    padding: 15px;
-    max-width: 100%;
-    height: calc(100vh - 100px);
+    padding: 12px;
+    height: calc(100vh - 80px);
     overflow-y: auto;
+    background: #f8f9fa;
 }
 
-/* 顶部栏 */
-.wb-top-bar {
+/* 极简顶部栏 */
+.wb-minimal-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
-    padding: 12px;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin-bottom: 12px;
+    gap: 8px;
 }
 
-.wb-book-selector {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.wb-select {
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: white;
-    font-size: 14px;
-    min-width: 200px;
-}
-
-.wb-btn {
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: white;
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.2s;
-}
-
-.wb-btn:hover {
-    background: #f5f5f5;
-}
-
-.wb-btn-primary {
-    padding: 8px 16px;
+.wb-select-minimal {
+    flex: 1;
+    padding: 10px 12px;
     border: none;
-    border-radius: 8px;
+    border-radius: 12px;
+    background: white;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.wb-top-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.wb-mini-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 10px;
+    background: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.wb-mini-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* 搜索栏 */
+.wb-search-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.wb-search-minimal {
+    flex: 1;
+    padding: 10px 14px;
+    border: none;
+    border-radius: 12px;
+    background: white;
+    font-size: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.wb-add-btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 12px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    cursor: pointer;
     font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
     transition: all 0.2s;
 }
 
-.wb-btn-primary:hover {
-    transform: scale(1.02);
+.wb-add-btn:hover {
+    transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(102,126,234,0.3);
 }
 
-.wb-badge {
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 500;
-    background: #e3f2fd;
-    color: #1976d2;
-}
-
-.wb-badge.character {
-    background: #fce4ec;
-    color: #c2185b;
-}
-
-/* 筛选栏 */
-.wb-filter-bar {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.wb-search-input {
-    flex: 1;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 14px;
-}
-
-.wb-select-small {
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 14px;
-}
-
-/* 条目卡片 */
-.wb-entries-container {
+/* 条目列表 */
+.wb-entries-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
-.wb-entry-card {
+/* 极简条目卡片 */
+.wb-entry-item {
     background: white;
     border-radius: 12px;
-    padding: 15px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    padding: 12px;
     cursor: pointer;
     transition: all 0.2s;
-    border: 2px solid transparent;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
-.wb-entry-card:hover {
-    border-color: #667eea;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+.wb-entry-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
 }
 
-.wb-entry-card.disabled {
+.wb-entry-item.disabled {
     opacity: 0.5;
-    background: #fafafa;
 }
 
 .wb-entry-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .wb-entry-title {
+    font-size: 14px;
     font-weight: 500;
-    font-size: 15px;
-    color: #333;
+    color: #2c3e50;
 }
 
-.wb-entry-meta {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
-.wb-entry-status {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #4caf50;
-}
-
-.wb-entry-status.disabled {
-    background: #ccc;
-}
-
-.wb-entry-order {
-    font-size: 12px;
-    color: #666;
-    background: #f5f5f5;
+.wb-entry-badge {
+    font-size: 11px;
     padding: 2px 6px;
-    border-radius: 4px;
+    border-radius: 6px;
+    background: #e3f2fd;
+    color: #1976d2;
 }
 
-.wb-entry-keys {
-    font-size: 13px;
-    color: #666;
-    margin-bottom: 8px;
-}
-
-.wb-entry-keys code {
-    background: #f0f0f0;
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-family: monospace;
+.wb-entry-preview {
     font-size: 12px;
-}
-
-.wb-entry-content {
-    font-size: 13px;
-    color: #555;
+    color: #718096;
     line-height: 1.4;
-    max-height: 60px;
     overflow: hidden;
     text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 
 /* 空状态 */
-.wb-empty-state {
+.wb-empty {
     text-align: center;
     padding: 60px 20px;
 }
 
 .wb-empty-icon {
     font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.wb-empty p {
+    color: #718096;
     margin-bottom: 16px;
 }
 
-/* 编辑面板（类似SillyTavern） */
-.wb-entry-panel {
+.wb-empty-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* 编辑面板 */
+.wb-panel {
     position: fixed;
-    right: -500px;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1000;
+    display: none;
+}
+
+.wb-panel.open {
+    display: block;
+}
+
+.wb-panel-overlay {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: rgba(0,0,0,0.4);
+}
+
+.wb-panel-content {
+    position: absolute;
+    right: 0;
     top: 0;
     bottom: 0;
-    width: 500px;
-    background: white;
-    box-shadow: -4px 0 16px rgba(0,0,0,0.1);
-    transition: right 0.3s ease;
-    z-index: 1000;
+    width: min(480px, 100vw);
+    background: #f8f9fa;
     display: flex;
     flex-direction: column;
+    animation: slideIn 0.3s ease;
 }
 
-.wb-entry-panel.open {
-    right: 0;
+@keyframes slideIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
 }
 
+/* 面板头部 */
 .wb-panel-header {
-    padding: 15px;
-    border-bottom: 1px solid #e0e0e0;
+    background: white;
+    padding: 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #f8f8f8;
+    border-bottom: 1px solid #e2e8f0;
 }
 
-.wb-entry-name {
+.wb-entry-title-input {
     flex: 1;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 16px;
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 15px;
     font-weight: 500;
 }
 
-.wb-panel-actions {
+.wb-panel-buttons {
     display: flex;
     gap: 8px;
-    margin-left: 10px;
+    margin-left: 12px;
 }
 
-.wb-icon-btn {
+.wb-panel-btn {
     width: 32px;
     height: 32px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
     background: white;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 14px;
     transition: all 0.2s;
 }
 
-.wb-icon-btn:hover {
-    background: #f5f5f5;
+.wb-panel-btn:hover {
+    background: #f1f5f9;
 }
 
+/* ID字段 */
+.wb-panel-field {
+    padding: 0 12px;
+    margin-top: 8px;
+}
+
+.wb-input-minimal {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+    background: white;
+}
+
+/* 面板主体 */
 .wb-panel-body {
     flex: 1;
     overflow-y: auto;
-    padding: 20px;
-}
-
-.wb-field-group {
-    margin-bottom: 20px;
-}
-
-.wb-field-group label {
-    display: block;
-    font-size: 13px;
-    font-weight: 500;
-    color: #555;
-    margin-bottom: 6px;
-}
-
-.wb-field-group input[type="text"],
-.wb-field-group input[type="number"],
-.wb-field-group textarea,
-.wb-field-group select {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 14px;
-}
-
-.wb-field-group textarea {
-    resize: vertical;
-    font-family: inherit;
-}
-
-.wb-hint {
-    display: block;
-    font-size: 12px;
-    color: #888;
-    margin-top: 4px;
-}
-
-.wb-field-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-}
-
-.wb-checkbox-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.wb-checkbox-group label {
-    display: flex;
-    align-items: center;
-    font-weight: normal;
-    cursor: pointer;
-}
-
-.wb-checkbox-group input[type="checkbox"] {
-    margin-right: 8px;
-}
-
-/* 高级设置部分 */
-.wb-advanced-section {
-    margin-bottom: 20px;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
     padding: 12px;
 }
 
-.wb-advanced-section summary {
-    cursor: pointer;
-    font-weight: 500;
-    color: #555;
-    user-select: none;
-    padding: 4px 0;
-}
-
-.wb-advanced-section[open] summary {
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #e0e0e0;
-}
-
-.wb-panel-footer {
-    padding: 15px;
-    border-top: 1px solid #e0e0e0;
+/* 开关组 */
+.wb-switches {
     display: flex;
-    gap: 10px;
+    gap: 16px;
+    margin-bottom: 16px;
 }
 
-/* 对话框 */
-.wb-dialog {
+.wb-switch {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.wb-switch input[type="checkbox"] {
+    margin-right: 6px;
+}
+
+/* 字段 */
+.wb-field {
+    margin-bottom: 16px;
+}
+
+.wb-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: #4a5568;
+    margin-bottom: 6px;
+}
+
+.wb-input,
+.wb-select,
+.wb-textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    background: white;
+    transition: border-color 0.2s;
+}
+
+.wb-input:focus,
+.wb-select:focus,
+.wb-textarea:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.wb-textarea {
+    resize: vertical;
+    font-family: inherit;
+    line-height: 1.5;
+}
+
+/* 展开按钮 */
+.wb-expand-btn {
+    padding: 2px 6px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    background: white;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+/* 网格布局 */
+.wb-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.wb-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+}
+
+/* 范围滑块 */
+.wb-range {
+    width: 100%;
+}
+
+/* 可折叠部分 */
+.wb-collapsible {
+    background: white;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.wb-collapsible summary {
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #4a5568;
+    user-select: none;
+    list-style: none;
+}
+
+.wb-collapsible summary::-webkit-details-marker {
+    display: none;
+}
+
+.wb-collapsible summary::before {
+    content: '▶';
+    display: inline-block;
+    margin-right: 8px;
+    transition: transform 0.2s;
+}
+
+.wb-collapsible[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.wb-collapsible[open] summary {
+    margin-bottom: 12px;
+}
+
+/* 面板底部 */
+.wb-panel-footer {
+    padding: 12px;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    gap: 8px;
+}
+
+.wb-btn-save,
+.wb-btn-test {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.wb-btn-save {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.wb-btn-test {
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #4a5568;
+}
+
+.wb-btn-save:hover,
+.wb-btn-test:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* 模态框 */
+.wb-modal {
     position: fixed;
     top: 0;
     left: 0;
@@ -545,7 +626,7 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
     z-index: 2000;
 }
 
-.wb-dialog-content {
+.wb-modal-content {
     background: white;
     border-radius: 16px;
     width: 90%;
@@ -553,70 +634,107 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
     max-height: 80vh;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
 }
 
-.wb-dialog-header {
-    padding: 20px;
-    border-bottom: 1px solid #e0e0e0;
+.wb-modal-header {
+    padding: 16px;
+    border-bottom: 1px solid #e2e8f0;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.wb-dialog-header h3 {
+.wb-modal-header h3 {
     margin: 0;
-    font-size: 18px;
+    font-size: 16px;
+    font-weight: 600;
 }
 
-.wb-close-btn {
-    background: none;
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
-    color: #666;
-    padding: 0;
+.wb-modal-close {
     width: 28px;
     height: 28px;
+    border: none;
+    background: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: #718096;
 }
 
-.wb-dialog-body {
-    padding: 20px;
-    overflow-y: auto;
+.wb-modal-body {
+    padding: 16px;
     flex: 1;
+    overflow-y: auto;
 }
 
-.wb-dialog-footer {
-    padding: 15px 20px;
-    border-top: 1px solid #e0e0e0;
+.wb-modal-footer {
+    padding: 12px 16px;
+    border-top: 1px solid #e2e8f0;
     display: flex;
-    gap: 10px;
-    justify-content: flex-end;
+    gap: 8px;
+}
+
+.wb-btn-primary,
+.wb-btn-secondary,
+.wb-btn-danger {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.wb-btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.wb-btn-secondary {
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #4a5568;
+}
+
+.wb-btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+/* 内容编辑器 */
+.wb-expand-textarea {
+    width: 100%;
+    min-height: 300px;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: vertical;
 }
 
 /* 测试结果 */
 .wb-test-results {
-    margin-top: 20px;
-    padding: 15px;
-    background: #f5f5f5;
+    margin-top: 16px;
+    padding: 12px;
+    background: #f1f5f9;
     border-radius: 8px;
 }
 
 .wb-test-results h4 {
-    margin: 0 0 10px 0;
+    margin: 0 0 8px 0;
     font-size: 14px;
-}
-
-#test-matches {
-    font-size: 13px;
-    line-height: 1.6;
+    font-weight: 500;
 }
 
 .test-match {
     padding: 8px;
     background: white;
     border-radius: 6px;
-    margin-bottom: 8px;
+    margin-top: 8px;
+    font-size: 13px;
 }
 
 .test-match.active {
@@ -625,17 +743,16 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
 }
 
 /* 响应式优化 */
-@media (max-width: 768px) {
-    .wb-entry-panel {
+@media (max-width: 480px) {
+    .wb-panel-content {
         width: 100%;
-        right: -100%;
     }
     
-    .wb-filter-bar {
-        flex-wrap: wrap;
+    .wb-grid-2 {
+        grid-template-columns: 1fr;
     }
     
-    .wb-field-row {
+    .wb-grid-3 {
         grid-template-columns: 1fr;
     }
 }
