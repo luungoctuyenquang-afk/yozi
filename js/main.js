@@ -249,50 +249,23 @@ document.addEventListener('DOMContentLoaded', () => {
         // 世界书应用
         Utils.safeBind(document.getElementById('open-world-book-app'), 'click', () => {
             Utils.showScreen('world-book-screen');
+            WorldBookScreen.init();
             WorldBookScreen.render();
         });
-        
+
         Utils.safeBind(document.getElementById('world-book-back-btn'), 'click', () => {
             Utils.showScreen('home-screen');
         });
-        
-        Utils.safeBind(document.getElementById('rule-list'), 'click', async (event) => {
-            const target = event.target;
-            
-            // 编辑按钮
-            if (target.classList.contains('wb-edit-btn') || target.dataset.ruleId) {
-                const ruleId = target.dataset.ruleId;
-                if (ruleId) {
-                    WorldBookScreen.render(ruleId);
-                    return;
-                }
-            }
-            
-            // 保存按钮
-            if (target.classList.contains('wb-save-btn')) {
-                const ruleId = target.dataset.ruleId;
-                if (ruleId) {
-                    await WorldBookScreen.saveEntry(ruleId);
-                }
-            }
-            
-            // 取消按钮
-            if (target.classList.contains('wb-cancel-btn')) {
-                const ruleId = target.dataset.ruleId;
-                if (ruleId) {
-                    await WorldBookScreen.cancelEdit(ruleId);
-                }
-            }
-            
-            // 删除按钮
-            if (target.classList.contains('wb-delete-btn')) {
-                const ruleId = target.dataset.ruleId;
-                if (ruleId) {
-                    await WorldBookScreen.deleteEntry(ruleId);
-                }
-            }
+
+        // 世界书内部导航
+        Utils.safeBind(document.getElementById('wb-sandbox-btn'), 'click', () => {
+            WorldBookScreen.showView('sandbox');
         });
-        
+
+        Utils.safeBind(document.getElementById('wb-settings-btn'), 'click', () => {
+            WorldBookScreen.showView('settings');
+        });
+
         // API设置应用
         Utils.safeBind(document.getElementById('open-settings-app'), 'click', () => {
             Utils.showScreen('settings-screen');
