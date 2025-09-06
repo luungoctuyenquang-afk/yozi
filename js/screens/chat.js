@@ -23,33 +23,51 @@ const ChatScreen = {
             (state.chat.history || []).forEach(msg => {
                 const bubble = document.createElement('div');
                 bubble.className = `message-bubble ${msg.sender === 'user' ? 'user-message' : 'ai-message'}`;
-
+                
+                const contentWrapper = document.createElement('div');
                 const contentParts = Array.isArray(msg.content) ? msg.content : [{ text: String(msg.content || '') }];
                 contentParts.forEach(part => {
                     if (part.text && part.text.trim() !== '') {
                         const textNode = document.createElement('div');
                         textNode.textContent = part.text;
-                        bubble.appendChild(textNode);
+                        contentWrapper.appendChild(textNode);
                     } else if (part.inline_data) {
                         const imgNode = document.createElement('img');
                         imgNode.className = 'chat-image';
                         imgNode.src = `data:${part.inline_data.mime_type};base64,${part.inline_data.data}`;
-                        bubble.appendChild(imgNode);
+                        contentWrapper.appendChild(imgNode);
                     }
                 });
-
-                // 如果是AI消息且包含思维链，显示可折叠的思维链
-                if (msg.sender === 'ai' && msg.thoughtText) {
-                    const thoughtDetails = document.createElement('details');
-                    thoughtDetails.style.cssText = 'margin-top: 5px; font-size: 12px; color: #999;';
-                    thoughtDetails.innerHTML = `
-                        <summary style="cursor: pointer;">🤔 查看AI思考过程</summary>
-                        <div style="padding: 10px; background: #f5f5f5; border-radius: 8px; margin-top: 5px; color: #666;">
-                            ${msg.thoughtText.replace(/\n/g, '<br>')}
-                        </div>
-                    `;
-                    bubble.appendChild(thoughtDetails);
+                
+                if (contentWrapper.hasChildNodes()) {
+                    bubble.appendChild(contentWrapper);
                 }
+
+                // ▼▼▼ 新增/修改：使用更兼容的HTML结构渲染思维链 ▼▼▼
+                if (msg.sender === 'ai' && msg.thoughtText) {
+                    const detailsDiv = document.createElement('div');
+                    detailsDiv.className = 'thought-details';
+                    
+                    const summarySpan = document.createElement('span');
+                    summarySpan.className = 'thought-summary';
+                    summarySpan.textContent = '🤔 查看AI思考过程';
+                    
+                    const contentDiv = document.createElement('div');
+                    contentDiv.className = 'thought-content';
+                    contentDiv.textContent = msg.thoughtText;
+                    contentDiv.style.display = 'none'; // 默认隐藏
+
+                    summarySpan.onclick = () => {
+                        const isOpen = detailsDiv.classList.toggle('open');
+                        contentDiv.style.display = isOpen ? 'block' : 'none';
+                        summarySpan.setAttribute('aria-expanded', isOpen);
+                    };
+                    
+                    detailsDiv.appendChild(summarySpan);
+                    detailsDiv.appendChild(contentDiv);
+                    bubble.appendChild(detailsDiv);
+                }
+                // ▲▲▲ 新增/修改 ▲▲▲
 
                 if (bubble.hasChildNodes()) {
                     messageContainer.appendChild(bubble);
@@ -77,10 +95,8 @@ const ChatScreen = {
         
         await Database.saveWorldState();
         
-        // 获取AI回复（可能包含思维链）
         const aiResponse = await AI.getResponse(userMessage.content);
 
-        // 检查是否返回了思维链
         let aiReplyText, thoughtText;
         if (typeof aiResponse === 'object' && aiResponse.text) {
             aiReplyText = aiResponse.text;
@@ -131,8 +147,7 @@ const ChatScreen = {
             await Database.saveWorldState();
 
             const aiResponse = await AI.getResponse(userMessage.content);
-
-            // 检查是否返回了思维链
+            
             let aiReplyText, thoughtText;
             if (typeof aiResponse === 'object' && aiResponse.text) {
                 aiReplyText = aiResponse.text;
@@ -145,7 +160,7 @@ const ChatScreen = {
             const aiMessage = {
                 sender: 'ai',
                 content: [{ text: aiReplyText }],
-                thoughtText: thoughtText, // 保存思维链
+                thoughtText: thoughtText,
                 timestamp: Date.now()
             };
 
