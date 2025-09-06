@@ -13,8 +13,10 @@ const ChatScreen = {
             return;
         }
         
-        const aiNameInTitle = activeChat.settings.aiPersona.split('。')[0]
-            .replace("你是AI伴侣'", "").replace("'", "") || state.ai?.name || '零';
+        const persona = activeChat.settings.aiPersona || state.ai?.name || '零';
+        const aiNameInTitle = persona.split('。')[0]
+            .replace("你是AI伴侣'", "")
+            .replace("'", "");
         
         const chatHeaderTitle = document.getElementById('chat-header-title');
         if (chatHeaderTitle) chatHeaderTitle.textContent = `与 ${aiNameInTitle} 的聊天`;
