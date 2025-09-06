@@ -111,7 +111,7 @@ const ChatScreen = {
     async handleImageUpload(file) {
         const state = StateManager.get();
         const chatInput = document.getElementById('chat-input');
-        
+
         const reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = async () => {
@@ -124,14 +124,15 @@ const ChatScreen = {
                 ],
                 timestamp: Date.now()
             };
-            
+
             state.chat.history.push(userMessage);
             this.render();
             chatInput.value = '';
             await Database.saveWorldState();
-            
+
             const aiResponse = await AI.getResponse(userMessage.content);
 
+            // 检查是否返回了思维链
             let aiReplyText, thoughtText;
             if (typeof aiResponse === 'object' && aiResponse.text) {
                 aiReplyText = aiResponse.text;
@@ -140,10 +141,11 @@ const ChatScreen = {
                 aiReplyText = aiResponse;
                 thoughtText = null;
             }
+
             const aiMessage = {
                 sender: 'ai',
                 content: [{ text: aiReplyText }],
-                thoughtText: thoughtText,
+                thoughtText: thoughtText, // 保存思维链
                 timestamp: Date.now()
             };
 
