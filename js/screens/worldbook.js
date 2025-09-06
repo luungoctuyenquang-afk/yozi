@@ -1,857 +1,397 @@
-// 世界书增强模块
-const WorldBookScreen = {
-    // 数据存储键
-    BOOKS_KEY: 'worldbook.books',
-    ENTRIES_KEY: 'worldbook.entries',
-    SETTINGS_KEY: 'worldbook.settings',
-
+// 世界书模块 V2 - 参照SillyTavern设计
+const WorldBookV2 = {
     // 当前状态
-    currentView: 'shelf',
-    currentBookId: null,
-    editingEntry: null,
-
+    currentBook: null,
+    currentEntry: null,
+    books: [],
+    entries: [],
+    
     // 初始化
     init() {
-        this.ensureDefaultBooks();
-        this.loadSettings();
+        this.loadData();
         this.bindEvents();
+        this.render();
     },
-
-    // 确保有默认书本
-    ensureDefaultBooks() {
-        let books = this.loadBooks();
-        if (books.length === 0) {
-            books = [
-                {
-                    id: 'book.global',
-                    name: '全局世界书',
-                    scope: 'global',
-                    persona: '',
-                    desc: '全局设定、规则、口吻和氛围',
-                    entryCount: 0,
-                    createdAt: Date.now(),
-                    updatedAt: Date.now()
-                },
-                {
-                    id: 'book.char.fang',
-                    name: '方亦楷·世界书',
-                    scope: 'char',
-                    persona: 'fang',
-                    desc: '方亦楷的角色设定和专属规则',
-                    entryCount: 0,
-                    createdAt: Date.now(),
-                    updatedAt: Date.now()
-                },
-                {
-                    id: 'book.char.ai',
-                    name: `${StateManager.get().ai.name}·世界书`,
-                    scope: 'char',
-                    persona: 'ai',
-                    desc: 'AI角色的设定和规则',
-                    entryCount: 0,
-                    createdAt: Date.now(),
-                    updatedAt: Date.now()
-                },
-                {
-                    id: 'book.event',
-                    name: '事件世界书',
-                    scope: 'event',
-                    persona: '',
-                    desc: '特殊事件、场景和状态',
-                    entryCount: 0,
-                    createdAt: Date.now(),
-                    updatedAt: Date.now()
-                }
-            ];
-            this.saveBooks(books);
-
-            // 迁移旧数据
-            this.migrateOldData();
+    
+    // 加载数据
+    loadData() {
+        // 加载世界书列表
+        const booksData = localStorage.getItem('worldbook.books.v2');
+        this.books = booksData ? JSON.parse(booksData) : [];
+        
+        // 加载条目
+        const entriesData = localStorage.getItem('worldbook.entries.v2');
+        this.entries = entriesData ? JSON.parse(entriesData) : [];
+        
+        // 如果没有世界书，创建默认的
+        if (this.books.length === 0) {
+            this.createDefaultBook();
         }
     },
-
-    // 迁移旧世界书数据
-    migrateOldData() {
-        const state = StateManager.get();
-        if (state.worldBook && state.worldBook.length > 0) {
-            const entries = [];
-            state.worldBook.forEach(oldRule => {
-                // 判断应该归属哪本书
-                let bookId = 'book.global';
-                let scope = 'global';
-                let speaker = 'any';
-
-                if (oldRule.category === '角色') {
-                    bookId = 'book.char.ai';
-                    scope = 'char';
-                } else if (oldRule.category === '事件') {
-                    bookId = 'book.event';
-                    scope = 'event';
-                }
-
-                const entry = {
-                    id: oldRule.id || `wb.migrated.${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                    bookId: bookId,
-                    title: oldRule.name || '未命名条目',
-                    scope: scope,
-                    speaker: speaker,
-                    keys: oldRule.triggers || [],
-                    filters: [],
-                    content: oldRule.content || '',
-                    order: oldRule.priority || 100,
-                    position: oldRule.position || 'after_char_defs',
-                    strategy: oldRule.constant ? 'always' : 'trigger',
-                    timing: {
-                        delay: 0,
-                        sticky: 0,
-                        cooldown: 0
-                    },
-                    recursion: {
-                        allow: true,
-                        maxSteps: 2
-                    },
-                    tags: [`迁移自旧版`, `category:${oldRule.category}`],
-                    enabled: oldRule.enabled !== false,
-                    _meta: {
-                        createdAt: Date.now(),
-                        updatedAt: Date.now()
-                    }
-                };
-
-                entries.push(entry);
-            });
-
-            if (entries.length > 0) {
-                this.saveEntries(entries);
-                this.updateBookCounts();
-                console.log(`成功迁移 ${entries.length} 个旧世界书条目`);
-            }
-        }
+    
+    // 保存数据
+    saveData() {
+        localStorage.setItem('worldbook.books.v2', JSON.stringify(this.books));
+        localStorage.setItem('worldbook.entries.v2', JSON.stringify(this.entries));
     },
-
-    // 数据加载和保存
-    loadBooks() {
-        try {
-            const data = localStorage.getItem(this.BOOKS_KEY);
-            return data ? JSON.parse(data) : [];
-        } catch (e) {
-            console.error('加载世界书失败:', e);
-            return [];
-        }
-    },
-
-    saveBooks(books) {
-        localStorage.setItem(this.BOOKS_KEY, JSON.stringify(books));
-    },
-
-    loadEntries() {
-        try {
-            const data = localStorage.getItem(this.ENTRIES_KEY);
-            return data ? JSON.parse(data) : [];
-        } catch (e) {
-            console.error('加载条目失败:', e);
-            return [];
-        }
-    },
-
-    saveEntries(entries) {
-        localStorage.setItem(this.ENTRIES_KEY, JSON.stringify(entries));
-    },
-
-    loadSettings() {
-        try {
-            const data = localStorage.getItem(this.SETTINGS_KEY);
-            return data ? JSON.parse(data) : this.getDefaultSettings();
-        } catch (e) {
-            return this.getDefaultSettings();
-        }
-    },
-
-    saveSettings(settings) {
-        localStorage.setItem(this.SETTINGS_KEY, JSON.stringify(settings));
-    },
-
-    getDefaultSettings() {
-        return {
-            scanDepth: 8,
-            minActivations: 0,
-            maxRecursion: 3,
-            budgetPercent: 15,
-            includeNames: true,
+    
+    // 创建默认世界书
+    createDefaultBook() {
+        const defaultBook = {
+            id: 'default',
+            name: '默认世界书',
+            description: '系统默认的世界书',
+            scope: 'global',
+            character: null,
+            scanDepth: 2,
+            tokenBudget: 2048,
+            recursive: true,
             caseSensitive: false,
-            wholeWords: true,
-            overflowAlert: true
+            matchWholeWords: false,
+            createdAt: Date.now()
         };
+        
+        this.books.push(defaultBook);
+        this.currentBook = defaultBook;
+        this.saveData();
     },
-
-    // 界面渲染
+    
+    // 渲染主界面
     render() {
-        this.showView('shelf');
-    },
-
-    showView(viewName) {
-        this.currentView = viewName;
-
-        // 隐藏所有视图
-        document.querySelectorAll('.wb-view').forEach(v => v.style.display = 'none');
-
-        // 显示指定视图
-        const viewId = `wb-${viewName}-view`;
-        const view = document.getElementById(viewId);
-        if (view) {
-            view.style.display = 'block';
-
-            // 根据视图渲染内容
-            switch(viewName) {
-                case 'shelf':
-                    this.renderShelf();
-                    document.getElementById('wb-screen-title').textContent = '世界书';
-                    break;
-                case 'book':
-                    this.renderBook();
-                    break;
-                case 'settings':
-                    this.renderSettings();
-                    document.getElementById('wb-screen-title').textContent = '激活设置';
-                    break;
-                case 'sandbox':
-                    this.renderSandbox();
-                    document.getElementById('wb-screen-title').textContent = '测试沙盒';
-                    break;
-            }
-        }
-    },
-
-    // 渲染书架
-    renderShelf() {
-        const container = document.getElementById('wb-books-grid');
-        if (!container) return;
-
-        container.innerHTML = '';
-        const books = this.loadBooks();
-
-        books.forEach(book => {
-            const card = document.createElement('div');
-            card.className = 'wb-book-card';
-            card.onclick = () => this.openBook(book.id);
-
-            const icon = this.getBookIcon(book.scope);
-
-            card.innerHTML = `
-                <div class="wb-book-icon">${icon}</div>
-                <div class="wb-book-info">
-                    <h3>${book.name}</h3>
-                    <p>${book.entryCount || 0}个条目 · ${this.getScopeLabel(book.scope)}作用域</p>
-                    <p style="font-size:12px;color:#999;">${book.desc || ''}</p>
-                </div>
-            `;
-
-            container.appendChild(card);
-        });
-    },
-
-    // 获取书本图标
-    getBookIcon(scope) {
-        const icons = {
-            'global': '🌍',
-            'char': '👤',
-            'event': '⚡'
-        };
-        return icons[scope] || '📚';
-    },
-
-    // 获取作用域标签
-    getScopeLabel(scope) {
-        const labels = {
-            'global': '全局',
-            'char': '角色',
-            'event': '事件'
-        };
-        return labels[scope] || scope;
-    },
-
-    // 打开书本
-    openBook(bookId) {
-        this.currentBookId = bookId;
-        this.showView('book');
-    },
-
-    // 渲染书本详情
-    renderBook() {
-        if (!this.currentBookId) return;
-
-        const book = this.loadBooks().find(b => b.id === this.currentBookId);
-        if (!book) return;
-
-        // 更新标题
-        document.getElementById('wb-current-book-name').textContent = book.name;
-        document.getElementById('wb-current-book-info').textContent =
-            `${this.getScopeLabel(book.scope)} · ${book.persona || '通用'}`;
-
-        // 渲染条目列表
+        this.renderBookSelector();
         this.renderEntries();
     },
-
+    
+    // 渲染世界书选择器
+    renderBookSelector() {
+        const selector = document.getElementById('wb-current-book');
+        if (!selector) return;
+        
+        selector.innerHTML = '<option value="">选择世界书...</option>';
+        
+        this.books.forEach(book => {
+            const option = document.createElement('option');
+            option.value = book.id;
+            option.textContent = book.name;
+            if (this.currentBook && this.currentBook.id === book.id) {
+                option.selected = true;
+            }
+            selector.appendChild(option);
+        });
+        
+        // 更新书本信息
+        if (this.currentBook) {
+            document.getElementById('wb-book-info').style.display = 'flex';
+            const typeLabel = this.currentBook.scope === 'global' ? '全局' : '角色绑定';
+            document.getElementById('wb-book-type').textContent = typeLabel;
+            document.getElementById('wb-book-type').className = 'wb-badge ' + 
+                (this.currentBook.scope === 'character' ? 'character' : '');
+            
+            const entryCount = this.entries.filter(e => e.bookId === this.currentBook.id).length;
+            document.querySelector('.wb-entry-count').textContent = `${entryCount} 条目`;
+        } else {
+            document.getElementById('wb-book-info').style.display = 'none';
+        }
+    },
+    
     // 渲染条目列表
     renderEntries() {
-        const tbody = document.getElementById('wb-entries-tbody');
-        if (!tbody) return;
-
-        tbody.innerHTML = '';
-
-        // 获取搜索和排序参数
-        const searchTerm = (document.getElementById('wb-entry-search')?.value || '').toLowerCase();
-        const sortBy = document.getElementById('wb-entry-sort')?.value || 'order-desc';
-
-        // 筛选条目
-        let entries = this.loadEntries().filter(e => e.bookId === this.currentBookId);
-
-        // 搜索过滤
+        const container = document.getElementById('wb-entries-list');
+        const emptyState = document.getElementById('wb-empty-state');
+        
+        if (!container || !this.currentBook) return;
+        
+        // 获取当前书的条目
+        const bookEntries = this.entries.filter(e => e.bookId === this.currentBook.id);
+        
+        // 搜索和排序
+        const searchTerm = (document.getElementById('wb-search')?.value || '').toLowerCase();
+        const sortBy = document.getElementById('wb-sort')?.value || 'order';
+        
+        let filteredEntries = bookEntries;
         if (searchTerm) {
-            entries = entries.filter(e => {
-                const searchableText = `${e.id} ${e.title} ${e.keys.join(' ')} ${e.tags?.join(' ')}`.toLowerCase();
-                return searchableText.includes(searchTerm);
+            filteredEntries = bookEntries.filter(e => {
+                const searchText = `${e.name} ${e.keys.join(' ')} ${e.content}`.toLowerCase();
+                return searchText.includes(searchTerm);
             });
         }
-
+        
         // 排序
-        entries.sort((a, b) => {
-            switch(sortBy) {
-                case 'order-desc': return b.order - a.order;
-                case 'order-asc': return a.order - b.order;
-                case 'title': return (a.title || '').localeCompare(b.title || '');
-                case 'updated': return (b._meta?.updatedAt || 0) - (a._meta?.updatedAt || 0);
-                default: return 0;
-            }
+        filteredEntries.sort((a, b) => {
+            if (sortBy === 'order') return b.order - a.order;
+            if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
+            if (sortBy === 'updated') return (b.updatedAt || 0) - (a.updatedAt || 0);
+            return 0;
         });
-
-        // 渲染每个条目
-        entries.forEach(entry => {
-            const tr = document.createElement('tr');
-
-            const statusClass = entry.enabled ? 'wb-tag-active' : 'wb-tag-disabled';
-            const statusText = entry.enabled ? '启用' : '禁用';
-
-            tr.innerHTML = `
-                <td>
-                    <div style="font-weight:500;">${entry.id}</div>
-                    <div style="font-size:12px;color:#666;">${entry.title || '无标题'}</div>
-                </td>
-                <td>${entry.order}</td>
-                <td style="font-size:12px;">${this.getPositionLabel(entry.position)}</td>
-                <td>
-                    <span class="wb-tag wb-tag-${entry.scope}">${this.getScopeLabel(entry.scope)}</span>
-                    <span class="wb-tag ${statusClass}">${statusText}</span>
-                </td>
-                <td style="font-size:12px;">${entry.keys.slice(0, 3).join(', ')}${entry.keys.length > 3 ? '...' : ''}</td>
-                <td>
-                    <div class="wb-entry-actions">
-                        <button onclick="WorldBookScreen.editEntry('${entry.id}')">编辑</button>
-                        <button onclick="WorldBookScreen.duplicateEntry('${entry.id}')">复制</button>
-                        <button onclick="WorldBookScreen.deleteEntry('${entry.id}')">删除</button>
-                    </div>
-                </td>
-            `;
-
-            tbody.appendChild(tr);
-        });
-
-        if (entries.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">暂无条目</td></tr>';
+        
+        // 渲染
+        container.innerHTML = '';
+        
+        if (filteredEntries.length === 0) {
+            container.style.display = 'none';
+            emptyState.style.display = 'block';
+        } else {
+            container.style.display = 'block';
+            emptyState.style.display = 'none';
+            
+            filteredEntries.forEach(entry => {
+                const card = this.createEntryCard(entry);
+                container.appendChild(card);
+            });
         }
     },
-
-    // 获取位置标签
-    getPositionLabel(position) {
-        const labels = {
-            'after_char_defs': '角色定义后',
-            'before_char_defs': '角色定义前',
-            'an_top': '作者注顶部',
-            'an_bottom': '作者注底部',
-            'depth0_system': '@Depth=0(系统)',
-            'depth0_user': '@Depth=0(用户)',
-            'depth0_assistant': '@Depth=0(助手)'
-        };
-        return labels[position] || position;
+    
+    // 创建条目卡片
+    createEntryCard(entry) {
+        const card = document.createElement('div');
+        card.className = 'wb-entry-card' + (entry.enabled === false ? ' disabled' : '');
+        card.onclick = () => this.editEntry(entry);
+        
+        const keysDisplay = entry.keys.slice(0, 3).map(k => `<code>${k}</code>`).join(' ');
+        const contentPreview = entry.content.substring(0, 100) + 
+            (entry.content.length > 100 ? '...' : '');
+        
+        card.innerHTML = `
+            <div class="wb-entry-header">
+                <div class="wb-entry-title">${entry.name || '未命名条目'}</div>
+                <div class="wb-entry-meta">
+                    <span class="wb-entry-status ${entry.enabled === false ? 'disabled' : ''}"></span>
+                    <span class="wb-entry-order">优先级: ${entry.order}</span>
+                </div>
+            </div>
+            <div class="wb-entry-keys">
+                触发词: ${keysDisplay || '<span style="color:#999">无</span>'}
+                ${entry.keys.length > 3 ? `<span style="color:#999">+${entry.keys.length - 3}</span>` : ''}
+            </div>
+            <div class="wb-entry-content">${contentPreview}</div>
+        `;
+        
+        return card;
     },
-
-    // 创建新书
-    createBook() {
-        const name = prompt('请输入世界书名称：');
-        if (!name) return;
-
-        const scope = prompt('请选择作用域 (global/char/event)：', 'global') || 'global';
-        const desc = prompt('请输入描述（可选）：') || '';
-
-        const book = {
-            id: `book.${Date.now()}`,
-            name: name,
-            scope: scope,
-            persona: '',
-            desc: desc,
-            entryCount: 0,
+    
+    // 添加新条目
+    addEntry() {
+        if (!this.currentBook) {
+            alert('请先选择一个世界书！');
+            return;
+        }
+        
+        this.currentEntry = {
+            id: `entry_${Date.now()}`,
+            bookId: this.currentBook.id,
+            name: '',
+            keys: [],
+            secondaryKeys: [],
+            content: '',
+            order: 100,
+            depth: 4,
+            logic: 'AND_ANY',
+            selective: false,
+            selectiveLogic: '',
+            constant: false,
+            probability: 100,
+            position: 'after_char',
+            disableRecursion: false,
+            scanDepth: false,
+            recursionDepth: 2,
+            enabled: true,
             createdAt: Date.now(),
             updatedAt: Date.now()
         };
-
-        if (scope === 'char') {
-            book.persona = prompt('请输入角色代号（如: fang）：') || '';
-        }
-
-        const books = this.loadBooks();
-        books.push(book);
-        this.saveBooks(books);
-
-        this.renderShelf();
-        alert('世界书创建成功！');
+        
+        this.openPanel();
     },
-
-    // 创建新条目
-    createEntry() {
-        if (!this.currentBookId) return;
-
-        const book = this.loadBooks().find(b => b.id === this.currentBookId);
-        if (!book) return;
-
-        this.editingEntry = {
-            id: '',
-            bookId: this.currentBookId,
-            title: '',
-            scope: book.scope,
-            speaker: book.persona || 'any',
-            keys: [],
-            filters: [],
-            content: '',
-            order: 60,
-            position: 'after_char_defs',
-            strategy: 'trigger',
-            timing: { delay: 0, sticky: 0, cooldown: 0 },
-            recursion: { allow: true, maxSteps: 2 },
-            tags: [],
-            enabled: true,
-            _meta: { createdAt: Date.now(), updatedAt: Date.now() }
-        };
-
-        this.openDrawer();
-    },
-
+    
     // 编辑条目
-    editEntry(entryId) {
-        const entry = this.loadEntries().find(e => e.id === entryId);
-        if (!entry) return;
-
-        this.editingEntry = { ...entry };
-        this.openDrawer();
+    editEntry(entry) {
+        this.currentEntry = { ...entry };
+        this.openPanel();
     },
-
-    // 打开编辑抽屉
-    openDrawer() {
-        const drawer = document.getElementById('wb-entry-drawer');
-        if (!drawer) return;
-
-        drawer.classList.add('open');
-
+    
+    // 打开编辑面板
+    openPanel() {
+        const panel = document.getElementById('wb-entry-panel');
+        if (!panel || !this.currentEntry) return;
+        
+        panel.classList.add('open');
+        
         // 填充表单
-        const e = this.editingEntry;
-        document.getElementById('wb-entry-id').value = e.id || '';
-        document.getElementById('wb-entry-title').value = e.title || '';
-        document.getElementById('wb-entry-scope').value = e.scope || 'global';
-        document.getElementById('wb-entry-speaker').value = e.speaker || 'any';
-        document.getElementById('wb-entry-keys').value = e.keys?.join(', ') || '';
-        document.getElementById('wb-entry-filters').value = e.filters?.join(', ') || '';
-        document.getElementById('wb-entry-content').value = e.content || '';
-        document.getElementById('wb-entry-order').value = e.order || 60;
-        document.getElementById('wb-entry-position').value = e.position || 'after_char_defs';
-        document.getElementById('wb-entry-strategy').value = e.strategy || 'trigger';
-        document.getElementById('wb-entry-delay').value = e.timing?.delay || 0;
-        document.getElementById('wb-entry-sticky').value = e.timing?.sticky || 0;
-        document.getElementById('wb-entry-cooldown').value = e.timing?.cooldown || 0;
-        document.getElementById('wb-entry-recursion').checked = e.recursion?.allow !== false;
-        document.getElementById('wb-entry-max-steps').value = e.recursion?.maxSteps || 2;
-        document.getElementById('wb-entry-tags').value = e.tags?.join(', ') || '';
-        document.getElementById('wb-entry-enabled').checked = e.enabled !== false;
+        document.getElementById('entry-name').value = this.currentEntry.name || '';
+        document.getElementById('entry-keys').value = this.currentEntry.keys.join(', ');
+        document.getElementById('entry-secondary-keys').value = 
+            (this.currentEntry.secondaryKeys || []).join(', ');
+        document.getElementById('entry-content').value = this.currentEntry.content || '';
+        document.getElementById('entry-order').value = this.currentEntry.order || 100;
+        document.getElementById('entry-depth').value = this.currentEntry.depth || 4;
+        document.getElementById('entry-logic').value = this.currentEntry.logic || 'AND_ANY';
+        document.getElementById('entry-selective').checked = this.currentEntry.selective || false;
+        document.getElementById('entry-constant').checked = this.currentEntry.constant || false;
+        document.getElementById('entry-probability').value = this.currentEntry.probability || 100;
+        document.getElementById('entry-probability-value').textContent = 
+            (this.currentEntry.probability || 100) + '%';
+        document.getElementById('entry-position').value = this.currentEntry.position || 'after_char';
+        document.getElementById('entry-disable-recursion').checked = 
+            this.currentEntry.disableRecursion || false;
+        document.getElementById('entry-scan-depth').checked = this.currentEntry.scanDepth || false;
+        document.getElementById('entry-recursion-depth').value = 
+            this.currentEntry.recursionDepth || 2;
+        
+        // 更新启用图标
+        document.getElementById('entry-enabled-icon').textContent = 
+            this.currentEntry.enabled !== false ? '✅' : '❌';
     },
-
-    // 关闭编辑抽屉
-    closeDrawer() {
-        const drawer = document.getElementById('wb-entry-drawer');
-        if (drawer) {
-            drawer.classList.remove('open');
+    
+    // 关闭编辑面板
+    closePanel() {
+        const panel = document.getElementById('wb-entry-panel');
+        if (panel) {
+            panel.classList.remove('open');
         }
-        this.editingEntry = null;
+        this.currentEntry = null;
     },
-
+    
     // 保存条目
     saveEntry() {
-        const id = document.getElementById('wb-entry-id').value.trim();
-        if (!id) {
-            alert('请输入条目ID！');
-            return;
-        }
-
-        const content = document.getElementById('wb-entry-content').value.trim();
-        if (!content) {
-            alert('请输入条目内容！');
-            return;
-        }
-
-        const entry = {
-            id: id,
-            bookId: this.currentBookId,
-            title: document.getElementById('wb-entry-title').value,
-            scope: document.getElementById('wb-entry-scope').value,
-            speaker: document.getElementById('wb-entry-speaker').value,
-            keys: document.getElementById('wb-entry-keys').value
-                .split(',')
-                .map(k => k.trim())
-                .filter(k => k),
-            filters: document.getElementById('wb-entry-filters').value
-                .split(',')
-                .map(f => f.trim())
-                .filter(f => f),
-            content: content,
-            order: parseInt(document.getElementById('wb-entry-order').value) || 60,
-            position: document.getElementById('wb-entry-position').value,
-            strategy: document.getElementById('wb-entry-strategy').value,
-            timing: {
-                delay: parseInt(document.getElementById('wb-entry-delay').value) || 0,
-                sticky: parseInt(document.getElementById('wb-entry-sticky').value) || 0,
-                cooldown: parseInt(document.getElementById('wb-entry-cooldown').value) || 0
-            },
-            recursion: {
-                allow: document.getElementById('wb-entry-recursion').checked,
-                maxSteps: parseInt(document.getElementById('wb-entry-max-steps').value) || 2
-            },
-            tags: document.getElementById('wb-entry-tags').value
-                .split(',')
-                .map(t => t.trim())
-                .filter(t => t),
-            enabled: document.getElementById('wb-entry-enabled').checked,
-            _meta: {
-                createdAt: this.editingEntry?._meta?.createdAt || Date.now(),
-                updatedAt: Date.now()
-            }
-        };
-
-        // 保存条目
-        let entries = this.loadEntries();
-        const existingIndex = entries.findIndex(e => e.id === id);
-
+        if (!this.currentEntry) return;
+        
+        // 从表单获取值
+        this.currentEntry.name = document.getElementById('entry-name').value;
+        this.currentEntry.keys = document.getElementById('entry-keys').value
+            .split(',')
+            .map(k => k.trim())
+            .filter(k => k);
+        this.currentEntry.secondaryKeys = document.getElementById('entry-secondary-keys').value
+            .split(',')
+            .map(k => k.trim())
+            .filter(k => k);
+        this.currentEntry.content = document.getElementById('entry-content').value;
+        this.currentEntry.order = parseInt(document.getElementById('entry-order').value) || 100;
+        this.currentEntry.depth = parseInt(document.getElementById('entry-depth').value) || 4;
+        this.currentEntry.logic = document.getElementById('entry-logic').value;
+        this.currentEntry.selective = document.getElementById('entry-selective').checked;
+        this.currentEntry.constant = document.getElementById('entry-constant').checked;
+        this.currentEntry.probability = parseInt(document.getElementById('entry-probability').value);
+        this.currentEntry.position = document.getElementById('entry-position').value;
+        this.currentEntry.disableRecursion = document.getElementById('entry-disable-recursion').checked;
+        this.currentEntry.scanDepth = document.getElementById('entry-scan-depth').checked;
+        this.currentEntry.recursionDepth = parseInt(document.getElementById('entry-recursion-depth').value);
+        this.currentEntry.updatedAt = Date.now();
+        
+        // 保存到列表
+        const existingIndex = this.entries.findIndex(e => e.id === this.currentEntry.id);
         if (existingIndex >= 0) {
-            entries[existingIndex] = entry;
+            this.entries[existingIndex] = this.currentEntry;
         } else {
-            entries.push(entry);
+            this.entries.push(this.currentEntry);
         }
-
-        this.saveEntries(entries);
-        this.updateBookCounts();
-        this.closeDrawer();
+        
+        this.saveData();
         this.renderEntries();
-
-        alert('条目保存成功！');
+        this.closePanel();
+        
+        alert('条目已保存！');
     },
-
+    
+    // 切换条目启用状态
+    toggleEntryEnabled() {
+        if (!this.currentEntry) return;
+        
+        this.currentEntry.enabled = !this.currentEntry.enabled;
+        document.getElementById('entry-enabled-icon').textContent = 
+            this.currentEntry.enabled ? '✅' : '❌';
+    },
+    
     // 删除条目
-    deleteEntry(entryId) {
-        if (!confirm(`确定要删除条目 "${entryId}" 吗？`)) return;
-
-        let entries = this.loadEntries();
-        entries = entries.filter(e => e.id !== entryId);
-        this.saveEntries(entries);
-
-        this.updateBookCounts();
-        this.renderEntries();
-
-        alert('条目已删除！');
+    deleteEntry() {
+        if (!this.currentEntry) return;
+        
+        if (confirm('确定要删除这个条目吗？')) {
+            this.entries = this.entries.filter(e => e.id !== this.currentEntry.id);
+            this.saveData();
+            this.renderEntries();
+            this.closePanel();
+        }
     },
-
+    
     // 复制条目
-    duplicateEntry(entryId) {
-        const entry = this.loadEntries().find(e => e.id === entryId);
-        if (!entry) return;
-
+    duplicateEntry() {
+        if (!this.currentEntry) return;
+        
         const newEntry = {
-            ...entry,
-            id: `${entry.id}_copy_${Date.now()}`,
-            title: `${entry.title || ''}（副本）`,
-            _meta: {
-                createdAt: Date.now(),
-                updatedAt: Date.now()
-            }
+            ...this.currentEntry,
+            id: `entry_${Date.now()}`,
+            name: this.currentEntry.name + ' (副本)',
+            createdAt: Date.now(),
+            updatedAt: Date.now()
         };
-
-        const entries = this.loadEntries();
-        entries.push(newEntry);
-        this.saveEntries(entries);
-
-        this.updateBookCounts();
+        
+        this.entries.push(newEntry);
+        this.saveData();
         this.renderEntries();
-
-        alert('条目复制成功！');
+        
+        this.currentEntry = newEntry;
+        this.openPanel();
     },
-
-    // 更新书本条目计数
-    updateBookCounts() {
-        const books = this.loadBooks();
-        const entries = this.loadEntries();
-
-        books.forEach(book => {
-            book.entryCount = entries.filter(e => e.bookId === book.id && e.enabled).length;
-        });
-
-        this.saveBooks(books);
+    
+    // 测试条目
+    testEntry() {
+        if (!this.currentEntry) return;
+        
+        const dialog = document.getElementById('wb-test-dialog');
+        if (dialog) {
+            dialog.style.display = 'flex';
+        }
     },
-
-    // 返回书架
-    backToShelf() {
-        this.currentBookId = null;
-        this.showView('shelf');
-    },
-
-    // 导出功能
-    exportAll() {
-        const data = {
-            books: this.loadBooks(),
-            entries: this.loadEntries(),
-            settings: this.loadSettings(),
-            exportDate: new Date().toISOString()
-        };
-
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `worldbook_all_${Date.now()}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-    },
-
-    exportBook() {
-        if (!this.currentBookId) return;
-
-        const book = this.loadBooks().find(b => b.id === this.currentBookId);
-        const entries = this.loadEntries().filter(e => e.bookId === this.currentBookId);
-
-        const data = {
-            book: book,
-            entries: entries,
-            exportDate: new Date().toISOString()
-        };
-
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `worldbook_${book.name}_${Date.now()}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-    },
-
-    // 导入功能
-    importAll() {
-        const input = document.getElementById('wb-import-file');
-        input.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            try {
-                const text = await file.text();
-                const data = JSON.parse(text);
-
-                if (data.books) {
-                    this.saveBooks(data.books);
-                }
-                if (data.entries) {
-                    this.saveEntries(data.entries);
-                }
-                if (data.settings) {
-                    this.saveSettings(data.settings);
-                }
-
-                this.updateBookCounts();
-                this.renderShelf();
-                alert('导入成功！');
-            } catch (err) {
-                alert('导入失败：' + err.message);
-            }
-
-            input.value = '';
-        };
-        input.click();
-    },
-
-    importToBook() {
-        if (!this.currentBookId) return;
-
-        const input = document.getElementById('wb-import-file');
-        input.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            try {
-                const text = await file.text();
-                const data = JSON.parse(text);
-
-                if (data.entries && Array.isArray(data.entries)) {
-                    let entries = this.loadEntries();
-
-                    // 将导入的条目强制设置为当前书本
-                    data.entries.forEach(entry => {
-                        entry.bookId = this.currentBookId;
-
-                        // 检查是否已存在
-                        const existingIndex = entries.findIndex(e => e.id === entry.id);
-                        if (existingIndex >= 0) {
-                            entries[existingIndex] = entry;
-                        } else {
-                            entries.push(entry);
-                        }
-                    });
-
-                    this.saveEntries(entries);
-                    this.updateBookCounts();
-                    this.renderEntries();
-                    alert(`成功导入 ${data.entries.length} 个条目！`);
-                } else {
-                    alert('文件格式错误！');
-                }
-            } catch (err) {
-                alert('导入失败：' + err.message);
-            }
-
-            input.value = '';
-        };
-        input.click();
-    },
-
-    // 渲染激活设置
-    renderSettings() {
-        const settings = this.loadSettings();
-
-        document.getElementById('wb-scan-depth').value = settings.scanDepth;
-        document.getElementById('wb-min-activations').value = settings.minActivations;
-        document.getElementById('wb-max-recursion').value = settings.maxRecursion;
-        document.getElementById('wb-budget-percent').value = settings.budgetPercent;
-        document.getElementById('wb-budget-display').textContent = settings.budgetPercent + '%';
-        document.getElementById('wb-include-names').checked = settings.includeNames;
-        document.getElementById('wb-case-sensitive').checked = settings.caseSensitive;
-        document.getElementById('wb-whole-words').checked = settings.wholeWords;
-        document.getElementById('wb-overflow-alert').checked = settings.overflowAlert;
-
-        // 绑定滑块事件
-        document.getElementById('wb-budget-percent').oninput = (e) => {
-            document.getElementById('wb-budget-display').textContent = e.target.value + '%';
-        };
-    },
-
-    // 保存设置
-    saveSettingsToStorage() {
-        const settings = {
-            scanDepth: parseInt(document.getElementById('wb-scan-depth').value),
-            minActivations: parseInt(document.getElementById('wb-min-activations').value),
-            maxRecursion: parseInt(document.getElementById('wb-max-recursion').value),
-            budgetPercent: parseInt(document.getElementById('wb-budget-percent').value),
-            includeNames: document.getElementById('wb-include-names').checked,
-            caseSensitive: document.getElementById('wb-case-sensitive').checked,
-            wholeWords: document.getElementById('wb-whole-words').checked,
-            overflowAlert: document.getElementById('wb-overflow-alert').checked
-        };
-
-        this.saveSettings(settings);
-        alert('设置已保存！');
-    },
-
-    // 渲染测试沙盒
-    renderSandbox() {
-        // 清空结果区域
-        document.getElementById('wb-injected-list').innerHTML = '';
-        document.getElementById('wb-delayed-list').innerHTML = '';
-        document.getElementById('wb-cooldown-list').innerHTML = '';
-        document.getElementById('wb-truncated-list').innerHTML = '';
-    },
-
+    
     // 运行测试
     runTest() {
-        const context = document.getElementById('wb-test-context').value;
-        const input = document.getElementById('wb-test-input').value;
-
-        if (!input) {
-            alert('请输入测试文本！');
-            return;
+        const testText = document.getElementById('test-text').value;
+        if (!testText || !this.currentEntry) return;
+        
+        const results = document.getElementById('test-results');
+        const matches = document.getElementById('test-matches');
+        
+        results.style.display = 'block';
+        matches.innerHTML = '';
+        
+        // 测试关键词匹配
+        let isMatch = false;
+        const matchedKeys = [];
+        
+        for (const key of this.currentEntry.keys) {
+            if (this.testKey(key, testText)) {
+                matchedKeys.push(key);
+                isMatch = true;
+            }
         }
-
-        const settings = this.loadSettings();
-        const entries = this.loadEntries().filter(e => e.enabled);
-
-        // 构建扫描文本
-        const scanText = context + '\n' + input;
-
-        // 匹配条目
-        const matched = [];
-        entries.forEach(entry => {
-            let isMatched = false;
-
-            // 策略判断
-            if (entry.strategy === 'always') {
-                isMatched = true;
-            } else if (entry.keys && entry.keys.length > 0) {
-                // 检查触发词
-                for (const key of entry.keys) {
-                    if (this.testKey(key, scanText, settings)) {
-                        isMatched = true;
-                        break;
-                    }
-                }
-            }
-
-            if (isMatched) {
-                matched.push(entry);
-            }
-        });
-
-        // 按优先级排序
-        matched.sort((a, b) => b.order - a.order);
-
-        // 模拟预算限制（简化版）
-        const budget = 1000; // 假设总预算1000 tokens
-        const budgetLimit = Math.floor(budget * settings.budgetPercent / 100);
-        let usedBudget = 0;
-
-        const injected = [];
-        const truncated = [];
-        const delayed = [];
-        const cooldown = [];
-
-        matched.forEach(entry => {
-            // 估算token数（简化：字符数/4）
-            const tokens = Math.ceil(entry.content.length / 4);
-
-            // 时序判断（简化版）
-            if (entry.timing?.cooldown > 0) {
-                cooldown.push(entry);
-            } else if (entry.timing?.delay > 0) {
-                delayed.push(entry);
-            } else if (usedBudget + tokens <= budgetLimit) {
-                injected.push(entry);
-                usedBudget += tokens;
-            } else {
-                truncated.push(entry);
-            }
-        });
-
+        
+        if (this.currentEntry.constant) {
+            isMatch = true;
+            matchedKeys.push('(常驻条目)');
+        }
+        
         // 显示结果
-        this.renderTestResults('wb-injected-list', injected, '✅');
-        this.renderTestResults('wb-delayed-list', delayed, '⏳');
-        this.renderTestResults('wb-cooldown-list', cooldown, '🧊');
-        this.renderTestResults('wb-truncated-list', truncated, '✂️');
-
-        if (settings.overflowAlert && truncated.length > 0) {
-            alert(`⚠️ 预算溢出警告：有 ${truncated.length} 个条目被裁剪！`);
+        const matchDiv = document.createElement('div');
+        matchDiv.className = 'test-match' + (isMatch ? ' active' : '');
+        
+        if (isMatch) {
+            matchDiv.innerHTML = `
+                <strong>✅ 条目已激活</strong><br>
+                匹配的关键词: ${matchedKeys.join(', ')}<br>
+                将注入内容 (${this.currentEntry.content.length} 字符)
+            `;
+        } else {
+            matchDiv.innerHTML = `
+                <strong>❌ 条目未激活</strong><br>
+                没有匹配的关键词
+            `;
         }
+        
+        matches.appendChild(matchDiv);
     },
-
-    // 测试关键词
-    testKey(key, text, settings) {
+    
+    // 测试单个关键词
+    testKey(key, text) {
         // 检查是否是正则表达式
         if (key.startsWith('/') && key.lastIndexOf('/') > 0) {
             try {
@@ -861,66 +401,211 @@ const WorldBookScreen = {
                 const regex = new RegExp(pattern, flags);
                 return regex.test(text);
             } catch (e) {
-                console.error('正则表达式错误:', e);
                 return false;
             }
         }
-
-        // 普通关键词匹配
-        if (!settings.caseSensitive) {
-            key = key.toLowerCase();
-            text = text.toLowerCase();
-        }
-
-        if (settings.wholeWords) {
-            const regex = new RegExp(`\\b${key}\\b`);
-            return regex.test(text);
-        }
-
+        
+        // 普通文本匹配
         return text.includes(key);
     },
-
-    // 渲染测试结果
-    renderTestResults(containerId, entries, icon) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-
-        container.innerHTML = '';
-
-        if (entries.length === 0) {
-            container.innerHTML = '<div style="color:#999;font-size:12px;">无</div>';
+    
+    // 关闭测试对话框
+    closeTestDialog() {
+        const dialog = document.getElementById('wb-test-dialog');
+        if (dialog) {
+            dialog.style.display = 'none';
+        }
+    },
+    
+    // 创建新世界书
+    createNewBook() {
+        const name = prompt('请输入世界书名称：');
+        if (!name) return;
+        
+        const book = {
+            id: `book_${Date.now()}`,
+            name: name,
+            description: '',
+            scope: 'global',
+            character: null,
+            scanDepth: 2,
+            tokenBudget: 2048,
+            recursive: true,
+            caseSensitive: false,
+            matchWholeWords: false,
+            createdAt: Date.now()
+        };
+        
+        this.books.push(book);
+        this.currentBook = book;
+        this.saveData();
+        this.render();
+    },
+    
+    // 编辑世界书设置
+    editBookSettings() {
+        if (!this.currentBook) {
+            alert('请先选择一个世界书！');
             return;
         }
-
-        entries.forEach(entry => {
-            const div = document.createElement('div');
-            div.className = 'wb-result-item';
-            div.innerHTML = `
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span>${icon} ${entry.id}</span>
-                    <span style="font-size:11px;color:#666;">优先级: ${entry.order}</span>
-                </div>
-                <div style="font-size:12px;color:#666;margin-top:4px;">
-                    ${entry.title || '无标题'} | ${this.getPositionLabel(entry.position)}
-                </div>
-            `;
-            container.appendChild(div);
-        });
+        
+        const dialog = document.getElementById('wb-book-settings-dialog');
+        if (!dialog) return;
+        
+        dialog.style.display = 'flex';
+        
+        // 填充表单
+        document.getElementById('book-name').value = this.currentBook.name;
+        document.getElementById('book-description').value = this.currentBook.description || '';
+        document.getElementById('book-scope').value = this.currentBook.scope;
+        document.getElementById('book-scan-depth').value = this.currentBook.scanDepth;
+        document.getElementById('book-token-budget').value = this.currentBook.tokenBudget;
+        document.getElementById('book-recursive').checked = this.currentBook.recursive;
+        document.getElementById('book-case-sensitive').checked = this.currentBook.caseSensitive;
+        document.getElementById('book-match-whole-words').checked = this.currentBook.matchWholeWords;
+        
+        // 显示/隐藏角色选择
+        const charSelect = document.getElementById('book-character-select');
+        if (this.currentBook.scope === 'character') {
+            charSelect.style.display = 'block';
+            document.getElementById('book-character').value = this.currentBook.character || '';
+        } else {
+            charSelect.style.display = 'none';
+        }
     },
-
+    
+    // 保存世界书设置
+    saveBookSettings() {
+        if (!this.currentBook) return;
+        
+        this.currentBook.name = document.getElementById('book-name').value;
+        this.currentBook.description = document.getElementById('book-description').value;
+        this.currentBook.scope = document.getElementById('book-scope').value;
+        this.currentBook.scanDepth = parseInt(document.getElementById('book-scan-depth').value);
+        this.currentBook.tokenBudget = parseInt(document.getElementById('book-token-budget').value);
+        this.currentBook.recursive = document.getElementById('book-recursive').checked;
+        this.currentBook.caseSensitive = document.getElementById('book-case-sensitive').checked;
+        this.currentBook.matchWholeWords = document.getElementById('book-match-whole-words').checked;
+        
+        if (this.currentBook.scope === 'character') {
+            this.currentBook.character = document.getElementById('book-character').value;
+        } else {
+            this.currentBook.character = null;
+        }
+        
+        this.saveData();
+        this.render();
+        this.closeBookSettings();
+        
+        alert('设置已保存！');
+    },
+    
+    // 关闭设置对话框
+    closeBookSettings() {
+        const dialog = document.getElementById('wb-book-settings-dialog');
+        if (dialog) {
+            dialog.style.display = 'none';
+        }
+    },
+    
+    // 删除世界书
+    deleteBook() {
+        if (!this.currentBook) return;
+        
+        if (confirm(`确定要删除世界书"${this.currentBook.name}"及其所有条目吗？`)) {
+            // 删除相关条目
+            this.entries = this.entries.filter(e => e.bookId !== this.currentBook.id);
+            
+            // 删除世界书
+            this.books = this.books.filter(b => b.id !== this.currentBook.id);
+            
+            this.currentBook = this.books[0] || null;
+            this.saveData();
+            this.render();
+            this.closeBookSettings();
+        }
+    },
+    
+    // 导出世界书
+    exportBook() {
+        if (!this.currentBook) return;
+        
+        const bookEntries = this.entries.filter(e => e.bookId === this.currentBook.id);
+        const exportData = {
+            book: this.currentBook,
+            entries: bookEntries,
+            version: '2.0',
+            exportDate: new Date().toISOString()
+        };
+        
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `worldbook_${this.currentBook.name}_${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    },
+    
     // 绑定事件
     bindEvents() {
-        // 搜索框
-        const searchInput = document.getElementById('wb-entry-search');
+        // 世界书选择
+        const bookSelector = document.getElementById('wb-current-book');
+        if (bookSelector) {
+            bookSelector.addEventListener('change', (e) => {
+                const bookId = e.target.value;
+                this.currentBook = this.books.find(b => b.id === bookId) || null;
+                this.render();
+            });
+        }
+        
+        // 搜索
+        const searchInput = document.getElementById('wb-search');
         if (searchInput) {
             searchInput.addEventListener('input', () => this.renderEntries());
         }
-
-        // 排序选择
-        const sortSelect = document.getElementById('wb-entry-sort');
+        
+        // 排序
+        const sortSelect = document.getElementById('wb-sort');
         if (sortSelect) {
             sortSelect.addEventListener('change', () => this.renderEntries());
+        }
+        
+        // 概率滑块
+        const probSlider = document.getElementById('entry-probability');
+        if (probSlider) {
+            probSlider.addEventListener('input', (e) => {
+                document.getElementById('entry-probability-value').textContent = e.target.value + '%';
+            });
+        }
+        
+        // 作用范围切换
+        const scopeSelect = document.getElementById('book-scope');
+        if (scopeSelect) {
+            scopeSelect.addEventListener('change', (e) => {
+                const charSelect = document.getElementById('book-character-select');
+                if (e.target.value === 'character') {
+                    charSelect.style.display = 'block';
+                } else {
+                    charSelect.style.display = 'none';
+                }
+            });
+        }
+        
+        // 选择性触发开关
+        const selectiveCheck = document.getElementById('entry-selective');
+        if (selectiveCheck) {
+            selectiveCheck.addEventListener('change', (e) => {
+                const logicInput = document.getElementById('entry-selective-logic');
+                if (e.target.checked) {
+                    logicInput.style.display = 'block';
+                } else {
+                    logicInput.style.display = 'none';
+                }
+            });
         }
     }
 };
 
+// 暴露到全局
+window.WorldBookV2 = WorldBookV2;

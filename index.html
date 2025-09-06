@@ -74,272 +74,263 @@
         </section>
         <section id="store-screen" class="screen"> <header class="store-header"><button id="store-back-btn" class="back-btn">‹</button><h2>商店</h2></header> <div class="store-content"><p>你的余额: <span id="store-player-money-display">0</span> 金币</p><div id="item-list" class="item-list"></div></div> </section>
         <section id="backpack-screen" class="screen"> <header class="backpack-header"><button id="backpack-back-btn" class="back-btn">‹</button><h2>我的背包</h2></header> <div id="inventory-list" class="inventory-list"></div> </section>
-        <section id="world-book-screen" class="screen">
-            <header class="world-book-header">
-                <button id="world-book-back-btn" class="back-btn">‹</button>
-                <h2 id="wb-screen-title">世界书</h2>
-                <div class="wb-header-actions">
-                    <button id="wb-sandbox-btn" class="wb-icon-btn" title="测试沙盒">🧪</button>
-                    <button id="wb-settings-btn" class="wb-icon-btn" title="激活设置">⚙️</button>
-                </div>
-            </header>
-
-            <!-- 书架视图（主页） -->
-            <div id="wb-shelf-view" class="wb-view">
-                <div class="wb-toolbar">
-                    <button class="wb-btn-primary" onclick="WorldBookScreen.createBook()">➕ 新建世界书</button>
-                    <button class="wb-btn" onclick="WorldBookScreen.exportAll()">📤 导出全部</button>
-                    <button class="wb-btn" onclick="WorldBookScreen.importAll()">📥 导入</button>
-                </div>
-                <div id="wb-books-grid" class="wb-books-grid"></div>
+        
+<section id="world-book-screen" class="screen">
+    <header class="world-book-header">
+        <button id="world-book-back-btn" class="back-btn">‹</button>
+        <h2>世界书</h2>
+    </header>
+    
+    <!-- 主界面：条目列表 -->
+    <div class="wb-container">
+        <!-- 顶部工具栏 -->
+        <div class="wb-top-bar">
+            <div class="wb-book-selector">
+                <select id="wb-current-book" class="wb-select">
+                    <option value="">选择世界书...</option>
+                </select>
+                <button class="wb-btn" onclick="WorldBookV2.createNewBook()">📚 新建</button>
+                <button class="wb-btn" onclick="WorldBookV2.editBookSettings()">⚙️ 设置</button>
             </div>
-
-            <!-- 书本详情视图 -->
-            <div id="wb-book-view" class="wb-view" style="display:none;">
-                <div class="wb-book-header">
-                    <button class="wb-btn" onclick="WorldBookScreen.backToShelf()">← 返回书架</button>
-                    <h3 id="wb-current-book-name">书名</h3>
-                    <span id="wb-current-book-info" class="wb-book-meta"></span>
-                </div>
-
-                <div class="wb-toolbar">
-                    <input type="text" id="wb-entry-search" class="wb-search" placeholder="搜索条目...">
-                    <select id="wb-entry-sort" class="wb-select">
-                        <option value="order-desc">按优先级↓</option>
-                        <option value="order-asc">按优先级↑</option>
-                        <option value="title">按标题</option>
-                        <option value="updated">按更新时间</option>
-                    </select>
-                    <button class="wb-btn-primary" onclick="WorldBookScreen.createEntry()">➕ 新条目</button>
-                    <button class="wb-btn" onclick="WorldBookScreen.exportBook()">📤 导出本书</button>
-                    <button class="wb-btn" onclick="WorldBookScreen.importToBook()">📥 导入到本书</button>
-                </div>
-
-                <div class="wb-entries-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>ID/标题</th>
-                                <th>优先级</th>
-                                <th>位置</th>
-                                <th>策略</th>
-                                <th>触发词</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="wb-entries-tbody"></tbody>
-                    </table>
-                </div>
+            
+            <div class="wb-book-info" id="wb-book-info" style="display:none;">
+                <span class="wb-badge" id="wb-book-type">全局</span>
+                <span class="wb-entry-count">0 条目</span>
             </div>
+        </div>
+        
+        <!-- 搜索和筛选栏 -->
+        <div class="wb-filter-bar">
+            <input type="text" id="wb-search" class="wb-search-input" placeholder="搜索条目...">
+            <select id="wb-sort" class="wb-select-small">
+                <option value="order">按优先级</option>
+                <option value="name">按名称</option>
+                <option value="updated">按更新时间</option>
+            </select>
+            <button class="wb-btn-primary" onclick="WorldBookV2.addEntry()">➕ 添加条目</button>
+        </div>
+        
+        <!-- 条目列表 -->
+        <div class="wb-entries-container" id="wb-entries-list">
+            <!-- 条目卡片将在这里渲染 -->
+        </div>
+        
+        <!-- 空状态提示 -->
+        <div class="wb-empty-state" id="wb-empty-state" style="display:none;">
+            <div class="wb-empty-icon">📖</div>
+            <p>还没有条目</p>
+            <button class="wb-btn-primary" onclick="WorldBookV2.addEntry()">创建第一个条目</button>
+        </div>
+    </div>
+</section>
 
-            <!-- 激活设置视图 -->
-            <div id="wb-settings-view" class="wb-view" style="display:none;">
-                <div class="wb-settings-header">
-                    <button class="wb-btn" onclick="WorldBookScreen.backToShelf()">← 返回</button>
-                    <h3>激活设置</h3>
+<!-- 条目编辑面板（类似SillyTavern的折叠面板） -->
+<div id="wb-entry-panel" class="wb-entry-panel">
+    <div class="wb-panel-header">
+        <input type="text" id="entry-name" class="wb-entry-name" placeholder="条目名称">
+        <div class="wb-panel-actions">
+            <button class="wb-icon-btn" onclick="WorldBookV2.toggleEntryEnabled()" title="启用/禁用">
+                <span id="entry-enabled-icon">✅</span>
+            </button>
+            <button class="wb-icon-btn" onclick="WorldBookV2.duplicateEntry()" title="复制">📋</button>
+            <button class="wb-icon-btn" onclick="WorldBookV2.deleteEntry()" title="删除">🗑️</button>
+            <button class="wb-icon-btn" onclick="WorldBookV2.closePanel()" title="关闭">✖️</button>
+        </div>
+    </div>
+    
+    <div class="wb-panel-body">
+        <!-- 基础设置 -->
+        <div class="wb-field-group">
+            <label>触发关键词（Key）</label>
+            <input type="text" id="entry-keys" placeholder="关键词1, 关键词2, /正则表达式/">
+            <span class="wb-hint">用逗号分隔多个关键词，支持正则表达式</span>
+        </div>
+        
+        <div class="wb-field-group">
+            <label>辅助关键词（Secondary Keys）</label>
+            <input type="text" id="entry-secondary-keys" placeholder="可选的额外触发词">
+        </div>
+        
+        <div class="wb-field-group">
+            <label>内容（Content）</label>
+            <textarea id="entry-content" rows="6" placeholder="当触发时注入的内容..."></textarea>
+        </div>
+        
+        <!-- 高级设置（可折叠） -->
+        <details class="wb-advanced-section">
+            <summary>高级设置</summary>
+            
+            <div class="wb-field-row">
+                <div class="wb-field-group">
+                    <label>优先级（Order）</label>
+                    <input type="number" id="entry-order" value="100" min="0" max="9999">
+                    <span class="wb-hint">数值越大越靠后</span>
                 </div>
-
-                <div class="wb-settings-content">
-                    <div class="wb-setting-group">
-                        <label>扫描深度 (ScanDepth)</label>
-                        <input type="number" id="wb-scan-depth" min="0" max="50" value="8">
-                        <span class="wb-hint">回溯多少条消息进行关键词扫描</span>
-                    </div>
-
-                    <div class="wb-setting-group">
-                        <label>最小激活数 (MinActivations)</label>
-                        <input type="number" id="wb-min-activations" min="0" max="20" value="0">
-                        <span class="wb-hint">至少激活几条世界书条目</span>
-                    </div>
-
-                    <div class="wb-setting-group">
-                        <label>最大递归深度 (MaxRecursion)</label>
-                        <input type="number" id="wb-max-recursion" min="1" max="10" value="3">
-                        <span class="wb-hint">条目间相互触发的最大层数</span>
-                    </div>
-
-                    <div class="wb-setting-group">
-                        <label>上下文预算 (%)</label>
-                        <input type="range" id="wb-budget-percent" min="5" max="50" value="15">
-                        <span id="wb-budget-display">15%</span>
-                        <span class="wb-hint">分配给世界书的上下文比例</span>
-                    </div>
-
-                    <div class="wb-setting-group">
-                        <label><input type="checkbox" id="wb-include-names" checked> 包含说话者名字</label>
-                        <label><input type="checkbox" id="wb-case-sensitive"> 区分大小写</label>
-                        <label><input type="checkbox" id="wb-whole-words" checked> 整词匹配</label>
-                        <label><input type="checkbox" id="wb-overflow-alert" checked> 溢出警告</label>
-                    </div>
-
-                    <button class="wb-btn-primary" onclick="WorldBookScreen.saveSettingsToStorage()">保存设置</button>
+                
+                <div class="wb-field-group">
+                    <label>深度（Depth）</label>
+                    <input type="number" id="entry-depth" value="4" min="0" max="999">
+                    <span class="wb-hint">从底部算起的位置</span>
                 </div>
             </div>
-
-            <!-- 测试沙盒视图 -->
-            <div id="wb-sandbox-view" class="wb-view" style="display:none;">
-                <div class="wb-sandbox-header">
-                    <button class="wb-btn" onclick="WorldBookScreen.backToShelf()">← 返回</button>
-                    <h3>测试沙盒</h3>
+            
+            <div class="wb-field-group">
+                <label>触发条件（Logic）</label>
+                <select id="entry-logic">
+                    <option value="AND_ANY">AND ANY（任一关键词）</option>
+                    <option value="AND_ALL">AND ALL（所有关键词）</option>
+                    <option value="NOT_ANY">NOT ANY（排除任一）</option>
+                    <option value="NOT_ALL">NOT ALL（排除所有）</option>
+                </select>
+            </div>
+            
+            <div class="wb-field-group">
+                <label>选择性触发（Selective）</label>
+                <div class="wb-checkbox-group">
+                    <label><input type="checkbox" id="entry-selective"> 仅在特定条件下触发</label>
                 </div>
-
-                <div class="wb-sandbox-content">
-                    <div class="wb-sandbox-input">
-                        <label>最近上下文</label>
-                        <textarea id="wb-test-context" placeholder="输入最近的对话内容..."></textarea>
-
-                        <label>本轮输入</label>
-                        <input type="text" id="wb-test-input" placeholder="输入要测试的文本...">
-
-                        <button class="wb-btn-primary" onclick="WorldBookScreen.runTest()">运行测试</button>
-                    </div>
-
-                    <div class="wb-sandbox-results">
-                        <div class="wb-result-section">
-                            <h4>✅ 已注入</h4>
-                            <div id="wb-injected-list"></div>
-                        </div>
-
-                        <div class="wb-result-section">
-                            <h4>⏳ 延迟激活</h4>
-                            <div id="wb-delayed-list"></div>
-                        </div>
-
-                        <div class="wb-result-section">
-                            <h4>🧊 冷却中</h4>
-                            <div id="wb-cooldown-list"></div>
-                        </div>
-
-                        <div class="wb-result-section">
-                            <h4>✂️ 被裁剪</h4>
-                            <div id="wb-truncated-list"></div>
-                        </div>
-                    </div>
+                <input type="text" id="entry-selective-logic" placeholder="触发条件" style="display:none;">
+            </div>
+            
+            <div class="wb-field-group">
+                <label>常驻（Constant）</label>
+                <div class="wb-checkbox-group">
+                    <label><input type="checkbox" id="entry-constant"> 始终激活（忽略关键词）</label>
                 </div>
             </div>
-        </section>
-
-        <!-- 条目编辑抽屉 -->
-        <div id="wb-entry-drawer" class="wb-drawer">
-            <div class="wb-drawer-overlay" onclick="WorldBookScreen.closeDrawer()"></div>
-            <div class="wb-drawer-content">
-                <div class="wb-drawer-header">
-                    <h3>编辑条目</h3>
-                    <button class="wb-close-btn" onclick="WorldBookScreen.closeDrawer()">×</button>
+            
+            <div class="wb-field-group">
+                <label>概率（Probability）</label>
+                <input type="range" id="entry-probability" min="0" max="100" value="100">
+                <span id="entry-probability-value">100%</span>
+            </div>
+            
+            <div class="wb-field-group">
+                <label>位置（Position）</label>
+                <select id="entry-position">
+                    <option value="before_char">角色定义之前</option>
+                    <option value="after_char">角色定义之后</option>
+                    <option value="before_example">示例消息之前</option>
+                    <option value="after_example">示例消息之后</option>
+                    <option value="at_depth">按深度插入</option>
+                </select>
+            </div>
+        </details>
+        
+        <!-- 递归设置 -->
+        <details class="wb-advanced-section">
+            <summary>递归扫描</summary>
+            
+            <div class="wb-field-group">
+                <div class="wb-checkbox-group">
+                    <label><input type="checkbox" id="entry-disable-recursion"> 禁用递归扫描</label>
+                    <label><input type="checkbox" id="entry-scan-depth"> 延伸扫描深度</label>
                 </div>
+            </div>
+            
+            <div class="wb-field-group">
+                <label>递归深度</label>
+                <input type="number" id="entry-recursion-depth" value="2" min="0" max="10">
+            </div>
+        </details>
+        
+        <!-- 保存按钮 -->
+        <div class="wb-panel-footer">
+            <button class="wb-btn-primary" onclick="WorldBookV2.saveEntry()">保存条目</button>
+            <button class="wb-btn" onclick="WorldBookV2.testEntry()">测试激活</button>
+        </div>
+    </div>
+</div>
 
-                <div class="wb-drawer-body">
-                    <div class="wb-form-group">
-                        <label>ID *</label>
-                        <input type="text" id="wb-entry-id" placeholder="例如: wb.core.lighthouse">
-                    </div>
-
-                    <div class="wb-form-group">
-                        <label>标题</label>
-                        <input type="text" id="wb-entry-title" placeholder="条目标题（仅显示用）">
-                    </div>
-
-                    <div class="wb-form-row">
-                        <div class="wb-form-group">
-                            <label>作用域</label>
-                            <select id="wb-entry-scope">
-                                <option value="global">全局</option>
-                                <option value="char">角色</option>
-                                <option value="event">事件</option>
-                            </select>
-                        </div>
-
-                        <div class="wb-form-group">
-                            <label>说话者</label>
-                            <select id="wb-entry-speaker">
-                                <option value="any">任意</option>
-                                <option value="fang">方亦楷</option>
-                                <option value="gu">顾烬寒</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="wb-form-group">
-                        <label>触发词（逗号分隔，支持正则）</label>
-                        <input type="text" id="wb-entry-keys" placeholder="玻璃, /\bPain Echo\b/i">
-                    </div>
-
-                    <div class="wb-form-group">
-                        <label>可选过滤器</label>
-                        <input type="text" id="wb-entry-filters" placeholder="AND ANY: 梦境, 回响">
-                    </div>
-
-                    <div class="wb-form-group">
-                        <label>内容 *</label>
-                        <textarea id="wb-entry-content" rows="4" placeholder="实际注入的文本内容..."></textarea>
-                    </div>
-
-                    <div class="wb-form-row">
-                        <div class="wb-form-group">
-                            <label>优先级</label>
-                            <input type="number" id="wb-entry-order" value="60" min="0" max="999">
-                        </div>
-
-                        <div class="wb-form-group">
-                            <label>位置</label>
-                            <select id="wb-entry-position">
-                                <option value="after_char_defs">角色定义后</option>
-                                <option value="before_char_defs">角色定义前</option>
-                                <option value="an_top">作者注顶部</option>
-                                <option value="an_bottom">作者注底部</option>
-                                <option value="depth0_system">@Depth=0 (系统)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="wb-form-group">
-                        <label>策略</label>
-                        <select id="wb-entry-strategy">
-                            <option value="trigger">触发式</option>
-                            <option value="always">常驻</option>
-                            <option value="vector" disabled>向量召回（未来）</option>
-                        </select>
-                    </div>
-
-                    <div class="wb-form-group">
-                        <label>时序控制</label>
-                        <div class="wb-timing-row">
-                            <input type="number" id="wb-entry-delay" min="0" placeholder="延迟">
-                            <input type="number" id="wb-entry-sticky" min="0" placeholder="黏着">
-                            <input type="number" id="wb-entry-cooldown" min="0" placeholder="冷却">
-                        </div>
-                    </div>
-
-                    <div class="wb-form-group">
-                        <label>
-                            <input type="checkbox" id="wb-entry-recursion" checked> 允许递归
-                        </label>
-                        <input type="number" id="wb-entry-max-steps" min="1" max="10" value="2" placeholder="最大递归层数">
-                    </div>
-
-                    <div class="wb-form-group">
-                        <label>标签（逗号分隔）</label>
-                        <input type="text" id="wb-entry-tags" placeholder="scope:global, tone:warm">
-                    </div>
-
-                    <div class="wb-form-group">
-                        <label>
-                            <input type="checkbox" id="wb-entry-enabled" checked> 启用此条目
-                        </label>
-                    </div>
-
-                    <div class="wb-drawer-footer">
-                        <button class="wb-btn-primary" onclick="WorldBookScreen.saveEntry()">保存</button>
-                        <button class="wb-btn" onclick="WorldBookScreen.deleteEntry()">删除</button>
-                        <button class="wb-btn" onclick="WorldBookScreen.closeDrawer()">取消</button>
-                    </div>
+<!-- 世界书设置对话框 -->
+<div id="wb-book-settings-dialog" class="wb-dialog" style="display:none;">
+    <div class="wb-dialog-content">
+        <div class="wb-dialog-header">
+            <h3>世界书设置</h3>
+            <button class="wb-close-btn" onclick="WorldBookV2.closeBookSettings()">✖️</button>
+        </div>
+        
+        <div class="wb-dialog-body">
+            <div class="wb-field-group">
+                <label>世界书名称</label>
+                <input type="text" id="book-name" placeholder="我的世界书">
+            </div>
+            
+            <div class="wb-field-group">
+                <label>描述</label>
+                <textarea id="book-description" rows="3" placeholder="这本世界书的用途..."></textarea>
+            </div>
+            
+            <div class="wb-field-group">
+                <label>作用范围</label>
+                <select id="book-scope">
+                    <option value="global">全局（所有角色）</option>
+                    <option value="character">绑定角色</option>
+                </select>
+            </div>
+            
+            <div class="wb-field-group" id="book-character-select" style="display:none;">
+                <label>选择角色</label>
+                <select id="book-character">
+                    <option value="">选择角色...</option>
+                    <option value="ai">零</option>
+                    <option value="user">用户</option>
+                </select>
+            </div>
+            
+            <div class="wb-field-group">
+                <label>扫描深度</label>
+                <input type="number" id="book-scan-depth" value="2" min="0" max="100">
+                <span class="wb-hint">搜索触发词时回溯的消息数量</span>
+            </div>
+            
+            <div class="wb-field-group">
+                <label>Token预算</label>
+                <input type="number" id="book-token-budget" value="2048" min="0">
+                <span class="wb-hint">分配给世界书的最大token数</span>
+            </div>
+            
+            <div class="wb-field-group">
+                <div class="wb-checkbox-group">
+                    <label><input type="checkbox" id="book-recursive" checked> 启用递归扫描</label>
+                    <label><input type="checkbox" id="book-case-sensitive"> 区分大小写</label>
+                    <label><input type="checkbox" id="book-match-whole-words"> 全词匹配</label>
                 </div>
             </div>
         </div>
-
-        <input type="file" id="wb-import-file" accept=".json" style="display:none;">
         
-        <section id="settings-screen" class="screen">
+        <div class="wb-dialog-footer">
+            <button class="wb-btn-primary" onclick="WorldBookV2.saveBookSettings()">保存设置</button>
+            <button class="wb-btn" onclick="WorldBookV2.deleteBook()">删除世界书</button>
+            <button class="wb-btn" onclick="WorldBookV2.exportBook()">导出</button>
+        </div>
+    </div>
+</div>
+
+<!-- 激活测试对话框 -->
+<div id="wb-test-dialog" class="wb-dialog" style="display:none;">
+    <div class="wb-dialog-content">
+        <div class="wb-dialog-header">
+            <h3>测试条目激活</h3>
+            <button class="wb-close-btn" onclick="WorldBookV2.closeTestDialog()">✖️</button>
+        </div>
+        
+        <div class="wb-dialog-body">
+            <div class="wb-field-group">
+                <label>测试文本</label>
+                <textarea id="test-text" rows="4" placeholder="输入测试文本..."></textarea>
+            </div>
+            
+            <button class="wb-btn-primary" onclick="WorldBookV2.runTest()">运行测试</button>
+            
+            <div class="wb-test-results" id="test-results" style="display:none;">
+                <h4>测试结果</h4>
+                <div id="test-matches"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<section id="settings-screen" class="screen">
             <header class="settings-header">
                 <button id="settings-back-btn" class="back-btn">‹</button>
                 <h2>API 设置</h2>

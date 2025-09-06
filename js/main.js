@@ -249,21 +249,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // 世界书应用
         Utils.safeBind(document.getElementById('open-world-book-app'), 'click', () => {
             Utils.showScreen('world-book-screen');
-            WorldBookScreen.init();
-            WorldBookScreen.render();
+            WorldBookV2.init();
         });
 
         Utils.safeBind(document.getElementById('world-book-back-btn'), 'click', () => {
             Utils.showScreen('home-screen');
-        });
-
-        // 世界书内部导航
-        Utils.safeBind(document.getElementById('wb-sandbox-btn'), 'click', () => {
-            WorldBookScreen.showView('sandbox');
-        });
-
-        Utils.safeBind(document.getElementById('wb-settings-btn'), 'click', () => {
-            WorldBookScreen.showView('settings');
         });
 
         // API设置应用
