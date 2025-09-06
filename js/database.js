@@ -23,14 +23,14 @@ const Database = {
         const state = StateManager.get();
         try {
             await this.db.transaction('rw', this.db.tables, async () => {
-                if (!state.player || !state.ai || !state.apiConfig || !state.chats) {
+                if (!state.player || !state.ai || !state.apiConfig || !state.chats || !state.chat) {
                     throw new Error("核心数据丢失，无法存档。");
                 }
-                
-                if (state.chat.history.length > 100) {
+
+                if (state.chat && state.chat.history && state.chat.history.length > 100) {
                     state.chat.history = state.chat.history.slice(-50);
                 }
-                
+
                 await this.db.general.put({ id: 'main', lastOnlineTimestamp: Date.now() });
                 await this.db.player.put({ id: 'main', ...state.player });
                 await this.db.ai.put({ id: 'main', ...state.ai });
@@ -59,7 +59,9 @@ const Database = {
                 }
                 
                 await this.db.chatHistory.clear();
-                await this.db.chatHistory.bulkAdd(state.chat.history);
+                if (state.chat && state.chat.history) {
+                    await this.db.chatHistory.bulkAdd(state.chat.history);
+                }
             });
             
             window.refreshVarsDemo?.();
@@ -74,7 +76,7 @@ const Database = {
     async loadWorldState() {
         await this.migrateFromLocalStorage();
         
-        const [general, player, ai, chatHistory, worldBook, events, apiConfig, chatSettings] = 
+        const [general, player, ai, chatHistory, worldBook, events, apiConfig, chatSettings] =
             await Promise.all([
                 this.db.general.get('main'),
                 this.db.player.get('main'),
@@ -90,7 +92,8 @@ const Database = {
         newState.lastOnlineTimestamp = general ? general.lastOnlineTimestamp : Date.now();
         newState.player = player || CONFIG.defaults.player;
         newState.ai = ai || CONFIG.defaults.ai;
-        newState.chat = { history: chatHistory || [] };
+        const upgradedHistory = Utils.upgradeChatHistory(chatHistory || []);
+        newState.chat = { history: upgradedHistory };
         
         // 升级世界书格式
         newState.worldBook = (worldBook && worldBook.length > 0) 
@@ -148,7 +151,17 @@ const Database = {
         newState.chats = {};
         if (chatSettings && chatSettings.length > 0) {
             chatSettings.forEach(cs => {
-                newState.chats[cs.id] = { settings: cs.settings };
+                const settings = cs.settings || {};
+                if (typeof settings.enableChainOfThought !== 'boolean') {
+                    settings.enableChainOfThought = false;
+                }
+                if (typeof settings.showThoughtAsAlert !== 'boolean') {
+                    settings.showThoughtAsAlert = false;
+                }
+                if (!settings.enableChainOfThought) {
+                    settings.showThoughtAsAlert = false;
+                }
+                newState.chats[cs.id] = { settings };
             });
         }
         
@@ -162,6 +175,20 @@ const Database = {
                     showThoughtAsAlert: false
                 }
             };
+        }
+
+        // 校验并补齐聊天设置字段
+        for (const chatId in newState.chats) {
+            const settings = newState.chats[chatId].settings || {};
+            if (typeof settings.enableChainOfThought !== 'boolean') {
+                settings.enableChainOfThought = false;
+            }
+            if (settings.enableChainOfThought) {
+                settings.showThoughtAsAlert = !!settings.showThoughtAsAlert;
+            } else {
+                settings.showThoughtAsAlert = false;
+            }
+            newState.chats[chatId].settings = settings;
         }
         
         // 计算离线收入

@@ -111,7 +111,60 @@ const Utils = {
             element.addEventListener(event, handler);
         }
     },
-    
+
+    // 升级聊天记录格式
+    upgradeChatHistory(records) {
+        if (!Array.isArray(records)) return [];
+
+        return records.map(record => {
+            const newRecord = { ...record };
+
+            if (!Array.isArray(record.content)) {
+                if (typeof record.content === 'string') {
+                    newRecord.content = [{ text: record.content }];
+                } else if (record.text) {
+                    newRecord.content = [{ text: record.text }];
+                } else {
+                    newRecord.content = [{ text: '' }];
+                }
+            } else {
+                newRecord.content = record.content.map(part =>
+                    typeof part === 'string' ? { text: part } : part
+                );
+            }
+
+            if (record.sender === 'ai' && !record.thoughtText) {
+                const contentText = newRecord.content
+                    .filter(c => c.text)
+                    .map(c => c.text)
+                    .join('');
+
+                const thoughtPatterns = [
+                    /<thought>([\s\S]*?)<\/thought>/i,
+                    /<thinking>([\s\S]*?)<\/thinking>/i
+                ];
+
+                for (const pattern of thoughtPatterns) {
+                    const match = contentText.match(pattern);
+                    if (match && match[1]) {
+                        newRecord.thoughtText = match[1].trim();
+                        newRecord.content = newRecord.content.map(c => {
+                            if (c.text) {
+                                c.text = c.text.replace(pattern, '').trim();
+                            }
+                            return c;
+                        });
+                        break;
+                    }
+                }
+            }
+
+            newRecord.thoughtText = newRecord.thoughtText || '';
+            delete newRecord.text;
+            return newRecord;
+        });
+    },
+
     // 升级世界书格式
     upgradeWorldBook(oldBook) {
         return oldBook.map(rule => {

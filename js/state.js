@@ -18,6 +18,7 @@ const StateManager = {
         const keys = path.split('.');
         let current = worldState;
         for (let i = 0; i < keys.length - 1; i++) {
+            if (current[keys[i]] === undefined) current[keys[i]] = {};
             current = current[keys[i]];
         }
         current[keys[keys.length - 1]] = value;

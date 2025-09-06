@@ -1,6 +1,8 @@
 // 聊天界面模块
 const ChatScreen = {
     // 渲染聊天界面
+    
+    
     render() {
         const state = StateManager.get();
         state.activeChatId = 'chat_default';
@@ -11,8 +13,10 @@ const ChatScreen = {
             return;
         }
         
-        const aiNameInTitle = activeChat.settings.aiPersona.split('。')[0]
-            .replace("你是AI伴侣'", "").replace("'", "") || state.ai?.name || '零';
+        const persona = activeChat.settings.aiPersona || state.ai?.name || '零';
+        const aiNameInTitle = persona.split('。')[0]
+            .replace("你是AI伴侣'", "")
+            .replace("'", "");
         
         const chatHeaderTitle = document.getElementById('chat-header-title');
         if (chatHeaderTitle) chatHeaderTitle.textContent = `与 ${aiNameInTitle} 的聊天`;
@@ -42,33 +46,42 @@ const ChatScreen = {
                 if (contentWrapper.hasChildNodes()) {
                     bubble.appendChild(contentWrapper);
                 }
-
-                // ▼▼▼ 新增/修改：使用更兼容的HTML结构渲染思维链 ▼▼▼
+                
+                // 如果是AI消息且包含思维链，显示可折叠的思维链
                 if (msg.sender === 'ai' && msg.thoughtText) {
-                    const detailsDiv = document.createElement('div');
-                    detailsDiv.className = 'thought-details';
+                    const thoughtContainer = document.createElement('div');
+                    thoughtContainer.className = 'thought-container';
                     
-                    const summarySpan = document.createElement('span');
-                    summarySpan.className = 'thought-summary';
-                    summarySpan.textContent = '🤔 查看AI思考过程';
+                    const thoughtToggle = document.createElement('div');
+                    thoughtToggle.className = 'thought-toggle';
+                    thoughtToggle.innerHTML = '🤔 查看AI思考过程 ▼';
                     
-                    const contentDiv = document.createElement('div');
-                    contentDiv.className = 'thought-content';
-                    contentDiv.textContent = msg.thoughtText;
-                    contentDiv.style.display = 'none'; // 默认隐藏
-
-                    summarySpan.onclick = () => {
-                        const isOpen = detailsDiv.classList.toggle('open');
-                        contentDiv.style.display = isOpen ? 'block' : 'none';
-                        summarySpan.setAttribute('aria-expanded', isOpen);
-                    };
+                    const thoughtContent = document.createElement('div');
+                    thoughtContent.className = 'thought-content';
+                    thoughtContent.style.display = 'none';
+                    thoughtContent.innerHTML = msg.thoughtText.replace(/\n/g, '<br>');
                     
-                    detailsDiv.appendChild(summarySpan);
-                    detailsDiv.appendChild(contentDiv);
-                    bubble.appendChild(detailsDiv);
+                    // 使用闭包保存状态
+                    (function() {
+                        let isOpen = false;
+                        const toggle = () => {
+                            isOpen = !isOpen;
+                            thoughtContent.style.display = isOpen ? 'block' : 'none';
+                            thoughtToggle.innerHTML = isOpen ? '🤔 隐藏AI思考过程 ▲' : '🤔 查看AI思考过程 ▼';
+                        };
+                        
+                        thoughtToggle.onclick = toggle;
+                        thoughtToggle.addEventListener('touchstart', (e) => {
+                            e.preventDefault();
+                            toggle();
+                        });
+                    })();
+                    
+                    thoughtContainer.appendChild(thoughtToggle);
+                    thoughtContainer.appendChild(thoughtContent);
+                    bubble.appendChild(thoughtContainer);
                 }
-                // ▲▲▲ 新增/修改 ▲▲▲
-
+                
                 if (bubble.hasChildNodes()) {
                     messageContainer.appendChild(bubble);
                 }
@@ -76,6 +89,7 @@ const ChatScreen = {
             messageContainer.scrollTop = messageContainer.scrollHeight;
         }
     },
+
     
     // 处理发送消息
     async handleSend(userInput) {
