@@ -77,7 +77,18 @@ const ChatScreen = {
         
         await Database.saveWorldState();
         
+        // 获取AI回复（可能包含思维链）
         const aiResponse = await AI.getResponse(userMessage.content);
+
+        // 检查是否返回了思维链
+        let aiReplyText, thoughtText;
+        if (typeof aiResponse === 'object' && aiResponse.text) {
+            aiReplyText = aiResponse.text;
+            thoughtText = aiResponse.thought;
+        } else {
+            aiReplyText = aiResponse;
+            thoughtText = null;
+        }
 
         if (state.session.minutesAway > 0) {
             state.session.minutesAway = 0;
@@ -86,8 +97,8 @@ const ChatScreen = {
 
         const aiMessage = {
             sender: 'ai',
-            content: [{ text: aiResponse.text || aiResponse }],
-            thoughtText: aiResponse.thought || null,
+            content: [{ text: aiReplyText }],
+            thoughtText: thoughtText, // 保存思维链文本
             timestamp: Date.now()
         };
 
@@ -120,10 +131,19 @@ const ChatScreen = {
             await Database.saveWorldState();
             
             const aiResponse = await AI.getResponse(userMessage.content);
+
+            let aiReplyText, thoughtText;
+            if (typeof aiResponse === 'object' && aiResponse.text) {
+                aiReplyText = aiResponse.text;
+                thoughtText = aiResponse.thought;
+            } else {
+                aiReplyText = aiResponse;
+                thoughtText = null;
+            }
             const aiMessage = {
                 sender: 'ai',
-                content: [{ text: aiResponse.text || aiResponse }],
-                thoughtText: aiResponse.thought || null,
+                content: [{ text: aiReplyText }],
+                thoughtText: thoughtText,
                 timestamp: Date.now()
             };
 
