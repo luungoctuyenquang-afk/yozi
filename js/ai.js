@@ -108,9 +108,23 @@ const AI = {
                     // 只启用思维链但不显示，返回纯文本
                     return cleanedResponse;
                 }
+            } else {
+                // 如果没有启用思维链，也要清理掉可能出现的思维链标签
+                const thoughtPatterns = [
+                    /<thought>[\s\S]*?<\/thought>/gi,
+                    /<thinking>[\s\S]*?<\/thinking>/gi,
+                    /\[思考\][\s\S]*?\[\/思考\]/g,
+                    /\*thinking\*[\s\S]*?\*\/thinking\*/gi
+                ];
+
+                for (const pattern of thoughtPatterns) {
+                    cleanedResponse = cleanedResponse.replace(pattern, '').trim();
+                }
+
+                return cleanedResponse;
             }
 
-            // 未启用思维链或未找到思维链标签
+            // 未找到思维链标签，返回原始响应
             return rawResponseText.trim();
             
         } catch (error) {

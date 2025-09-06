@@ -48,28 +48,27 @@ const ChatScreen = {
                 }
 
                 // 如果是AI消息且包含思维链，显示可折叠的思维链
-                if (msg.sender === 'ai' && msg.thoughtText) {
+                if (msg.sender === 'ai' && msg.thoughtText && activeChat.settings.showThoughtAsAlert) {
                     const thoughtContainer = document.createElement('div');
                     thoughtContainer.className = 'thought-container';
 
                     const thoughtToggle = document.createElement('div');
                     thoughtToggle.className = 'thought-toggle';
                     thoughtToggle.innerHTML = '🤔 查看AI思考过程 ▼';
-                    thoughtToggle.dataset.msgIndex = msgIndex;
 
                     const thoughtContent = document.createElement('div');
                     thoughtContent.className = 'thought-content';
-                    thoughtContent.id = `thought-content-${msgIndex}`;
                     thoughtContent.style.display = 'none';
                     thoughtContent.innerHTML = msg.thoughtText.replace(/\n/g, '<br>');
 
-                    thoughtToggle.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        const content = document.getElementById(`thought-content-${msgIndex}`);
-                        if (content) {
-                            const isOpen = content.style.display === 'block';
-                            content.style.display = isOpen ? 'none' : 'block';
-                            this.innerHTML = isOpen ? '🤔 查看AI思考过程 ▼' : '🤔 隐藏AI思考过程 ▲';
+                    // 使用简单的toggle函数
+                    thoughtToggle.addEventListener('click', function() {
+                        if (thoughtContent.style.display === 'none') {
+                            thoughtContent.style.display = 'block';
+                            thoughtToggle.innerHTML = '🤔 隐藏AI思考过程 ▲';
+                        } else {
+                            thoughtContent.style.display = 'none';
+                            thoughtToggle.innerHTML = '🤔 查看AI思考过程 ▼';
                         }
                     });
 
