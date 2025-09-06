@@ -111,7 +111,51 @@ const Utils = {
             element.addEventListener(event, handler);
         }
     },
-    
+
+    // 升级聊天记录格式
+    upgradeChatHistory(records) {
+        if (!Array.isArray(records)) return [];
+
+        return records.map(record => {
+            const newRecord = { ...record };
+            const contentParts = [];
+            const thoughtTexts = record.thoughtText ? [record.thoughtText] : [];
+
+            const extractThought = (text) => {
+                if (typeof text !== 'string') text = String(text || '');
+                const regex = /<(thought|thinking)>([\s\S]*?)<\/(thought|thinking)>/gi;
+                text = text.replace(regex, (_, __, inner) => {
+                    if (inner.trim()) thoughtTexts.push(inner.trim());
+                    return '';
+                });
+                if (text.trim() !== '') {
+                    contentParts.push({ text: text.trim() });
+                }
+            };
+
+            if (Array.isArray(record.content)) {
+                record.content.forEach(part => {
+                    if (part && typeof part === 'object' && 'inline_data' in part) {
+                        contentParts.push(part);
+                    } else if (part && typeof part === 'object' && 'text' in part) {
+                        extractThought(part.text);
+                    } else if (typeof part === 'string') {
+                        extractThought(part);
+                    }
+                });
+            } else if (typeof record.content === 'string') {
+                extractThought(record.content);
+            } else if (typeof record.text === 'string') {
+                extractThought(record.text);
+            }
+
+            newRecord.content = contentParts;
+            newRecord.thoughtText = thoughtTexts.join('\n');
+            delete newRecord.text;
+            return newRecord;
+        });
+    },
+
     // 升级世界书格式
     upgradeWorldBook(oldBook) {
         return oldBook.map(rule => {

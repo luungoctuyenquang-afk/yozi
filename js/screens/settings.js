@@ -265,7 +265,8 @@ const SettingsScreen = {
             if (importedData.player) await db.player.put({ id: 'main', ...importedData.player });
             if (importedData.ai) await db.ai.put({ id: 'main', ...importedData.ai });
             if (importedData.chat && importedData.chat.history) {
-                await db.chatHistory.bulkAdd(importedData.chat.history);
+                const upgradedHistory = Utils.upgradeChatHistory(importedData.chat.history);
+                await db.chatHistory.bulkAdd(upgradedHistory);
             }
             
             // 处理世界书格式升级
@@ -278,12 +279,21 @@ const SettingsScreen = {
             if (importedData.apiConfig) await db.apiConfig.put({ id: 'main', ...importedData.apiConfig });
             if (importedData.chats) {
                 for (const chatId in importedData.chats) {
-                    const settings = importedData.chats[chatId].settings || {};
-                    settings.enableChainOfThought ??= false;
-                    settings.showThoughtAsAlert ??= false;
-                    if (!settings.enableChainOfThought) {
-                        settings.showThoughtAsAlert = false;
-                    }
+if (importedData.chats) {
+    for (const chatId in importedData.chats) {
+        const settings = importedData.chats[chatId].settings || {};
+        settings.enableChainOfThought ??= false;
+        settings.showThoughtAsAlert ??= false;
+        if (!settings.enableChainOfThought) {
+            settings.showThoughtAsAlert = false;
+        }
+        await db.chatSettings.put({
+            id: chatId,
+            settings,
+        });
+    }
+}
+
                     await db.chatSettings.put({
                         id: chatId,
                         settings,

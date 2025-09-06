@@ -76,7 +76,7 @@ const Database = {
     async loadWorldState() {
         await this.migrateFromLocalStorage();
         
-        const [general, player, ai, chatHistory, worldBook, events, apiConfig, chatSettings] = 
+        const [general, player, ai, chatHistory, worldBook, events, apiConfig, chatSettings] =
             await Promise.all([
                 this.db.general.get('main'),
                 this.db.player.get('main'),
@@ -92,7 +92,8 @@ const Database = {
         newState.lastOnlineTimestamp = general ? general.lastOnlineTimestamp : Date.now();
         newState.player = player || CONFIG.defaults.player;
         newState.ai = ai || CONFIG.defaults.ai;
-        newState.chat = { history: chatHistory || [] };
+        const upgradedHistory = Utils.upgradeChatHistory(chatHistory || []);
+        newState.chat = { history: upgradedHistory };
         
         // 升级世界书格式
         newState.worldBook = (worldBook && worldBook.length > 0) 
@@ -174,6 +175,20 @@ const Database = {
                     showThoughtAsAlert: false
                 }
             };
+        }
+
+        // 校验并补齐聊天设置字段
+        for (const chatId in newState.chats) {
+            const settings = newState.chats[chatId].settings || {};
+            if (typeof settings.enableChainOfThought !== 'boolean') {
+                settings.enableChainOfThought = false;
+            }
+            if (settings.enableChainOfThought) {
+                settings.showThoughtAsAlert = !!settings.showThoughtAsAlert;
+            } else {
+                settings.showThoughtAsAlert = false;
+            }
+            newState.chats[chatId].settings = settings;
         }
         
         // 计算离线收入
