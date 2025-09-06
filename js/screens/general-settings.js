@@ -90,9 +90,13 @@ const GeneralSettingsScreen = {
             // 保存思维链设置
             const chainOfThoughtSwitch = document.getElementById('chain-of-thought-switch');
             activeChat.settings.enableChainOfThought = chainOfThoughtSwitch.checked;
-            
+
             const showThoughtAlertSwitch = document.getElementById('show-thought-alert-switch');
-            activeChat.settings.showThoughtAsAlert = showThoughtAlertSwitch.checked;
+            if (chainOfThoughtSwitch.checked) {
+                activeChat.settings.showThoughtAsAlert = showThoughtAlertSwitch.checked;
+            } else {
+                activeChat.settings.showThoughtAsAlert = false;
+            }
             
             // 保存世界书关联
             const selectedBookIds = [];

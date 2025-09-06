@@ -165,6 +165,20 @@ const Database = {
                 }
             };
         }
+
+        // 校验并补齐聊天设置字段
+        for (const chatId in newState.chats) {
+            const settings = newState.chats[chatId].settings || {};
+            if (typeof settings.enableChainOfThought !== 'boolean') {
+                settings.enableChainOfThought = false;
+            }
+            if (settings.enableChainOfThought) {
+                settings.showThoughtAsAlert = !!settings.showThoughtAsAlert;
+            } else {
+                settings.showThoughtAsAlert = false;
+            }
+            newState.chats[chatId].settings = settings;
+        }
         
         // 计算离线收入
         const timePassedMs = Date.now() - newState.lastOnlineTimestamp;
