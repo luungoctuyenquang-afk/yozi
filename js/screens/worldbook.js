@@ -66,9 +66,9 @@ const WorldBookV2 = {
     renderBookSelector() {
         const selector = document.getElementById('wb-current-book');
         if (!selector) return;
-        
+
         selector.innerHTML = '<option value="">选择世界书...</option>';
-        
+
         this.books.forEach(book => {
             const option = document.createElement('option');
             option.value = book.id;
@@ -78,36 +78,17 @@ const WorldBookV2 = {
             }
             selector.appendChild(option);
         });
-        
-        // 更新书本信息
-        if (this.currentBook) {
-            document.getElementById('wb-book-info').style.display = 'flex';
-            const typeLabel = this.currentBook.scope === 'global' ? '全局' : '角色绑定';
-            document.getElementById('wb-book-type').textContent = typeLabel;
-            document.getElementById('wb-book-type').className = 'wb-badge ' + 
-                (this.currentBook.scope === 'character' ? 'character' : '');
-            
-            const entryCount = this.entries.filter(e => e.bookId === this.currentBook.id).length;
-            document.querySelector('.wb-entry-count').textContent = `${entryCount} 条目`;
-        } else {
-            document.getElementById('wb-book-info').style.display = 'none';
-        }
     },
     
-    // 渲染条目列表
+    // 渲染条目（简化版）
     renderEntries() {
         const container = document.getElementById('wb-entries-list');
         const emptyState = document.getElementById('wb-empty-state');
-        
         if (!container || !this.currentBook) return;
-        
-        // 获取当前书的条目
+
         const bookEntries = this.entries.filter(e => e.bookId === this.currentBook.id);
-        
-        // 搜索和排序
+
         const searchTerm = (document.getElementById('wb-search')?.value || '').toLowerCase();
-        const sortBy = document.getElementById('wb-sort')?.value || 'order';
-        
         let filteredEntries = bookEntries;
         if (searchTerm) {
             filteredEntries = bookEntries.filter(e => {
@@ -115,58 +96,99 @@ const WorldBookV2 = {
                 return searchText.includes(searchTerm);
             });
         }
-        
-        // 排序
-        filteredEntries.sort((a, b) => {
-            if (sortBy === 'order') return b.order - a.order;
-            if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
-            if (sortBy === 'updated') return (b.updatedAt || 0) - (a.updatedAt || 0);
-            return 0;
-        });
-        
-        // 渲染
+
+        filteredEntries.sort((a, b) => b.order - a.order);
+
         container.innerHTML = '';
-        
+
         if (filteredEntries.length === 0) {
             container.style.display = 'none';
             emptyState.style.display = 'block';
         } else {
             container.style.display = 'block';
             emptyState.style.display = 'none';
-            
+
             filteredEntries.forEach(entry => {
-                const card = this.createEntryCard(entry);
-                container.appendChild(card);
+                const item = document.createElement('div');
+                item.className = 'wb-entry-item' + (entry.enabled === false ? ' disabled' : '');
+                item.onclick = () => this.editEntry(entry);
+                const keys = entry.keys.slice(0, 2).join(', ');
+                const content = entry.content.substring(0, 80) + (entry.content.length > 80 ? '...' : '');
+                item.innerHTML = `
+                    <div class="wb-entry-header">
+                        <div class="wb-entry-title">${entry.name || '未命名条目'}</div>
+                        <div class="wb-entry-badge">${entry.constant ? '常驻' : '触发'}</div>
+                    </div>
+                    <div class="wb-entry-preview">${keys ? '🔑 ' + keys : ''} ${content}</div>
+                `;
+                container.appendChild(item);
             });
         }
     },
-    
-    // 创建条目卡片
-    createEntryCard(entry) {
-        const card = document.createElement('div');
-        card.className = 'wb-entry-card' + (entry.enabled === false ? ' disabled' : '');
-        card.onclick = () => this.editEntry(entry);
-        
-        const keysDisplay = entry.keys.slice(0, 3).map(k => `<code>${k}</code>`).join(' ');
-        const contentPreview = entry.content.substring(0, 100) + 
-            (entry.content.length > 100 ? '...' : '');
-        
-        card.innerHTML = `
-            <div class="wb-entry-header">
-                <div class="wb-entry-title">${entry.name || '未命名条目'}</div>
-                <div class="wb-entry-meta">
-                    <span class="wb-entry-status ${entry.enabled === false ? 'disabled' : ''}"></span>
-                    <span class="wb-entry-order">优先级: ${entry.order}</span>
-                </div>
-            </div>
-            <div class="wb-entry-keys">
-                触发词: ${keysDisplay || '<span style="color:#999">无</span>'}
-                ${entry.keys.length > 3 ? `<span style="color:#999">+${entry.keys.length - 3}</span>` : ''}
-            </div>
-            <div class="wb-entry-content">${contentPreview}</div>
-        `;
-        
-        return card;
+
+    // 展开内容编辑
+    expandContent() {
+        const content = document.getElementById('entry-content').value;
+        document.getElementById('expand-content').value = content;
+        document.getElementById('wb-content-expand').style.display = 'flex';
+    },
+
+    // 关闭展开内容
+    closeExpandContent() {
+        document.getElementById('wb-content-expand').style.display = 'none';
+    },
+
+    // 保存展开内容
+    saveExpandContent() {
+        const content = document.getElementById('expand-content').value;
+        document.getElementById('entry-content').value = content;
+        this.closeExpandContent();
+    },
+
+    // 切换角色绑定
+    toggleCharacterBind() {
+        const checkbox = document.getElementById('entry-bind-character');
+        const select = document.getElementById('entry-character');
+        if (checkbox.checked) {
+            select.style.display = 'block';
+        } else {
+            select.style.display = 'none';
+        }
+    },
+
+    // 导入条目
+    importEntry() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                if (data.name) document.getElementById('entry-name').value = data.name;
+                if (data.id) document.getElementById('entry-id').value = data.id;
+                if (data.keys) document.getElementById('entry-keys').value = data.keys.join(', ');
+                if (data.content) document.getElementById('entry-content').value = data.content;
+                alert('条目导入成功！');
+            } catch (err) {
+                alert('导入失败：' + err.message);
+            }
+        };
+        input.click();
+    },
+
+    // 导出条目
+    exportEntry() {
+        if (!this.currentEntry) return;
+        const blob = new Blob([JSON.stringify(this.currentEntry, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `entry_${this.currentEntry.name || 'unnamed'}_${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
     },
     
     // 添加新条目
@@ -212,33 +234,44 @@ const WorldBookV2 = {
     openPanel() {
         const panel = document.getElementById('wb-entry-panel');
         if (!panel || !this.currentEntry) return;
-        
+
         panel.classList.add('open');
-        
-        // 填充表单
+
         document.getElementById('entry-name').value = this.currentEntry.name || '';
+        document.getElementById('entry-id').value = this.currentEntry.id || '';
         document.getElementById('entry-keys').value = this.currentEntry.keys.join(', ');
-        document.getElementById('entry-secondary-keys').value = 
-            (this.currentEntry.secondaryKeys || []).join(', ');
+        document.getElementById('entry-secondary-keys').value = (this.currentEntry.secondaryKeys || []).join(', ');
         document.getElementById('entry-content').value = this.currentEntry.content || '';
         document.getElementById('entry-order').value = this.currentEntry.order || 100;
         document.getElementById('entry-depth').value = this.currentEntry.depth || 4;
         document.getElementById('entry-logic').value = this.currentEntry.logic || 'AND_ANY';
         document.getElementById('entry-selective').checked = this.currentEntry.selective || false;
         document.getElementById('entry-constant').checked = this.currentEntry.constant || false;
-        document.getElementById('entry-probability').value = this.currentEntry.probability || 100;
-        document.getElementById('entry-probability-value').textContent = 
-            (this.currentEntry.probability || 100) + '%';
+        document.getElementById('entry-probability').value = this.currentEntry.probability ?? 100;
+        document.getElementById('prob-value').textContent = (this.currentEntry.probability ?? 100) + '%';
         document.getElementById('entry-position').value = this.currentEntry.position || 'after_char';
-        document.getElementById('entry-disable-recursion').checked = 
-            this.currentEntry.disableRecursion || false;
+        document.getElementById('entry-disable-recursion').checked = this.currentEntry.disableRecursion || false;
         document.getElementById('entry-scan-depth').checked = this.currentEntry.scanDepth || false;
-        document.getElementById('entry-recursion-depth').value = 
-            this.currentEntry.recursionDepth || 2;
-        
-        // 更新启用图标
-        document.getElementById('entry-enabled-icon').textContent = 
-            this.currentEntry.enabled !== false ? '✅' : '❌';
+        document.getElementById('entry-recursion-depth').value = this.currentEntry.recursionDepth || 2;
+
+        const bindCheckbox = document.getElementById('entry-bind-character');
+        const charSelect = document.getElementById('entry-character');
+        if (this.currentEntry.character) {
+            bindCheckbox.checked = true;
+            charSelect.style.display = 'block';
+            charSelect.value = this.currentEntry.character;
+        } else {
+            bindCheckbox.checked = false;
+            charSelect.style.display = 'none';
+            charSelect.value = '';
+        }
+
+        const probSlider = document.getElementById('entry-probability');
+        if (probSlider) {
+            probSlider.oninput = (e) => {
+                document.getElementById('prob-value').textContent = e.target.value + '%';
+            };
+        }
     },
     
     // 关闭编辑面板
@@ -256,6 +289,8 @@ const WorldBookV2 = {
         
         // 从表单获取值
         this.currentEntry.name = document.getElementById('entry-name').value;
+        const newId = document.getElementById('entry-id').value.trim();
+        if (newId) this.currentEntry.id = newId;
         this.currentEntry.keys = document.getElementById('entry-keys').value
             .split(',')
             .map(k => k.trim())
@@ -275,6 +310,11 @@ const WorldBookV2 = {
         this.currentEntry.disableRecursion = document.getElementById('entry-disable-recursion').checked;
         this.currentEntry.scanDepth = document.getElementById('entry-scan-depth').checked;
         this.currentEntry.recursionDepth = parseInt(document.getElementById('entry-recursion-depth').value);
+        if (document.getElementById('entry-bind-character').checked) {
+            this.currentEntry.character = document.getElementById('entry-character').value;
+        } else {
+            delete this.currentEntry.character;
+        }
         this.currentEntry.updatedAt = Date.now();
         
         // 保存到列表
@@ -291,16 +331,7 @@ const WorldBookV2 = {
         
         alert('条目已保存！');
     },
-    
-    // 切换条目启用状态
-    toggleEntryEnabled() {
-        if (!this.currentEntry) return;
-        
-        this.currentEntry.enabled = !this.currentEntry.enabled;
-        document.getElementById('entry-enabled-icon').textContent = 
-            this.currentEntry.enabled ? '✅' : '❌';
-    },
-    
+
     // 删除条目
     deleteEntry() {
         if (!this.currentEntry) return;
@@ -311,26 +342,6 @@ const WorldBookV2 = {
             this.renderEntries();
             this.closePanel();
         }
-    },
-    
-    // 复制条目
-    duplicateEntry() {
-        if (!this.currentEntry) return;
-        
-        const newEntry = {
-            ...this.currentEntry,
-            id: `entry_${Date.now()}`,
-            name: this.currentEntry.name + ' (副本)',
-            createdAt: Date.now(),
-            updatedAt: Date.now()
-        };
-        
-        this.entries.push(newEntry);
-        this.saveData();
-        this.renderEntries();
-        
-        this.currentEntry = newEntry;
-        this.openPanel();
     },
     
     // 测试条目
@@ -449,29 +460,14 @@ const WorldBookV2 = {
             return;
         }
         
-        const dialog = document.getElementById('wb-book-settings-dialog');
+        const dialog = document.getElementById('wb-book-settings');
         if (!dialog) return;
-        
+
         dialog.style.display = 'flex';
-        
-        // 填充表单
+
         document.getElementById('book-name').value = this.currentBook.name;
         document.getElementById('book-description').value = this.currentBook.description || '';
-        document.getElementById('book-scope').value = this.currentBook.scope;
-        document.getElementById('book-scan-depth').value = this.currentBook.scanDepth;
-        document.getElementById('book-token-budget').value = this.currentBook.tokenBudget;
-        document.getElementById('book-recursive').checked = this.currentBook.recursive;
-        document.getElementById('book-case-sensitive').checked = this.currentBook.caseSensitive;
-        document.getElementById('book-match-whole-words').checked = this.currentBook.matchWholeWords;
-        
-        // 显示/隐藏角色选择
-        const charSelect = document.getElementById('book-character-select');
-        if (this.currentBook.scope === 'character') {
-            charSelect.style.display = 'block';
-            document.getElementById('book-character').value = this.currentBook.character || '';
-        } else {
-            charSelect.style.display = 'none';
-        }
+        document.getElementById('book-scope').value = this.currentBook.scope || 'global';
     },
     
     // 保存世界书设置
@@ -481,17 +477,6 @@ const WorldBookV2 = {
         this.currentBook.name = document.getElementById('book-name').value;
         this.currentBook.description = document.getElementById('book-description').value;
         this.currentBook.scope = document.getElementById('book-scope').value;
-        this.currentBook.scanDepth = parseInt(document.getElementById('book-scan-depth').value);
-        this.currentBook.tokenBudget = parseInt(document.getElementById('book-token-budget').value);
-        this.currentBook.recursive = document.getElementById('book-recursive').checked;
-        this.currentBook.caseSensitive = document.getElementById('book-case-sensitive').checked;
-        this.currentBook.matchWholeWords = document.getElementById('book-match-whole-words').checked;
-        
-        if (this.currentBook.scope === 'character') {
-            this.currentBook.character = document.getElementById('book-character').value;
-        } else {
-            this.currentBook.character = null;
-        }
         
         this.saveData();
         this.render();
@@ -502,7 +487,7 @@ const WorldBookV2 = {
     
     // 关闭设置对话框
     closeBookSettings() {
-        const dialog = document.getElementById('wb-book-settings-dialog');
+        const dialog = document.getElementById('wb-book-settings');
         if (dialog) {
             dialog.style.display = 'none';
         }
@@ -565,43 +550,11 @@ const WorldBookV2 = {
             searchInput.addEventListener('input', () => this.renderEntries());
         }
         
-        // 排序
-        const sortSelect = document.getElementById('wb-sort');
-        if (sortSelect) {
-            sortSelect.addEventListener('change', () => this.renderEntries());
-        }
-        
         // 概率滑块
         const probSlider = document.getElementById('entry-probability');
         if (probSlider) {
             probSlider.addEventListener('input', (e) => {
-                document.getElementById('entry-probability-value').textContent = e.target.value + '%';
-            });
-        }
-        
-        // 作用范围切换
-        const scopeSelect = document.getElementById('book-scope');
-        if (scopeSelect) {
-            scopeSelect.addEventListener('change', (e) => {
-                const charSelect = document.getElementById('book-character-select');
-                if (e.target.value === 'character') {
-                    charSelect.style.display = 'block';
-                } else {
-                    charSelect.style.display = 'none';
-                }
-            });
-        }
-        
-        // 选择性触发开关
-        const selectiveCheck = document.getElementById('entry-selective');
-        if (selectiveCheck) {
-            selectiveCheck.addEventListener('change', (e) => {
-                const logicInput = document.getElementById('entry-selective-logic');
-                if (e.target.checked) {
-                    logicInput.style.display = 'block';
-                } else {
-                    logicInput.style.display = 'none';
-                }
+                document.getElementById('prob-value').textContent = e.target.value + '%';
             });
         }
     }
