@@ -162,6 +162,7 @@
                     <input type="checkbox" id="show-thought-alert-switch" style="width: auto; height: 18px;">
                 </div>
                   <button id="save-general-settings-btn" class="form-button">保存通用设置</button>
+                  <button id="debug-settings-btn" class="form-button-secondary" style="margin-top: 10px;">调试设置状态</button>
                   <button id="fix-data-btn" class="form-button-secondary" style="margin-top: 10px;">修复数据兼容性</button>
               </div>
           </section>
@@ -187,9 +188,16 @@
     <script src="js/screens/worldbook.js"></script>
     <script src="js/screens/settings.js"></script>
     <script src="js/screens/general-settings.js"></script>
-    
+
     <!-- 主入口（必须最后加载） -->
     <script src="js/main.js"></script>
-
+    <script>
+    // 注册Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+            console.log('Service Worker registered');
+        });
+    }
+    </script>
 </body>
 </html>
