@@ -279,9 +279,19 @@ const SettingsScreen = {
             if (importedData.chats) {
                 for (const chatId in importedData.chats) {
                     if (importedData.chats[chatId].settings) {
+                        const settings = importedData.chats[chatId].settings;
+                        if (typeof settings.enableChainOfThought !== 'boolean') {
+                            settings.enableChainOfThought = false;
+                        }
+                        if (typeof settings.showThoughtAsAlert !== 'boolean') {
+                            settings.showThoughtAsAlert = false;
+                        }
+                        if (!settings.enableChainOfThought && settings.showThoughtAsAlert) {
+                            settings.showThoughtAsAlert = false;
+                        }
                         await db.chatSettings.put({
                             id: chatId,
-                            settings: importedData.chats[chatId].settings
+                            settings
                         });
                     }
                 }
