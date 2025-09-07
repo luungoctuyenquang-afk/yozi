@@ -99,7 +99,23 @@
             <input type="text" id="wb-search" class="wb-search-minimal" placeholder="搜索条目...">
             <button class="wb-add-btn" onclick="WorldBookV2.addEntry()">+ 新条目</button>
         </div>
-        
+
+        <!-- 批量操作栏（仅在有条目时显示） -->
+        <div class="wb-batch-bar" id="wb-batch-bar" style="display:none;">
+            <div class="wb-batch-info">
+                <label class="wb-switch">
+                    <input type="checkbox" id="wb-select-all" onchange="WorldBookV2.toggleSelectAll()">
+                    <span>全选</span>
+                </label>
+                <span id="wb-selected-count" style="margin-left:10px;font-size:13px;color:#666;">已选: 0</span>
+            </div>
+            <div class="wb-batch-actions">
+                <button class="wb-batch-btn" onclick="WorldBookV2.batchEnable(true)">启用</button>
+                <button class="wb-batch-btn" onclick="WorldBookV2.batchEnable(false)">禁用</button>
+                <button class="wb-batch-btn danger" onclick="WorldBookV2.batchDelete()">删除</button>
+            </div>
+        </div>
+
         <!-- 条目列表（极简卡片） -->
         <div class="wb-entries-list" id="wb-entries-list">
             <!-- 条目将在这里渲染 -->
@@ -203,7 +219,11 @@
                             <option value="after_char">角色定义后</option>
                             <option value="before_example">示例消息前</option>
                             <option value="after_example">示例消息后</option>
-                            <option value="at_depth">按深度插入</option>
+                            <option value="before_an">作者注释前</option>
+                            <option value="after_an">作者注释后</option>
+                            <option value="depth_system">@Depth ⚙️系统</option>
+                            <option value="depth_user">@Depth 👤用户</option>
+                            <option value="depth_assistant">@Depth 🤖AI</option>
                         </select>
                     </div>
                     
@@ -349,6 +369,60 @@
                     <option value="character">绑定角色</option>
                 </select>
             </div>
+            
+            <!-- 全局激活设置（可折叠） -->
+            <details class="wb-collapsible">
+                <summary>🔧 全局激活设置</summary>
+                
+                <div class="wb-field">
+                    <label class="wb-label">扫描深度 <span style="font-size:11px;color:#999">(回溯消息数)</span></label>
+                    <input type="number" id="book-scan-depth" class="wb-input" value="2" min="0" max="100">
+                </div>
+                
+                <div class="wb-field">
+                    <label class="wb-label">Token预算 <span style="font-size:11px;color:#999">(上下文占用)</span></label>
+                    <input type="number" id="book-token-budget" class="wb-input" value="2048" min="0">
+                </div>
+                
+                <div class="wb-field">
+                    <label class="wb-label">最小激活数 <span style="font-size:11px;color:#999">(至少触发条目数)</span></label>
+                    <input type="number" id="book-min-activations" class="wb-input" value="0" min="0">
+                </div>
+                
+                <div class="wb-field">
+                    <label class="wb-label">最大递归层级</label>
+                    <input type="number" id="book-max-recursion" class="wb-input" value="3" min="1" max="10">
+                </div>
+                
+                <div class="wb-switches">
+                    <label class="wb-switch">
+                        <input type="checkbox" id="book-recursive" checked>
+                        <span>启用递归扫描</span>
+                    </label>
+                    <label class="wb-switch">
+                        <input type="checkbox" id="book-case-sensitive">
+                        <span>区分大小写</span>
+                    </label>
+                </div>
+                
+                <div class="wb-switches">
+                    <label class="wb-switch">
+                        <input type="checkbox" id="book-match-whole-words" checked>
+                        <span>全词匹配</span>
+                    </label>
+                    <label class="wb-switch">
+                        <input type="checkbox" id="book-include-names" checked>
+                        <span>包含说话者名</span>
+                    </label>
+                </div>
+                
+                <div class="wb-switches">
+                    <label class="wb-switch">
+                        <input type="checkbox" id="book-overflow-alert" checked>
+                        <span>溢出警告</span>
+                    </label>
+                </div>
+            </details>
         </div>
         <div class="wb-modal-footer">
             <button class="wb-btn-primary" onclick="WorldBookV2.saveBookSettings()">保存</button>
