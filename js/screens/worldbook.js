@@ -15,18 +15,82 @@ const WorldBookV2 = {
     
     // 加载数据
     loadData() {
+        // 尝试迁移旧数据
+        this.migrateOldData();
+
         // 加载世界书列表
         const booksData = localStorage.getItem('worldbook.books.v2');
         this.books = booksData ? JSON.parse(booksData) : [];
-        
+
         // 加载条目
         const entriesData = localStorage.getItem('worldbook.entries.v2');
         this.entries = entriesData ? JSON.parse(entriesData) : [];
-        
+
         // 如果没有世界书，创建默认的
         if (this.books.length === 0) {
             this.createDefaultBook();
         }
+    },
+
+    // 数据迁移方法
+    migrateOldData() {
+        // 检查是否有旧版本数据
+        const oldWorldBook = StateManager.get()?.worldBook;
+        if (!oldWorldBook || oldWorldBook.length === 0) return;
+
+        // 检查是否已经迁移过
+        if (localStorage.getItem('worldbook.migrated.v2')) return;
+
+        console.log('开始迁移旧世界书数据...');
+
+        // 创建默认世界书
+        const defaultBook = {
+            id: 'migrated_' + Date.now(),
+            name: '迁移的世界书',
+            description: '从旧版本迁移的世界书条目',
+            scope: 'global',
+            character: null,
+            scanDepth: 2,
+            tokenBudget: 2048,
+            recursive: true,
+            caseSensitive: false,
+            matchWholeWords: false,
+            createdAt: Date.now()
+        };
+
+        // 迁移条目
+        const migratedEntries = oldWorldBook.map((rule, index) => ({
+            id: rule.id || `migrated_entry_${index}`,
+            bookId: defaultBook.id,
+            name: rule.name || rule.key || '迁移的条目',
+            keys: rule.triggers || [rule.key || ''],
+            secondaryKeys: [],
+            content: rule.content || rule.description || '',
+            order: rule.priority || 100,
+            depth: 4,
+            logic: 'AND_ANY',
+            selective: false,
+            constant: rule.constant || false,
+            probability: 100,
+            position: rule.position || 'after_char',
+            disableRecursion: false,
+            scanDepth: false,
+            recursionDepth: 2,
+            enabled: rule.enabled !== false,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        }));
+
+        // 保存迁移的数据
+        this.books = [defaultBook];
+        this.entries = migratedEntries;
+        this.saveData();
+
+        // 标记已迁移
+        localStorage.setItem('worldbook.migrated.v2', 'true');
+
+        console.log(`成功迁移 ${migratedEntries.length} 个条目`);
+        alert(`已从旧版本迁移 ${migratedEntries.length} 个世界书条目！`);
     },
     
     // 保存数据
@@ -110,19 +174,34 @@ const WorldBookV2 = {
 
             filteredEntries.forEach(entry => {
                 const item = document.createElement('div');
-                item.className = 'wb-entry-item' + (entry.enabled === false ? ' disabled' : '');
-                item.onclick = () => this.editEntry(entry);
+                const isSelected = this.selectedEntryIds.has(entry.id);
+                item.className = 'wb-entry-item' + 
+                    (entry.enabled === false ? ' disabled' : '') +
+                    (isSelected ? ' selected' : '');
+
                 const keys = entry.keys.slice(0, 2).join(', ');
                 const content = entry.content.substring(0, 80) + (entry.content.length > 80 ? '...' : '');
+
                 item.innerHTML = `
-                    <div class="wb-entry-header">
-                        <div class="wb-entry-title">${entry.name || '未命名条目'}</div>
-                        <div class="wb-entry-badge">${entry.constant ? '常驻' : '触发'}</div>
+                    <div style="display: flex; align-items: flex-start; gap: 8px;">
+                        <input type="checkbox" 
+                            class="wb-entry-checkbox" 
+                            ${isSelected ? 'checked' : ''}
+                            onclick="event.stopPropagation(); WorldBookV2.toggleEntrySelection('${entry.id}')">
+                        <div style="flex: 1;" onclick="WorldBookV2.editEntry(${JSON.stringify(entry).replace(/"/g, '&quot;')})">
+                            <div class="wb-entry-header">
+                                <div class="wb-entry-title">${entry.name || '未命名条目'}</div>
+                                <div class="wb-entry-badge">${entry.constant ? '常驻' : '触发'}</div>
+                            </div>
+                            <div class="wb-entry-preview">${keys ? '🔑 ' + keys : ''} ${content}</div>
+                        </div>
                     </div>
-                    <div class="wb-entry-preview">${keys ? '🔑 ' + keys : ''} ${content}</div>
                 `;
                 container.appendChild(item);
             });
+
+            // 更新批量操作栏
+            this.updateBatchBar();
         }
     },
 
@@ -543,19 +622,171 @@ const WorldBookV2 = {
                 this.render();
             });
         }
-        
+
         // 搜索
         const searchInput = document.getElementById('wb-search');
         if (searchInput) {
             searchInput.addEventListener('input', () => this.renderEntries());
         }
-        
+
         // 概率滑块
         const probSlider = document.getElementById('entry-probability');
         if (probSlider) {
             probSlider.addEventListener('input', (e) => {
                 document.getElementById('prob-value').textContent = e.target.value + '%';
             });
+        }
+
+        // 手势支持（移动端右滑返回）
+        const worldBookScreen = document.getElementById('world-book-screen');
+        if (worldBookScreen) {
+            let touchStartX = 0;
+            let touchEndX = 0;
+
+            worldBookScreen.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, false);
+
+            worldBookScreen.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].screenX;
+                this.handleSwipe();
+            }, false);
+
+            this.handleSwipe = () => {
+                // 右滑超过50像素时返回
+                if (touchEndX - touchStartX > 50) {
+                    // 如果编辑面板打开，先关闭面板
+                    const panel = document.getElementById('wb-entry-panel');
+                    if (panel && panel.classList.contains('open')) {
+                        this.closePanel();
+                    } else {
+                        // 否则返回主屏幕
+                        const backBtn = document.getElementById('world-book-back-btn');
+                        if (backBtn) {
+                            backBtn.click();
+                        }
+                    }
+                }
+            };
+        }
+    },
+
+    // ========== 批量操作功能 ==========
+
+    // 选中的条目ID集合
+    selectedEntryIds: new Set(),
+
+    // 切换单个条目选中状态
+    toggleEntrySelection(entryId) {
+        if (this.selectedEntryIds.has(entryId)) {
+            this.selectedEntryIds.delete(entryId);
+        } else {
+            this.selectedEntryIds.add(entryId);
+        }
+        this.updateBatchBar();
+        this.renderEntries();
+    },
+
+    // 全选/取消全选
+    toggleSelectAll() {
+        const bookEntries = this.entries.filter(e => e.bookId === this.currentBook.id);
+        const allSelected = bookEntries.every(e => this.selectedEntryIds.has(e.id));
+
+        if (allSelected) {
+            // 取消全选
+            this.selectedEntryIds.clear();
+        } else {
+            // 全选当前世界书的所有条目
+            bookEntries.forEach(e => this.selectedEntryIds.add(e.id));
+        }
+
+        // 更新全选checkbox状态
+        const selectAllCheckbox = document.getElementById('wb-select-all');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = !allSelected;
+        }
+
+        this.updateBatchBar();
+        this.renderEntries();
+    },
+
+    // 批量启用/禁用
+    batchEnable(enable) {
+        if (this.selectedEntryIds.size === 0) {
+            alert('请先选择要操作的条目');
+            return;
+        }
+
+        const count = this.selectedEntryIds.size;
+
+        // 更新选中条目的启用状态
+        this.entries = this.entries.map(entry => {
+            if (this.selectedEntryIds.has(entry.id)) {
+                entry.enabled = enable;
+                entry.updatedAt = Date.now();
+            }
+            return entry;
+        });
+
+        this.saveData();
+        this.selectedEntryIds.clear();
+        this.updateBatchBar();
+        this.renderEntries();
+
+        alert(`已${enable ? '启用' : '禁用'} ${count} 个条目`);
+    },
+
+    // 批量删除
+    batchDelete() {
+        if (this.selectedEntryIds.size === 0) {
+            alert('请先选择要删除的条目');
+            return;
+        }
+
+        if (!confirm(`确定要删除选中的 ${this.selectedEntryIds.size} 个条目吗？`)) {
+            return;
+        }
+
+        // 删除选中的条目
+        this.entries = this.entries.filter(entry => !this.selectedEntryIds.has(entry.id));
+
+        this.saveData();
+        this.selectedEntryIds.clear();
+        this.updateBatchBar();
+        this.renderEntries();
+
+        alert('已删除选中的条目');
+    },
+
+    // 更新批量操作栏显示
+    updateBatchBar() {
+        const batchBar = document.getElementById('wb-batch-bar');
+        const selectedCount = document.getElementById('wb-selected-count');
+        const bookEntries = this.entries.filter(e => e.bookId === this.currentBook.id);
+
+        if (!batchBar) return;
+
+        // 只有当前世界书有条目时才显示批量操作栏
+        if (bookEntries.length > 0) {
+            batchBar.style.display = 'flex';
+
+            // 更新选中数量显示
+            if (selectedCount) {
+                const selectedInCurrentBook = bookEntries.filter(e =>
+                    this.selectedEntryIds.has(e.id)
+                ).length;
+                selectedCount.textContent = `已选: ${selectedInCurrentBook}`;
+            }
+
+            // 更新全选checkbox状态
+            const selectAllCheckbox = document.getElementById('wb-select-all');
+            if (selectAllCheckbox) {
+                const allSelected = bookEntries.length > 0 &&
+                    bookEntries.every(e => this.selectedEntryIds.has(e.id));
+                selectAllCheckbox.checked = allSelected;
+            }
+        } else {
+            batchBar.style.display = 'none';
         }
     }
 };
