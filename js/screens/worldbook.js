@@ -186,10 +186,10 @@ const WorldBookV2 = {
                 const content = entry.content.substring(0, 80) + (entry.content.length > 80 ? '...' : '');
 
                 item.innerHTML = `
-                    <div class="wb-entry-content">
+                    <div class="wb-entry-content" onclick="WorldBookV2.editEntry(${JSON.stringify(entry).replace(/"/g, '&quot;')})">
                         <div style="display: flex; align-items: flex-start; gap: 8px;">
-                            <input type="checkbox" 
-                                class="wb-entry-checkbox" 
+                            <input type="checkbox"
+                                class="wb-entry-checkbox"
                                 ${isSelected ? 'checked' : ''}
                                 onclick="event.stopPropagation(); WorldBookV2.toggleEntrySelection('${entry.id}')">
                             <div style="flex: 1;">
@@ -202,8 +202,8 @@ const WorldBookV2 = {
                         </div>
                     </div>
                     <div class="wb-swipe-actions">
-                        <button class="wb-swipe-edit" onclick="WorldBookV2.editEntry(${JSON.stringify(entry).replace(/"/g, '&quot;')})">编辑</button>
-                        <button class="wb-swipe-delete" onclick="WorldBookV2.quickDeleteEntry('${entry.id}')">删除</button>
+                        <button class="wb-swipe-edit" onclick="event.stopPropagation(); WorldBookV2.editEntry(${JSON.stringify(entry).replace(/"/g, '&quot;')})">编辑</button>
+                        <button class="wb-swipe-delete" onclick="event.stopPropagation(); WorldBookV2.quickDeleteEntry('${entry.id}')">删除</button>
                     </div>
                 `;
                 
@@ -362,13 +362,16 @@ const WorldBookV2 = {
         document.getElementById('entry-scan-depth').checked = this.currentEntry.scanDepth || false;
         document.getElementById('entry-recursion-depth').value = this.currentEntry.recursionDepth || 2;
 
+        // 加载绑定设置
         const inheritRadio = document.getElementById('entry-bind-inherit');
         const globalRadio = document.getElementById('entry-bind-global');
         const characterRadio = document.getElementById('entry-bind-character');
         const charContainer = document.getElementById('character-select-container');
 
+        // 确定绑定类型
         let bindType = this.currentEntry.bindType;
         if (!bindType) {
+            // 兼容旧数据
             if (Array.isArray(this.currentEntry.characters) && this.currentEntry.characters.length > 0) {
                 bindType = 'character';
             } else if (this.currentEntry.character) {
@@ -379,15 +382,20 @@ const WorldBookV2 = {
             }
         }
 
+        // 设置单选按钮
         if (bindType === 'character') {
             if (characterRadio) characterRadio.checked = true;
             if (globalRadio) globalRadio.checked = false;
             if (inheritRadio) inheritRadio.checked = false;
             if (charContainer) charContainer.style.display = 'block';
+            
+            // 设置多选框
             const selectedChars = this.currentEntry.characters || [];
             document.querySelectorAll('input[name="entry-characters"]').forEach(cb => {
                 cb.checked = selectedChars.includes(cb.value);
             });
+            
+            // 设置排除模式
             document.getElementById('entry-exclude-mode').checked = this.currentEntry.excludeMode || false;
         } else if (bindType === 'global') {
             if (globalRadio) globalRadio.checked = true;
@@ -395,6 +403,7 @@ const WorldBookV2 = {
             if (inheritRadio) inheritRadio.checked = false;
             if (charContainer) charContainer.style.display = 'none';
         } else {
+            // 默认继承
             if (inheritRadio) inheritRadio.checked = true;
             if (globalRadio) globalRadio.checked = false;
             if (characterRadio) characterRadio.checked = false;
@@ -445,16 +454,22 @@ const WorldBookV2 = {
         this.currentEntry.disableRecursion = document.getElementById('entry-disable-recursion').checked;
         this.currentEntry.scanDepth = document.getElementById('entry-scan-depth').checked;
         this.currentEntry.recursionDepth = parseInt(document.getElementById('entry-recursion-depth').value);
+        // 保存绑定类型
         const bindType = document.querySelector('input[name="entry-bind-type"]:checked')?.value || 'inherit';
         this.currentEntry.bindType = bindType;
+
+        // 如果是角色绑定，保存选中的角色
         if (bindType === 'character') {
-            const chars = Array.from(document.querySelectorAll('input[name="entry-characters"]:checked')).map(cb => cb.value);
-            this.currentEntry.characters = chars;
+            const selectedChars = Array.from(document.querySelectorAll('input[name="entry-characters"]:checked'))
+                .map(cb => cb.value);
+            this.currentEntry.characters = selectedChars;
             this.currentEntry.excludeMode = document.getElementById('entry-exclude-mode').checked;
         } else {
             delete this.currentEntry.characters;
             delete this.currentEntry.excludeMode;
         }
+
+        // 清理旧的character字段
         delete this.currentEntry.character;
         this.currentEntry.updatedAt = Date.now();
         
@@ -721,38 +736,7 @@ const WorldBookV2 = {
             });
         }
 
-        // 手势支持（移动端右滑返回）
-        const worldBookScreen = document.getElementById('world-book-screen');
-        if (worldBookScreen) {
-            let touchStartX = 0;
-            let touchEndX = 0;
-
-            worldBookScreen.addEventListener('touchstart', (e) => {
-                touchStartX = e.changedTouches[0].screenX;
-            }, false);
-
-            worldBookScreen.addEventListener('touchend', (e) => {
-                touchEndX = e.changedTouches[0].screenX;
-                this.handleSwipe();
-            }, false);
-
-            this.handleSwipe = () => {
-                // 右滑超过50像素时返回
-                if (touchEndX - touchStartX > 50) {
-                    // 如果编辑面板打开，先关闭面板
-                    const panel = document.getElementById('wb-entry-panel');
-                    if (panel && panel.classList.contains('open')) {
-                        this.closePanel();
-                    } else {
-                        // 否则返回主屏幕
-                        const backBtn = document.getElementById('world-book-back-btn');
-                        if (backBtn) {
-                            backBtn.click();
-                        }
-                    }
-                }
-            };
-        }
+        // 已移除右滑返回功能，避免与条目操作冲突
     },
 
     // ========== 批量操作功能 ==========
@@ -910,20 +894,35 @@ const WorldBookV2 = {
         });
         
         // 触摸结束
-        element.addEventListener('touchend', () => {
+        element.addEventListener('touchend', (e) => {
             if (!isDragging) return;
             isDragging = false;
-            
+
             const diff = startX - currentX;
-            
-            // 超过阈值，显示操作
+
+            // 左滑超过阈值，显示操作
             if (diff > threshold) {
                 content.style.transform = 'translateX(-120px)';
                 actions.style.opacity = 1;
-            } else {
+            } 
+            // 右滑或未达阈值，复原
+            else {
                 content.style.transform = 'translateX(0)';
                 actions.style.opacity = 0;
             }
+
+            // 防止触发点击事件
+            if (Math.abs(diff) > 10) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+
+        // 添加触摸取消处理
+        element.addEventListener('touchcancel', () => {
+            isDragging = false;
+            content.style.transform = 'translateX(0)';
+            actions.style.opacity = 0;
         });
         
         // 点击其他地方时收回
