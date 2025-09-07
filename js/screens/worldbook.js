@@ -76,6 +76,9 @@ const WorldBookV2 = {
             disableRecursion: false,
             scanDepth: false,
             recursionDepth: 2,
+            bindType: 'global',
+            characters: [],
+            excludeMode: false,
             enabled: rule.enabled !== false,
             createdAt: Date.now(),
             updatedAt: Date.now()
@@ -175,7 +178,7 @@ const WorldBookV2 = {
             filteredEntries.forEach(entry => {
                 const item = document.createElement('div');
                 const isSelected = this.selectedEntryIds.has(entry.id);
-                item.className = 'wb-entry-item' + 
+                item.className = 'wb-entry-item wb-swipeable' +
                     (entry.enabled === false ? ' disabled' : '') +
                     (isSelected ? ' selected' : '');
 
@@ -183,20 +186,29 @@ const WorldBookV2 = {
                 const content = entry.content.substring(0, 80) + (entry.content.length > 80 ? '...' : '');
 
                 item.innerHTML = `
-                    <div style="display: flex; align-items: flex-start; gap: 8px;">
-                        <input type="checkbox" 
-                            class="wb-entry-checkbox" 
-                            ${isSelected ? 'checked' : ''}
-                            onclick="event.stopPropagation(); WorldBookV2.toggleEntrySelection('${entry.id}')">
-                        <div style="flex: 1;" onclick="WorldBookV2.editEntry(${JSON.stringify(entry).replace(/"/g, '&quot;')})">
-                            <div class="wb-entry-header">
-                                <div class="wb-entry-title">${entry.name || '未命名条目'}</div>
-                                <div class="wb-entry-badge">${entry.constant ? '常驻' : '触发'}</div>
+                    <div class="wb-entry-content">
+                        <div style="display: flex; align-items: flex-start; gap: 8px;">
+                            <input type="checkbox" 
+                                class="wb-entry-checkbox" 
+                                ${isSelected ? 'checked' : ''}
+                                onclick="event.stopPropagation(); WorldBookV2.toggleEntrySelection('${entry.id}')">
+                            <div style="flex: 1;">
+                                <div class="wb-entry-header">
+                                    <div class="wb-entry-title">${entry.name || '未命名条目'}</div>
+                                    <div class="wb-entry-badge">${entry.constant ? '常驻' : '触发'}${entry.enabled === false ? ' · 已禁用' : ''}</div>
+                                </div>
+                                <div class="wb-entry-preview">${keys ? '🔑 ' + keys : ''} ${content}</div>
                             </div>
-                            <div class="wb-entry-preview">${keys ? '🔑 ' + keys : ''} ${content}</div>
                         </div>
                     </div>
+                    <div class="wb-swipe-actions">
+                        <button class="wb-swipe-edit" onclick="WorldBookV2.editEntry(${JSON.stringify(entry).replace(/"/g, '&quot;')})">编辑</button>
+                        <button class="wb-swipe-delete" onclick="WorldBookV2.quickDeleteEntry('${entry.id}')">删除</button>
+                    </div>
                 `;
+                
+                // 添加滑动手势
+                this.addSwipeGesture(item, entry);
                 container.appendChild(item);
             });
 
@@ -221,19 +233,25 @@ const WorldBookV2 = {
     saveExpandContent() {
         const content = document.getElementById('expand-content').value;
         document.getElementById('entry-content').value = content;
+        this.updatePreview();
         this.closeExpandContent();
     },
 
     // 切换绑定类型
     toggleBindType() {
         const characterRadio = document.getElementById('entry-bind-character');
-        const select = document.getElementById('entry-character');
+        const container = document.getElementById('character-select-container');
 
         if (characterRadio && characterRadio.checked) {
-            select.style.display = 'block';
+            container.style.display = 'block';
         } else {
-            select.style.display = 'none';
-            select.value = '';
+            container.style.display = 'none';
+            // 清空选择
+            document.querySelectorAll('input[name="entry-characters"]').forEach(cb => {
+                cb.checked = false;
+            });
+            const exclude = document.getElementById('entry-exclude-mode');
+            if (exclude) exclude.checked = false;
         }
     },
 
@@ -302,6 +320,9 @@ const WorldBookV2 = {
             disableRecursion: false,
             scanDepth: false,
             recursionDepth: 2,
+            bindType: 'inherit',
+            characters: [],
+            excludeMode: false,
             enabled: true,
             createdAt: Date.now(),
             updatedAt: Date.now()
@@ -328,6 +349,7 @@ const WorldBookV2 = {
         document.getElementById('entry-keys').value = this.currentEntry.keys.join(', ');
         document.getElementById('entry-secondary-keys').value = (this.currentEntry.secondaryKeys || []).join(', ');
         document.getElementById('entry-content').value = this.currentEntry.content || '';
+        this.updatePreview();
         document.getElementById('entry-order').value = this.currentEntry.order || 100;
         document.getElementById('entry-depth').value = this.currentEntry.depth || 4;
         document.getElementById('entry-logic').value = this.currentEntry.logic || 'AND_ANY';
@@ -340,20 +362,43 @@ const WorldBookV2 = {
         document.getElementById('entry-scan-depth').checked = this.currentEntry.scanDepth || false;
         document.getElementById('entry-recursion-depth').value = this.currentEntry.recursionDepth || 2;
 
+        const inheritRadio = document.getElementById('entry-bind-inherit');
         const globalRadio = document.getElementById('entry-bind-global');
         const characterRadio = document.getElementById('entry-bind-character');
-        const charSelect = document.getElementById('entry-character');
+        const charContainer = document.getElementById('character-select-container');
 
-        if (this.currentEntry.character) {
+        let bindType = this.currentEntry.bindType;
+        if (!bindType) {
+            if (Array.isArray(this.currentEntry.characters) && this.currentEntry.characters.length > 0) {
+                bindType = 'character';
+            } else if (this.currentEntry.character) {
+                bindType = 'character';
+                this.currentEntry.characters = [this.currentEntry.character];
+            } else {
+                bindType = 'global';
+            }
+        }
+
+        if (bindType === 'character') {
             if (characterRadio) characterRadio.checked = true;
             if (globalRadio) globalRadio.checked = false;
-            charSelect.style.display = 'block';
-            charSelect.value = this.currentEntry.character;
-        } else {
+            if (inheritRadio) inheritRadio.checked = false;
+            if (charContainer) charContainer.style.display = 'block';
+            const selectedChars = this.currentEntry.characters || [];
+            document.querySelectorAll('input[name="entry-characters"]').forEach(cb => {
+                cb.checked = selectedChars.includes(cb.value);
+            });
+            document.getElementById('entry-exclude-mode').checked = this.currentEntry.excludeMode || false;
+        } else if (bindType === 'global') {
             if (globalRadio) globalRadio.checked = true;
             if (characterRadio) characterRadio.checked = false;
-            charSelect.style.display = 'none';
-            charSelect.value = '';
+            if (inheritRadio) inheritRadio.checked = false;
+            if (charContainer) charContainer.style.display = 'none';
+        } else {
+            if (inheritRadio) inheritRadio.checked = true;
+            if (globalRadio) globalRadio.checked = false;
+            if (characterRadio) characterRadio.checked = false;
+            if (charContainer) charContainer.style.display = 'none';
         }
 
         const probSlider = document.getElementById('entry-probability');
@@ -400,17 +445,17 @@ const WorldBookV2 = {
         this.currentEntry.disableRecursion = document.getElementById('entry-disable-recursion').checked;
         this.currentEntry.scanDepth = document.getElementById('entry-scan-depth').checked;
         this.currentEntry.recursionDepth = parseInt(document.getElementById('entry-recursion-depth').value);
-        const characterRadio = document.getElementById('entry-bind-character');
-        if (characterRadio && characterRadio.checked) {
-            const charValue = document.getElementById('entry-character').value;
-            if (charValue) {
-                this.currentEntry.character = charValue;
-            } else {
-                delete this.currentEntry.character;
-            }
+        const bindType = document.querySelector('input[name="entry-bind-type"]:checked')?.value || 'inherit';
+        this.currentEntry.bindType = bindType;
+        if (bindType === 'character') {
+            const chars = Array.from(document.querySelectorAll('input[name="entry-characters"]:checked')).map(cb => cb.value);
+            this.currentEntry.characters = chars;
+            this.currentEntry.excludeMode = document.getElementById('entry-exclude-mode').checked;
         } else {
-            delete this.currentEntry.character;
+            delete this.currentEntry.characters;
+            delete this.currentEntry.excludeMode;
         }
+        delete this.currentEntry.character;
         this.currentEntry.updatedAt = Date.now();
         
         // 保存到列表
@@ -440,10 +485,30 @@ const WorldBookV2 = {
         }
     },
     
+    // 更新内容预览
+    updatePreview() {
+        const content = document.getElementById('entry-content').value;
+        const preview = document.getElementById('content-preview');
+        if (!preview) return;
+        
+        if (!content) {
+            preview.textContent = '在上方输入内容...';
+            return;
+        }
+        
+        // 调用已有的变量替换功能
+        try {
+            const processed = window.replaceVariables ? window.replaceVariables(content) : content;
+            preview.innerHTML = processed.replace(/\n/g, '<br>');
+        } catch (e) {
+            preview.textContent = content;
+        }
+    },
+
     // 测试条目
     testEntry() {
         if (!this.currentEntry) return;
-        
+
         const dialog = document.getElementById('wb-test-dialog');
         if (dialog) {
             dialog.style.display = 'flex';
@@ -806,6 +871,76 @@ const WorldBookV2 = {
             }
         } else {
             batchBar.style.display = 'none';
+        }
+    },
+
+    // 添加滑动手势
+    addSwipeGesture(element, entry) {
+        let startX = 0;
+        let currentX = 0;
+        let isDragging = false;
+        const threshold = 50; // 滑动阈值
+        
+        const content = element.querySelector('.wb-entry-content');
+        const actions = element.querySelector('.wb-swipe-actions');
+        
+        // 触摸开始
+        element.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            isDragging = true;
+        });
+        
+        // 触摸移动
+        element.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            currentX = e.touches[0].clientX;
+            const diff = startX - currentX;
+            
+            // 左滑显示操作按钮
+            if (diff > 0) {
+                const translateX = Math.min(diff, 120);
+                content.style.transform = `translateX(-${translateX}px)`;
+                actions.style.opacity = translateX / 120;
+            }
+            // 右滑隐藏操作按钮
+            else {
+                content.style.transform = 'translateX(0)';
+                actions.style.opacity = 0;
+            }
+        });
+        
+        // 触摸结束
+        element.addEventListener('touchend', () => {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            const diff = startX - currentX;
+            
+            // 超过阈值，显示操作
+            if (diff > threshold) {
+                content.style.transform = 'translateX(-120px)';
+                actions.style.opacity = 1;
+            } else {
+                content.style.transform = 'translateX(0)';
+                actions.style.opacity = 0;
+            }
+        });
+        
+        // 点击其他地方时收回
+        document.addEventListener('click', (e) => {
+            if (!element.contains(e.target)) {
+                content.style.transform = 'translateX(0)';
+                actions.style.opacity = 0;
+            }
+        });
+    },
+
+    // 快速删除条目
+    quickDeleteEntry(entryId) {
+        if (confirm('确定删除这个条目吗？')) {
+            this.entries = this.entries.filter(e => e.id !== entryId);
+            this.saveData();
+            this.renderEntries();
         }
     }
 };

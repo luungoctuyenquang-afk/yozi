@@ -197,7 +197,15 @@
                     内容
                     <button class="wb-expand-btn" onclick="WorldBookV2.expandContent()" title="放大编辑">🔍</button>
                 </label>
-                <textarea id="entry-content" class="wb-textarea" rows="4" placeholder="当触发时注入的内容..."></textarea>
+                <textarea id="entry-content" class="wb-textarea" rows="4" placeholder="当触发时注入的内容..." oninput="WorldBookV2.updatePreview()"></textarea>
+                
+                <!-- 实时预览 -->
+                <details class="wb-preview-box" style="margin-top:8px;">
+                    <summary style="font-size:12px;color:#666;">📝 实时预览（变量替换）</summary>
+                    <div id="content-preview" style="padding:8px;background:#f8f9fa;border-radius:6px;font-size:13px;line-height:1.5;margin-top:4px;color:#333;">
+                        在上方输入内容...
+                    </div>
+                </details>
             </div>
             
             <!-- 高级设置（可折叠） -->
@@ -309,10 +317,14 @@
                 
                 <!-- 绑定设置 -->
                 <div class="wb-field">
-                    <label class="wb-label">条目绑定</label>
+                    <label class="wb-label">条目绑定 <span style="font-size:11px;color:#999">(留空=继承世界书设置)</span></label>
                     <div class="wb-switches">
                         <label class="wb-switch">
-                            <input type="radio" name="entry-bind-type" id="entry-bind-global" value="global" checked onchange="WorldBookV2.toggleBindType()">
+                            <input type="radio" name="entry-bind-type" id="entry-bind-inherit" value="inherit" checked onchange="WorldBookV2.toggleBindType()">
+                            <span>📖 继承</span>
+                        </label>
+                        <label class="wb-switch">
+                            <input type="radio" name="entry-bind-type" id="entry-bind-global" value="global" onchange="WorldBookV2.toggleBindType()">
                             <span>🌍 全局</span>
                         </label>
                         <label class="wb-switch">
@@ -320,11 +332,31 @@
                             <span>👤 角色</span>
                         </label>
                     </div>
-                    <select id="entry-character" class="wb-select" style="display:none;margin-top:8px;">
-                        <option value="">选择角色...</option>
-                        <option value="ai">零</option>
-                        <option value="user">用户</option>
-                    </select>
+                    
+                    <!-- 角色多选 -->
+                    <div id="character-select-container" style="display:none;margin-top:8px;">
+                        <div style="font-size:12px;color:#666;margin-bottom:4px;">选择角色（可多选）：</div>
+                        <div class="wb-character-checkboxes">
+                            <label class="wb-switch">
+                                <input type="checkbox" name="entry-characters" value="ai">
+                                <span>零</span>
+                            </label>
+                            <label class="wb-switch">
+                                <input type="checkbox" name="entry-characters" value="user">
+                                <span>用户</span>
+                            </label>
+                            <label class="wb-switch">
+                                <input type="checkbox" name="entry-characters" value="narrator">
+                                <span>旁白</span>
+                            </label>
+                        </div>
+                        <div style="margin-top:8px;">
+                            <label class="wb-switch">
+                                <input type="checkbox" id="entry-exclude-mode">
+                                <span>排除模式（反选）</span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </details>
         </div>

@@ -811,3 +811,47 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
 .wb-entry-checkbox {
     margin-right: 8px;
 }
+
+/* 条目滑动样式 */
+.wb-swipeable {
+    position: relative;
+    overflow: hidden;
+}
+
+.wb-entry-content {
+    position: relative;
+    z-index: 2;
+    background: white;
+    transition: transform 0.3s ease;
+}
+
+.wb-swipe-actions {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-right: 8px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.wb-swipe-edit,
+.wb-swipe-delete {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    color: white;
+}
+
+.wb-swipe-edit {
+    background: #3b82f6;
+}
+
+.wb-swipe-delete {
+    background: #ef4444;
+}
