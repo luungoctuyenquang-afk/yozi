@@ -307,12 +307,19 @@
                     </select>
                 </div>
                 
-                <!-- 绑定角色 -->
+                <!-- 绑定设置 -->
                 <div class="wb-field">
-                    <label class="wb-switch">
-                        <input type="checkbox" id="entry-bind-character" onchange="WorldBookV2.toggleCharacterBind()">
-                        <span>绑定到特定角色</span>
-                    </label>
+                    <label class="wb-label">条目绑定</label>
+                    <div class="wb-switches">
+                        <label class="wb-switch">
+                            <input type="radio" name="entry-bind-type" id="entry-bind-global" value="global" checked onchange="WorldBookV2.toggleBindType()">
+                            <span>🌍 全局</span>
+                        </label>
+                        <label class="wb-switch">
+                            <input type="radio" name="entry-bind-type" id="entry-bind-character" value="character" onchange="WorldBookV2.toggleBindType()">
+                            <span>👤 角色</span>
+                        </label>
+                    </div>
                     <select id="entry-character" class="wb-select" style="display:none;margin-top:8px;">
                         <option value="">选择角色...</option>
                         <option value="ai">零</option>
