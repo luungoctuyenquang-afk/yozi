@@ -336,19 +336,8 @@
                     <!-- 角色多选 -->
                     <div id="character-select-container" style="display:none;margin-top:8px;">
                         <div style="font-size:12px;color:#666;margin-bottom:4px;">选择角色（可多选）：</div>
-                        <div class="wb-character-checkboxes">
-                            <label class="wb-switch">
-                                <input type="checkbox" name="entry-characters" value="ai">
-                                <span>零</span>
-                            </label>
-                            <label class="wb-switch">
-                                <input type="checkbox" name="entry-characters" value="user">
-                                <span>用户</span>
-                            </label>
-                            <label class="wb-switch">
-                                <input type="checkbox" name="entry-characters" value="narrator">
-                                <span>旁白</span>
-                            </label>
+                        <div class="wb-character-checkboxes" id="character-checkboxes-container">
+                            <!-- 动态生成 -->
                         </div>
                         <div style="margin-top:8px;">
                             <label class="wb-switch">

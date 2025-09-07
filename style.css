@@ -836,6 +836,13 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
     padding-right: 8px;
     opacity: 0;
     transition: opacity 0.3s ease;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.wb-swipe-actions.visible {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .wb-swipe-edit,
