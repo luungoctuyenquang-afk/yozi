@@ -224,15 +224,22 @@ const WorldBookV2 = {
         this.closeExpandContent();
     },
 
-    // 切换角色绑定
-    toggleCharacterBind() {
-        const checkbox = document.getElementById('entry-bind-character');
+    // 切换绑定类型
+    toggleBindType() {
+        const characterRadio = document.getElementById('entry-bind-character');
         const select = document.getElementById('entry-character');
-        if (checkbox.checked) {
+
+        if (characterRadio && characterRadio.checked) {
             select.style.display = 'block';
         } else {
             select.style.display = 'none';
+            select.value = '';
         }
+    },
+
+    // 保留旧方法名兼容
+    toggleCharacterBind() {
+        this.toggleBindType();
     },
 
     // 导入条目
@@ -333,14 +340,18 @@ const WorldBookV2 = {
         document.getElementById('entry-scan-depth').checked = this.currentEntry.scanDepth || false;
         document.getElementById('entry-recursion-depth').value = this.currentEntry.recursionDepth || 2;
 
-        const bindCheckbox = document.getElementById('entry-bind-character');
+        const globalRadio = document.getElementById('entry-bind-global');
+        const characterRadio = document.getElementById('entry-bind-character');
         const charSelect = document.getElementById('entry-character');
+
         if (this.currentEntry.character) {
-            bindCheckbox.checked = true;
+            if (characterRadio) characterRadio.checked = true;
+            if (globalRadio) globalRadio.checked = false;
             charSelect.style.display = 'block';
             charSelect.value = this.currentEntry.character;
         } else {
-            bindCheckbox.checked = false;
+            if (globalRadio) globalRadio.checked = true;
+            if (characterRadio) characterRadio.checked = false;
             charSelect.style.display = 'none';
             charSelect.value = '';
         }
@@ -389,8 +400,14 @@ const WorldBookV2 = {
         this.currentEntry.disableRecursion = document.getElementById('entry-disable-recursion').checked;
         this.currentEntry.scanDepth = document.getElementById('entry-scan-depth').checked;
         this.currentEntry.recursionDepth = parseInt(document.getElementById('entry-recursion-depth').value);
-        if (document.getElementById('entry-bind-character').checked) {
-            this.currentEntry.character = document.getElementById('entry-character').value;
+        const characterRadio = document.getElementById('entry-bind-character');
+        if (characterRadio && characterRadio.checked) {
+            const charValue = document.getElementById('entry-character').value;
+            if (charValue) {
+                this.currentEntry.character = charValue;
+            } else {
+                delete this.currentEntry.character;
+            }
         } else {
             delete this.currentEntry.character;
         }
@@ -619,6 +636,8 @@ const WorldBookV2 = {
             bookSelector.addEventListener('change', (e) => {
                 const bookId = e.target.value;
                 this.currentBook = this.books.find(b => b.id === bookId) || null;
+                // 清空之前的选择，避免跨世界书操作
+                this.selectedEntryIds.clear();
                 this.render();
             });
         }
