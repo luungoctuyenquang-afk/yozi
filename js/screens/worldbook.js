@@ -185,11 +185,14 @@ const WorldBookV2 = {
                 const keys = entry.keys.slice(0, 2).join(', ');
                 const content = entry.content.substring(0, 80) + (entry.content.length > 80 ? '...' : '');
 
+                // 为了避免JSON.stringify在HTML属性中的问题，先存储entry
+                item.entryData = entry;
+
                 item.innerHTML = `
-                    <div class="wb-entry-content" onclick="WorldBookV2.editEntry(${JSON.stringify(entry).replace(/"/g, '&quot;')})">
+                    <div class="wb-entry-content">
                         <div style="display: flex; align-items: flex-start; gap: 8px;">
-                            <input type="checkbox"
-                                class="wb-entry-checkbox"
+                            <input type="checkbox" 
+                                class="wb-entry-checkbox" 
                                 ${isSelected ? 'checked' : ''}
                                 onclick="event.stopPropagation(); WorldBookV2.toggleEntrySelection('${entry.id}')">
                             <div style="flex: 1;">
@@ -202,11 +205,34 @@ const WorldBookV2 = {
                         </div>
                     </div>
                     <div class="wb-swipe-actions">
-                        <button class="wb-swipe-edit" onclick="event.stopPropagation(); WorldBookV2.editEntry(${JSON.stringify(entry).replace(/"/g, '&quot;')})">编辑</button>
-                        <button class="wb-swipe-delete" onclick="event.stopPropagation(); WorldBookV2.quickDeleteEntry('${entry.id}')">删除</button>
+                        <button class="wb-swipe-edit">编辑</button>
+                        <button class="wb-swipe-delete">删除</button>
                     </div>
                 `;
-                
+
+                // 添加点击事件（桌面端支持）
+                const contentDiv = item.querySelector('.wb-entry-content');
+                contentDiv.addEventListener('click', (e) => {
+                    // 如果点击的是checkbox，不触发编辑
+                    if (e.target.type !== 'checkbox') {
+                        this.editEntry(entry);
+                    }
+                });
+
+                // 添加滑动按钮事件
+                const editBtn = item.querySelector('.wb-swipe-edit');
+                const deleteBtn = item.querySelector('.wb-swipe-delete');
+
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.editEntry(entry);
+                });
+
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.quickDeleteEntry(entry.id);
+                });
+
                 // 添加滑动手势
                 this.addSwipeGesture(item, entry);
                 container.appendChild(item);
@@ -362,6 +388,9 @@ const WorldBookV2 = {
         document.getElementById('entry-scan-depth').checked = this.currentEntry.scanDepth || false;
         document.getElementById('entry-recursion-depth').value = this.currentEntry.recursionDepth || 2;
 
+        // 动态生成角色列表
+        this.updateCharacterList();
+
         // 加载绑定设置
         const inheritRadio = document.getElementById('entry-bind-inherit');
         const globalRadio = document.getElementById('entry-bind-global');
@@ -388,14 +417,8 @@ const WorldBookV2 = {
             if (globalRadio) globalRadio.checked = false;
             if (inheritRadio) inheritRadio.checked = false;
             if (charContainer) charContainer.style.display = 'block';
-            
-            // 设置多选框
-            const selectedChars = this.currentEntry.characters || [];
-            document.querySelectorAll('input[name="entry-characters"]').forEach(cb => {
-                cb.checked = selectedChars.includes(cb.value);
-            });
-            
-            // 设置排除模式
+
+            // 已在updateCharacterList中处理选中状态
             document.getElementById('entry-exclude-mode').checked = this.currentEntry.excludeMode || false;
         } else if (bindType === 'global') {
             if (globalRadio) globalRadio.checked = true;
@@ -517,6 +540,46 @@ const WorldBookV2 = {
             preview.innerHTML = processed.replace(/\n/g, '<br>');
         } catch (e) {
             preview.textContent = content;
+        }
+    },
+
+    // 更新角色列表
+    updateCharacterList() {
+        const container = document.getElementById('character-checkboxes-container');
+        if (!container) return;
+
+        // 获取当前系统中的角色
+        const state = StateManager.get();
+        const characters = [
+            { id: 'user', name: state.player?.name || '用户' },
+            { id: 'ai', name: state.ai?.name || 'AI' },
+            { id: 'narrator', name: '旁白' },
+            { id: 'system', name: '系统' }
+        ];
+
+        // 如果有其他角色，也可以从state中读取
+        // 例如：state.characters?.forEach(char => characters.push(char));
+
+        // 清空容器
+        container.innerHTML = '';
+
+        // 生成checkbox
+        characters.forEach(char => {
+            const label = document.createElement('label');
+            label.className = 'wb-switch';
+            label.innerHTML = `
+                <input type="checkbox" name="entry-characters" value="${char.id}">
+                <span>${char.name}</span>
+            `;
+            container.appendChild(label);
+        });
+
+        // 如果当前条目有选中的角色，恢复选中状态
+        if (this.currentEntry && this.currentEntry.characters) {
+            this.currentEntry.characters.forEach(charId => {
+                const checkbox = container.querySelector(`input[value="${charId}"]`);
+                if (checkbox) checkbox.checked = true;
+            });
         }
     },
 
@@ -879,20 +942,19 @@ const WorldBookV2 = {
             if (!isDragging) return;
             currentX = e.touches[0].clientX;
             const diff = startX - currentX;
-            
+
             // 左滑显示操作按钮
             if (diff > 0) {
                 const translateX = Math.min(diff, 120);
                 content.style.transform = `translateX(-${translateX}px)`;
                 actions.style.opacity = translateX / 120;
-            }
-            // 右滑隐藏操作按钮
-            else {
+            } else {
+                // 右滑隐藏操作按钮
                 content.style.transform = 'translateX(0)';
                 actions.style.opacity = 0;
             }
         });
-        
+
         // 触摸结束
         element.addEventListener('touchend', (e) => {
             if (!isDragging) return;
@@ -903,12 +965,14 @@ const WorldBookV2 = {
             // 左滑超过阈值，显示操作
             if (diff > threshold) {
                 content.style.transform = 'translateX(-120px)';
-                actions.style.opacity = 1;
+                actions.classList.add('visible');
+                actions.style.opacity = '';
             } 
             // 右滑或未达阈值，复原
             else {
                 content.style.transform = 'translateX(0)';
-                actions.style.opacity = 0;
+                actions.classList.remove('visible');
+                actions.style.opacity = '';
             }
 
             // 防止触发点击事件
@@ -922,13 +986,15 @@ const WorldBookV2 = {
         element.addEventListener('touchcancel', () => {
             isDragging = false;
             content.style.transform = 'translateX(0)';
+            actions.classList.remove('visible');
             actions.style.opacity = 0;
         });
-        
+
         // 点击其他地方时收回
         document.addEventListener('click', (e) => {
             if (!element.contains(e.target)) {
                 content.style.transform = 'translateX(0)';
+                actions.classList.remove('visible');
                 actions.style.opacity = 0;
             }
         });
@@ -941,6 +1007,54 @@ const WorldBookV2 = {
             this.saveData();
             this.renderEntries();
         }
+    },
+
+    // 获取激活的世界书条目（为AI集成准备）
+    getActiveEntries(text) {
+        if (!this.currentBook) return [];
+
+        const activeEntries = [];
+        const bookEntries = this.entries.filter(e =>
+            e.bookId === this.currentBook.id && e.enabled !== false
+        );
+
+        bookEntries.forEach(entry => {
+            // 常驻条目总是激活
+            if (entry.constant) {
+                activeEntries.push(entry);
+                return;
+            }
+
+            // 检查关键词匹配
+            for (const key of entry.keys) {
+                if (this.testKey(key, text)) {
+                    activeEntries.push(entry);
+                    break;
+                }
+            }
+        });
+
+        // 按优先级排序
+        activeEntries.sort((a, b) => b.order - a.order);
+
+        return activeEntries;
+    },
+
+    // 构建世界书上下文（为AI注入准备）
+    buildWorldBookContext(text) {
+        const entries = this.getActiveEntries(text);
+        let context = '';
+
+        entries.forEach(entry => {
+            // 处理变量替换
+            let content = entry.content;
+            if (window.replaceVariables) {
+                content = window.replaceVariables(content);
+            }
+            context += content + '\n\n';
+        });
+
+        return context.trim();
     }
 };
 
