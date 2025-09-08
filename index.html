@@ -399,38 +399,43 @@
 </div>
 
 <!-- 世界书设置（简化版） -->
-<div id="wb-book-settings" class="wb-dialog">
-    <div class="wb-dialog-content">
-        <h3>世界书设置</h3>
-        <div class="wb-form-group">
-            <label>名称</label>
-            <input type="text" id="book-name">
+<div id="wb-book-settings" class="wb-modal" style="display: none;">
+    <div class="wb-modal-content">
+        <div class="wb-modal-header">
+            <h3>世界书设置</h3>
+            <button class="wb-modal-close" onclick="WorldBookV2.closeBookSettings()">✖️</button>
         </div>
-        <div class="wb-form-group">
-            <label>描述</label>
-            <textarea id="book-description" rows="3"></textarea>
+        <div class="wb-modal-body">
+            <div class="wb-field">
+                <label class="wb-label">名称</label>
+                <input type="text" id="book-name" class="wb-input">
+            </div>
+            <div class="wb-field">
+                <label class="wb-label">描述</label>
+                <textarea id="book-description" rows="3" class="wb-textarea"></textarea>
+            </div>
+            <div class="wb-field">
+                <label class="wb-label">作用域</label>
+                <select id="book-scope" class="wb-select">
+                    <option value="global">全局</option>
+                    <option value="character">特定角色</option>
+                </select>
+            </div>
+            <div class="wb-field">
+                <label class="wb-label">扫描深度</label>
+                <input type="number" id="book-scan-depth" min="0" max="20" value="2" class="wb-input">
+                <small>回溯多少条历史消息进行关键词匹配（0=仅当前消息）</small>
+            </div>
+            <div class="wb-field">
+                <label class="wb-label">Token预算</label>
+                <input type="number" id="book-token-budget" min="100" max="8000" value="2048" class="wb-input">
+                <small>世界书内容的最大Token数量</small>
+            </div>
         </div>
-        <div class="wb-form-group">
-            <label>作用域</label>
-            <select id="book-scope">
-                <option value="global">全局</option>
-                <option value="character">特定角色</option>
-            </select>
-        </div>
-        <div class="wb-form-group">
-            <label>扫描深度</label>
-            <input type="number" id="book-scan-depth" min="0" max="20" value="2">
-            <small>回溯多少条历史消息进行关键词匹配（0=仅当前消息）</small>
-        </div>
-        <div class="wb-form-group">
-            <label>Token预算</label>
-            <input type="number" id="book-token-budget" min="100" max="8000" value="2048">
-            <small>世界书内容的最大Token数量</small>
-        </div>
-        <div class="wb-dialog-buttons">
-            <button onclick="WorldBookV2.saveBookSettings()">保存</button>
-            <button onclick="WorldBookV2.closeBookSettings()">取消</button>
-            <button onclick="WorldBookV2.deleteBook()" style="background: #ff4444;">删除世界书</button>
+        <div class="wb-modal-footer">
+            <button class="wb-btn-primary" onclick="WorldBookV2.saveBookSettings()">保存</button>
+            <button class="wb-btn-secondary" onclick="WorldBookV2.closeBookSettings()">取消</button>
+            <button class="wb-btn-danger" onclick="WorldBookV2.deleteBook()">删除世界书</button>
         </div>
     </div>
 </div>

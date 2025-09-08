@@ -185,12 +185,28 @@ const WorldBookV2 = {
 
         if (filteredEntries.length === 0) {
             container.style.display = 'none';
-            emptyState.style.display = 'block';
-            modeBar.style.display = 'none';
+            if (emptyState) {
+                emptyState.style.display = 'block';
+                // 区分搜索无结果和真正的空状态
+                if (searchTerm) {
+                    emptyState.innerHTML = `
+                        <div class="wb-empty-icon">🔍</div>
+                        <p>未找到匹配"${searchTerm}"的条目</p>
+                        <button class="wb-empty-btn" onclick="document.getElementById('wb-search').value=''; WorldBookV2.renderEntries();">清除搜索</button>
+                    `;
+                } else {
+                    emptyState.innerHTML = `
+                        <div class="wb-empty-icon">📖</div>
+                        <p>暂无条目</p>
+                        <button class="wb-empty-btn" onclick="WorldBookV2.addEntry()">创建第一个条目</button>
+                    `;
+                }
+            }
+            if (modeBar) modeBar.style.display = 'none';
         } else {
             container.style.display = 'block';
             emptyState.style.display = 'none';
-            modeBar.style.display = 'flex';
+            if (modeBar) modeBar.style.display = 'flex';
 
             filteredEntries.forEach(entry => {
                 const item = document.createElement('div');
@@ -261,6 +277,12 @@ const WorldBookV2 = {
                 // 修复勾选框事件
                     checkbox.addEventListener('change', (e) => {
                         e.stopPropagation();
+                        
+                        // 如果在普通模式下点击勾选框，自动切换到多选模式
+                        if (!this.isMultiSelectMode) {
+                            this.toggleMode();
+                        }
+                        
                         if (e.target.checked) {
                             this.selectedEntryIds.add(entry.id);
                         } else {
@@ -994,7 +1016,9 @@ const WorldBookV2 = {
         // 搜索
         const searchInput = document.getElementById('wb-search');
         if (searchInput) {
-            searchInput.addEventListener('input', () => this.renderEntries());
+            searchInput.addEventListener('input', () => {
+                this.renderEntries();
+            });
         }
 
         // 概率滑块

@@ -846,9 +846,14 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
     display: none !important;
 }
 
-/* 普通模式下隐藏勾选框 */
+/* 普通模式下降低勾选框透明度，让用户知道可以多选 */
 .wb-normal-mode .wb-entry-checkbox {
-    display: none !important;
+    opacity: 0.3;
+    transition: opacity 0.2s;
+}
+
+.wb-normal-mode .wb-entry-checkbox:hover {
+    opacity: 0.7;
 }
 
 /* 条目滑动样式 */
