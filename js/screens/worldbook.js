@@ -927,7 +927,7 @@ const WorldBookV2 = {
         const matchedKeys = [];
         
         for (const key of this.currentEntry.keys) {
-            if (this.testKey(key, testText)) {
+            if (this.testKey(key, testText, this.currentEntry)) {
                 matchedKeys.push(key);
                 isMatch = true;
             }
@@ -970,23 +970,66 @@ const WorldBookV2 = {
         matches.appendChild(matchDiv);
     },
     
-    // 测试单个关键词
-    testKey(key, text) {
+    // 测试单个关键词 - 增强版
+    testKey(key, text, entry) {
+        // 获取匹配设置（优先使用条目设置，其次全局设置）
+        const globalSettings = this.globalSettings || {};
+        const caseSensitive = entry?.caseSensitive ?? globalSettings.caseSensitive ?? false;
+        const matchWholeWords = entry?.matchWholeWords ?? globalSettings.matchWholeWords ?? false;
+        
         // 检查是否是正则表达式
         if (key.startsWith('/') && key.lastIndexOf('/') > 0) {
             try {
                 const lastSlash = key.lastIndexOf('/');
                 const pattern = key.substring(1, lastSlash);
-                const flags = key.substring(lastSlash + 1);
+                let flags = key.substring(lastSlash + 1);
+                
+                // 如果全局设置不区分大小写，强制添加i标志
+                if (!caseSensitive && !flags.includes('i')) {
+                    flags += 'i';
+                }
+                
                 const regex = new RegExp(pattern, flags);
                 return regex.test(text);
             } catch (e) {
+                console.warn(`正则表达式错误: ${key}`, e);
                 return false;
             }
         }
         
         // 普通文本匹配
-        return text.includes(key);
+        let searchKey = key;
+        let searchText = text;
+        
+        // 处理大小写
+        if (!caseSensitive) {
+            searchKey = key.toLowerCase();
+            searchText = text.toLowerCase();
+        }
+        
+        // 全词匹配
+        if (matchWholeWords) {
+            // 构建全词匹配的正则表达式
+            // 对于中文等没有词边界的语言，直接使用包含匹配
+            const hasChineseOrJapanese = /[\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff]/.test(searchKey);
+            
+            if (hasChineseOrJapanese) {
+                // 中文/日文直接包含匹配
+                return searchText.includes(searchKey);
+            } else {
+                // 英文等使用词边界
+                const wordRegex = new RegExp(`\\b${this.escapeRegex(searchKey)}\\b`, caseSensitive ? 'g' : 'gi');
+                return wordRegex.test(text);
+            }
+        } else {
+            // 简单包含匹配
+            return searchText.includes(searchKey);
+        }
+    },
+
+    // 辅助方法：转义正则特殊字符
+    escapeRegex(str) {
+        return str.replace(/[.*+?^${}()|[\]\]/g, '\$&');
     },
     
     // 关闭测试对话框
@@ -1392,33 +1435,108 @@ const WorldBookV2 = {
         }
     },
 
-    // 获取激活的世界书条目（为AI集成准备）
+    // 获取激活的世界书条目（为AI集成准备）- 增强版
     getActiveEntries(text) {
         if (!this.currentBook) return [];
 
         const activeEntries = [];
+        const processedIds = new Set(); // 避免重复添加
+        
+        // 获取当前世界书的所有启用条目
         const bookEntries = this.entries.filter(e =>
             e.bookId === this.currentBook.id && e.enabled !== false
         );
 
+        // 第一轮：直接匹配
         bookEntries.forEach(entry => {
             // 常驻条目总是激活
             if (entry.constant) {
                 activeEntries.push(entry);
+                processedIds.add(entry.id);
                 return;
             }
 
-            // 检查关键词匹配
-            for (const key of entry.keys) {
-                if (this.testKey(key, text)) {
-                    activeEntries.push(entry);
+            // 检查主关键词匹配
+            let matched = false;
+            for (const key of entry.keys || []) {
+                if (this.testKey(key, text, entry)) {
+                    matched = true;
                     break;
+                }
+            }
+            
+            // 检查辅助关键词（根据逻辑设置）
+            if (!matched && entry.secondaryKeys && entry.secondaryKeys.length > 0) {
+                const logic = entry.logic || 'AND_ANY';
+                const secondaryMatches = entry.secondaryKeys.map(key => 
+                    this.testKey(key, text, entry)
+                );
+                
+                switch (logic) {
+                    case 'AND_ANY':
+                        matched = secondaryMatches.some(m => m);
+                        break;
+                    case 'AND_ALL':
+                        matched = secondaryMatches.every(m => m);
+                        break;
+                    case 'NOT_ANY':
+                        matched = !secondaryMatches.some(m => m);
+                        break;
+                    case 'NOT_ALL':
+                        matched = !secondaryMatches.every(m => m);
+                        break;
+                }
+            }
+            
+            if (matched && !processedIds.has(entry.id)) {
+                // 检查概率
+                const probability = entry.probability ?? 100;
+                if (Math.random() * 100 <= probability) {
+                    activeEntries.push(entry);
+                    processedIds.add(entry.id);
                 }
             }
         });
 
-        // 按优先级排序
-        activeEntries.sort((a, b) => b.order - a.order);
+        // 递归扫描（如果启用）
+        const globalSettings = this.globalSettings || {};
+        if (globalSettings.recursiveScan && globalSettings.maxRecursion > 0) {
+            let recursionStep = 0;
+            let newlyAdded = [...activeEntries];
+            
+            while (recursionStep < globalSettings.maxRecursion && newlyAdded.length > 0) {
+                recursionStep++;
+                const recursionCandidates = [];
+                
+                // 用已激活条目的内容作为新的扫描文本
+                const recursionText = newlyAdded.map(e => e.content).join('\n');
+                
+                bookEntries.forEach(entry => {
+                    // 跳过已处理的和禁用递归的
+                    if (processedIds.has(entry.id) || entry.disableRecursion) {
+                        return;
+                    }
+                    
+                    // 检查是否被递归文本触发
+                    for (const key of entry.keys || []) {
+                        if (this.testKey(key, recursionText, entry)) {
+                            const probability = entry.probability ?? 100;
+                            if (Math.random() * 100 <= probability) {
+                                recursionCandidates.push(entry);
+                                processedIds.add(entry.id);
+                            }
+                            break;
+                        }
+                    }
+                });
+                
+                newlyAdded = recursionCandidates;
+                activeEntries.push(...recursionCandidates);
+            }
+        }
+
+        // 按优先级排序（数字越大越靠后，影响力越大）
+        activeEntries.sort((a, b) => (a.order || 0) - (b.order || 0));
 
         return activeEntries;
     },
