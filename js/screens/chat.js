@@ -116,11 +116,6 @@ const ChatScreen = {
                 thoughtText = null;
             }
 
-            if (state.session.minutesAway > 0) {
-                state.session.minutesAway = 0;
-                state.session.moneyEarned = 0;
-            }
-
             const aiMessage = {
                 sender: 'ai',
                 content: [{ text: aiReplyText }],
@@ -137,6 +132,10 @@ const ChatScreen = {
                 timestamp: Date.now()
             };
             state.chat.history.push(systemMessage);
+        } finally {
+            // Reset session counters after the AI call so it can see any offline context
+            state.session.minutesAway = 0;
+            state.session.moneyEarned = 0;
         }
 
         this.render();
@@ -194,6 +193,10 @@ const ChatScreen = {
                     timestamp: Date.now()
                 };
                 state.chat.history.push(systemMessage);
+            } finally {
+                // Reset session counters after the AI call so it can see any offline context
+                state.session.minutesAway = 0;
+                state.session.moneyEarned = 0;
             }
 
             this.render();
