@@ -399,87 +399,38 @@
 </div>
 
 <!-- 世界书设置（简化版） -->
-<div id="wb-book-settings" class="wb-modal" style="display:none;">
-    <div class="wb-modal-content">
-        <div class="wb-modal-header">
-            <h3>世界书设置</h3>
-            <button class="wb-modal-close" onclick="WorldBookV2.closeBookSettings()">✖️</button>
+<div id="wb-book-settings" class="wb-dialog">
+    <div class="wb-dialog-content">
+        <h3>世界书设置</h3>
+        <div class="wb-form-group">
+            <label>名称</label>
+            <input type="text" id="book-name">
         </div>
-        <div class="wb-modal-body">
-            <div class="wb-field">
-                <label>名称</label>
-                <input type="text" id="book-name" class="wb-input" placeholder="世界书名称">
-            </div>
-            <div class="wb-field">
-                <label>描述</label>
-                <textarea id="book-description" class="wb-textarea" rows="2" placeholder="描述..."></textarea>
-            </div>
-            <div class="wb-field">
-                <label>作用范围</label>
-                <select id="book-scope" class="wb-select">
-                    <option value="global">全局</option>
-                    <option value="character">绑定角色</option>
-                </select>
-            </div>
-            
-            <!-- 全局激活设置（可折叠） -->
-            <details class="wb-collapsible">
-                <summary>🔧 全局激活设置</summary>
-                
-                <div class="wb-field">
-                    <label class="wb-label">扫描深度 <span style="font-size:11px;color:#999">(回溯消息数)</span></label>
-                    <input type="number" id="book-scan-depth" class="wb-input" value="2" min="0" max="100">
-                </div>
-                
-                <div class="wb-field">
-                    <label class="wb-label">Token预算 <span style="font-size:11px;color:#999">(上下文占用)</span></label>
-                    <input type="number" id="book-token-budget" class="wb-input" value="2048" min="0">
-                </div>
-                
-                <div class="wb-field">
-                    <label class="wb-label">最小激活数 <span style="font-size:11px;color:#999">(至少触发条目数)</span></label>
-                    <input type="number" id="book-min-activations" class="wb-input" value="0" min="0">
-                </div>
-                
-                <div class="wb-field">
-                    <label class="wb-label">最大递归层级</label>
-                    <input type="number" id="book-max-recursion" class="wb-input" value="3" min="1" max="10">
-                </div>
-                
-                <div class="wb-switches">
-                    <label class="wb-switch">
-                        <input type="checkbox" id="book-recursive" checked>
-                        <span>启用递归扫描</span>
-                    </label>
-                    <label class="wb-switch">
-                        <input type="checkbox" id="book-case-sensitive">
-                        <span>区分大小写</span>
-                    </label>
-                </div>
-                
-                <div class="wb-switches">
-                    <label class="wb-switch">
-                        <input type="checkbox" id="book-match-whole-words" checked>
-                        <span>全词匹配</span>
-                    </label>
-                    <label class="wb-switch">
-                        <input type="checkbox" id="book-include-names" checked>
-                        <span>包含说话者名</span>
-                    </label>
-                </div>
-                
-                <div class="wb-switches">
-                    <label class="wb-switch">
-                        <input type="checkbox" id="book-overflow-alert" checked>
-                        <span>溢出警告</span>
-                    </label>
-                </div>
-            </details>
+        <div class="wb-form-group">
+            <label>描述</label>
+            <textarea id="book-description" rows="3"></textarea>
         </div>
-        <div class="wb-modal-footer">
-            <button class="wb-btn-primary" onclick="WorldBookV2.saveBookSettings()">保存</button>
-            <button class="wb-btn-secondary" onclick="WorldBookV2.exportBook()">导出</button>
-            <button class="wb-btn-danger" onclick="WorldBookV2.deleteBook()">删除</button>
+        <div class="wb-form-group">
+            <label>作用域</label>
+            <select id="book-scope">
+                <option value="global">全局</option>
+                <option value="character">特定角色</option>
+            </select>
+        </div>
+        <div class="wb-form-group">
+            <label>扫描深度</label>
+            <input type="number" id="book-scan-depth" min="0" max="20" value="2">
+            <small>回溯多少条历史消息进行关键词匹配（0=仅当前消息）</small>
+        </div>
+        <div class="wb-form-group">
+            <label>Token预算</label>
+            <input type="number" id="book-token-budget" min="100" max="8000" value="2048">
+            <small>世界书内容的最大Token数量</small>
+        </div>
+        <div class="wb-dialog-buttons">
+            <button onclick="WorldBookV2.saveBookSettings()">保存</button>
+            <button onclick="WorldBookV2.closeBookSettings()">取消</button>
+            <button onclick="WorldBookV2.deleteBook()" style="background: #ff4444;">删除世界书</button>
         </div>
     </div>
 </div>

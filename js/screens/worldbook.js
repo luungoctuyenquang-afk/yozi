@@ -881,7 +881,7 @@ const WorldBookV2 = {
             alert('请先选择一个世界书！');
             return;
         }
-        
+
         const dialog = document.getElementById('wb-book-settings');
         if (!dialog) return;
 
@@ -890,20 +890,43 @@ const WorldBookV2 = {
         document.getElementById('book-name').value = this.currentBook.name;
         document.getElementById('book-description').value = this.currentBook.description || '';
         document.getElementById('book-scope').value = this.currentBook.scope || 'global';
+
+        // 加载扫描深度和Token预算
+        const scanDepthInput = document.getElementById('book-scan-depth');
+        if (scanDepthInput) {
+            scanDepthInput.value = this.currentBook.scanDepth || 2;
+        }
+
+        const tokenBudgetInput = document.getElementById('book-token-budget');
+        if (tokenBudgetInput) {
+            tokenBudgetInput.value = this.currentBook.tokenBudget || 2048;
+        }
     },
-    
+
     // 保存世界书设置
     saveBookSettings() {
         if (!this.currentBook) return;
-        
+
         this.currentBook.name = document.getElementById('book-name').value;
         this.currentBook.description = document.getElementById('book-description').value;
         this.currentBook.scope = document.getElementById('book-scope').value;
-        
+
+        // 保存扫描深度设置
+        const scanDepthInput = document.getElementById('book-scan-depth');
+        if (scanDepthInput) {
+            this.currentBook.scanDepth = parseInt(scanDepthInput.value) || 2;
+        }
+
+        // 保存Token预算设置
+        const tokenBudgetInput = document.getElementById('book-token-budget');
+        if (tokenBudgetInput) {
+            this.currentBook.tokenBudget = parseInt(tokenBudgetInput.value) || 2048;
+        }
+
         this.saveData();
         this.render();
         this.closeBookSettings();
-        
+
         alert('设置已保存！');
     },
     
