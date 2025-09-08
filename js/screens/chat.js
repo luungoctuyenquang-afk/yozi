@@ -133,10 +133,9 @@ const ChatScreen = {
             };
             state.chat.history.push(systemMessage);
         } finally {
-            if (state.session.minutesAway > 0) {
-                state.session.minutesAway = 0;
-                state.session.moneyEarned = 0;
-            }
+            // Reset session counters after the AI call so it can see any offline context
+            state.session.minutesAway = 0;
+            state.session.moneyEarned = 0;
         }
 
         this.render();
@@ -195,10 +194,9 @@ const ChatScreen = {
                 };
                 state.chat.history.push(systemMessage);
             } finally {
-                if (state.session.minutesAway > 0) {
-                    state.session.minutesAway = 0;
-                    state.session.moneyEarned = 0;
-                }
+                // Reset session counters after the AI call so it can see any offline context
+                state.session.minutesAway = 0;
+                state.session.moneyEarned = 0;
             }
 
             this.render();
