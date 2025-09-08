@@ -44,8 +44,10 @@ const WorldBookV2 = {
                 useGroupScoring: false,
                 overflowAlert: true
             };
-            this.saveGlobalSettings();
+            // 直接写入默认设置到存储，避免读取未初始化的UI值
+            localStorage.setItem('worldbook.globalSettings', JSON.stringify(this.globalSettings));
         }
+        // 确保UI显示当前设置
         this.loadGlobalSettingsToUI();
     },
 
@@ -130,8 +132,10 @@ const WorldBookV2 = {
                 useGroupScoring: false,
                 overflowAlert: true
             };
-            this.saveGlobalSettings();
+            // 先更新UI为默认值
             this.loadGlobalSettingsToUI();
+            // 然后直接将默认值写入存储
+            localStorage.setItem('worldbook.globalSettings', JSON.stringify(this.globalSettings));
             alert('已重置为默认设置！');
         }
     },
