@@ -103,31 +103,42 @@ const ChatScreen = {
         if (chatInput) chatInput.value = '';
         
         await Database.saveWorldState();
-        
-        const aiResponse = await AI.getResponse(userMessage.content);
 
-        let aiReplyText, thoughtText;
-        if (typeof aiResponse === 'object' && aiResponse.text) {
-            aiReplyText = aiResponse.text;
-            thoughtText = aiResponse.thought;
-        } else {
-            aiReplyText = aiResponse;
-            thoughtText = null;
+        try {
+            const aiResponse = await AI.getResponse(userMessage.content);
+
+            let aiReplyText, thoughtText;
+            if (typeof aiResponse === 'object' && aiResponse.text) {
+                aiReplyText = aiResponse.text;
+                thoughtText = aiResponse.thought;
+            } else {
+                aiReplyText = aiResponse;
+                thoughtText = null;
+            }
+
+            if (state.session.minutesAway > 0) {
+                state.session.minutesAway = 0;
+                state.session.moneyEarned = 0;
+            }
+
+            const aiMessage = {
+                sender: 'ai',
+                content: [{ text: aiReplyText }],
+                thoughtText: thoughtText, // 保存思维链文本
+                timestamp: Date.now()
+            };
+
+            state.chat.history.push(aiMessage);
+        } catch (err) {
+            console.error('AI 响应失败', err);
+            const systemMessage = {
+                sender: 'system',
+                content: [{ text: 'AI服务暂时不可用，请稍后再试。' }],
+                timestamp: Date.now()
+            };
+            state.chat.history.push(systemMessage);
         }
 
-        if (state.session.minutesAway > 0) {
-            state.session.minutesAway = 0;
-            state.session.moneyEarned = 0;
-        }
-
-        const aiMessage = {
-            sender: 'ai',
-            content: [{ text: aiReplyText }],
-            thoughtText: thoughtText, // 保存思维链文本
-            timestamp: Date.now()
-        };
-
-        state.chat.history.push(aiMessage);
         this.render();
         await Database.saveWorldState();
     },
@@ -155,25 +166,36 @@ const ChatScreen = {
             chatInput.value = '';
             await Database.saveWorldState();
 
-            const aiResponse = await AI.getResponse(userMessage.content);
-            
-            let aiReplyText, thoughtText;
-            if (typeof aiResponse === 'object' && aiResponse.text) {
-                aiReplyText = aiResponse.text;
-                thoughtText = aiResponse.thought;
-            } else {
-                aiReplyText = aiResponse;
-                thoughtText = null;
+            try {
+                const aiResponse = await AI.getResponse(userMessage.content);
+
+                let aiReplyText, thoughtText;
+                if (typeof aiResponse === 'object' && aiResponse.text) {
+                    aiReplyText = aiResponse.text;
+                    thoughtText = aiResponse.thought;
+                } else {
+                    aiReplyText = aiResponse;
+                    thoughtText = null;
+                }
+
+                const aiMessage = {
+                    sender: 'ai',
+                    content: [{ text: aiReplyText }],
+                    thoughtText: thoughtText,
+                    timestamp: Date.now()
+                };
+
+                state.chat.history.push(aiMessage);
+            } catch (err) {
+                console.error('AI 响应失败', err);
+                const systemMessage = {
+                    sender: 'system',
+                    content: [{ text: 'AI服务暂时不可用，请稍后再试。' }],
+                    timestamp: Date.now()
+                };
+                state.chat.history.push(systemMessage);
             }
 
-            const aiMessage = {
-                sender: 'ai',
-                content: [{ text: aiReplyText }],
-                thoughtText: thoughtText,
-                timestamp: Date.now()
-            };
-
-            state.chat.history.push(aiMessage);
             this.render();
             await Database.saveWorldState();
         };
