@@ -104,11 +104,6 @@ const ChatScreen = {
         
         await Database.saveWorldState();
 
-        if (state.session.minutesAway > 0) {
-            state.session.minutesAway = 0;
-            state.session.moneyEarned = 0;
-        }
-
         try {
             const aiResponse = await AI.getResponse(userMessage.content);
 
@@ -137,6 +132,11 @@ const ChatScreen = {
                 timestamp: Date.now()
             };
             state.chat.history.push(systemMessage);
+        } finally {
+            if (state.session.minutesAway > 0) {
+                state.session.minutesAway = 0;
+                state.session.moneyEarned = 0;
+            }
         }
 
         this.render();
@@ -166,11 +166,6 @@ const ChatScreen = {
             chatInput.value = '';
             await Database.saveWorldState();
 
-            if (state.session.minutesAway > 0) {
-                state.session.minutesAway = 0;
-                state.session.moneyEarned = 0;
-            }
-
             try {
                 const aiResponse = await AI.getResponse(userMessage.content);
 
@@ -199,6 +194,11 @@ const ChatScreen = {
                     timestamp: Date.now()
                 };
                 state.chat.history.push(systemMessage);
+            } finally {
+                if (state.session.minutesAway > 0) {
+                    state.session.minutesAway = 0;
+                    state.session.moneyEarned = 0;
+                }
             }
 
             this.render();
