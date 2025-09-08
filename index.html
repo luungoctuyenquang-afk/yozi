@@ -348,10 +348,21 @@
                     
                     <!-- 角色多选 -->
                     <div id="character-select-container" style="display:none;margin-top:8px;">
-                        <div style="font-size:12px;color:#666;margin-bottom:4px;">选择角色（可多选）：</div>
-                        <div class="wb-character-checkboxes" id="character-checkboxes-container">
-                            <!-- 动态生成 -->
+                        <div style="font-size:12px;color:#666;margin-bottom:8px;">选择角色：</div>
+                        
+                        <!-- 下拉选择框 -->
+                        <div style="display:flex;gap:8px;margin-bottom:8px;">
+                            <select id="character-dropdown" class="wb-select" style="flex:1;">
+                                <option value="">选择要绑定的角色...</option>
+                            </select>
+                            <button class="wb-btn-secondary" onclick="WorldBookV2.addSelectedCharacter()" style="padding:8px 16px;">添加</button>
                         </div>
+                        
+                        <!-- 已选择的角色标签 -->
+                        <div id="selected-characters-container" style="display:flex;flex-wrap:wrap;gap:6px;min-height:32px;padding:8px;background:#f8f9fa;border-radius:6px;">
+                            <!-- 动态生成标签 -->
+                        </div>
+                        
                         <div style="margin-top:8px;">
                             <label class="wb-switch">
                                 <input type="checkbox" id="entry-exclude-mode">
