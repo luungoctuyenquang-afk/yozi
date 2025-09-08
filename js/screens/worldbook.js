@@ -7,12 +7,133 @@ const WorldBookV2 = {
     selectedEntryIds: new Set(),  // 选中的条目ID集合
     books: [],
     entries: [],
-    
+
+    // 全局设置管理
+    globalSettings: null,
+
     // 初始化
     init() {
+        // 初始化全局设置
+        this.initGlobalSettings();
+
         this.loadData();
         this.bindEvents();
         this.render();
+    },
+
+    // 初始化全局设置
+    initGlobalSettings() {
+        // 尝试从localStorage加载
+        const saved = localStorage.getItem('worldbook.globalSettings');
+        if (saved) {
+            this.globalSettings = JSON.parse(saved);
+        } else {
+            // 使用默认设置
+            this.globalSettings = {
+                scanDepth: 2,
+                contextPercent: 25,
+                tokenBudget: 2048,
+                minActivations: 0,
+                maxRecursion: 2,
+                maxDepth: 100,
+                insertionStrategy: 'evenly',
+                includeNames: true,
+                recursiveScan: true,
+                caseSensitive: false,
+                matchWholeWords: false,
+                useGroupScoring: false,
+                overflowAlert: true
+            };
+            this.saveGlobalSettings();
+        }
+        this.loadGlobalSettingsToUI();
+    },
+
+    // 切换全局设置面板
+    toggleGlobalSettings() {
+        const panel = document.getElementById('wb-global-settings');
+        if (panel) {
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+    },
+
+    // 保存全局设置
+    saveGlobalSettings() {
+        // 从UI读取值
+        this.globalSettings = {
+            scanDepth: parseInt(document.getElementById('wb-scan-depth')?.value) || 2,
+            contextPercent: parseInt(document.getElementById('wb-context-percent')?.value) || 25,
+            tokenBudget: parseInt(document.getElementById('wb-token-budget')?.value) || 2048,
+            minActivations: parseInt(document.getElementById('wb-min-activations')?.value) || 0,
+            maxRecursion: parseInt(document.getElementById('wb-max-recursion')?.value) || 2,
+            maxDepth: parseInt(document.getElementById('wb-max-depth')?.value) || 100,
+            insertionStrategy: document.getElementById('wb-insertion-strategy')?.value || 'evenly',
+            includeNames: document.getElementById('wb-include-names')?.checked ?? true,
+            recursiveScan: document.getElementById('wb-recursive-scan')?.checked ?? true,
+            caseSensitive: document.getElementById('wb-case-sensitive')?.checked ?? false,
+            matchWholeWords: document.getElementById('wb-match-whole-words')?.checked ?? false,
+            useGroupScoring: document.getElementById('wb-use-group-scoring')?.checked ?? false,
+            overflowAlert: document.getElementById('wb-overflow-alert')?.checked ?? true
+        };
+
+        // 保存到localStorage
+        localStorage.setItem('worldbook.globalSettings', JSON.stringify(this.globalSettings));
+
+        alert('全局设置已保存！');
+    },
+
+    // 加载全局设置到UI
+    loadGlobalSettingsToUI() {
+        if (!this.globalSettings) return;
+
+        const setIfExists = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (el.type === 'checkbox') {
+                    el.checked = value;
+                } else {
+                    el.value = value;
+                }
+            }
+        };
+
+        setIfExists('wb-scan-depth', this.globalSettings.scanDepth);
+        setIfExists('wb-context-percent', this.globalSettings.contextPercent);
+        setIfExists('wb-token-budget', this.globalSettings.tokenBudget);
+        setIfExists('wb-min-activations', this.globalSettings.minActivations);
+        setIfExists('wb-max-recursion', this.globalSettings.maxRecursion);
+        setIfExists('wb-max-depth', this.globalSettings.maxDepth);
+        setIfExists('wb-insertion-strategy', this.globalSettings.insertionStrategy);
+        setIfExists('wb-include-names', this.globalSettings.includeNames);
+        setIfExists('wb-recursive-scan', this.globalSettings.recursiveScan);
+        setIfExists('wb-case-sensitive', this.globalSettings.caseSensitive);
+        setIfExists('wb-match-whole-words', this.globalSettings.matchWholeWords);
+        setIfExists('wb-use-group-scoring', this.globalSettings.useGroupScoring);
+        setIfExists('wb-overflow-alert', this.globalSettings.overflowAlert);
+    },
+
+    // 重置全局设置
+    resetGlobalSettings() {
+        if (confirm('确定要重置所有全局设置为默认值吗？')) {
+            this.globalSettings = {
+                scanDepth: 2,
+                contextPercent: 25,
+                tokenBudget: 2048,
+                minActivations: 0,
+                maxRecursion: 2,
+                maxDepth: 100,
+                insertionStrategy: 'evenly',
+                includeNames: true,
+                recursiveScan: true,
+                caseSensitive: false,
+                matchWholeWords: false,
+                useGroupScoring: false,
+                overflowAlert: true
+            };
+            this.saveGlobalSettings();
+            this.loadGlobalSettingsToUI();
+            alert('已重置为默认设置！');
+        }
     },
     
     // 加载数据
