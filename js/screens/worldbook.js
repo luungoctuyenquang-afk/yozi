@@ -220,16 +220,29 @@ const WorldBookV2 = {
     </div>
 `;
 
-                // 绑定事件
+                // 绑定事件 - 使用闭包保证this指向正确
                 const checkbox = item.querySelector('.wb-entry-checkbox');
                 const main = item.querySelector('.wb-entry-main');
                 const editBtn = item.querySelector('.wb-swipe-edit');
                 const deleteBtn = item.querySelector('.wb-swipe-delete');
 
+                // 修复勾选框事件
                 if (checkbox) {
-                    checkbox.addEventListener('click', (e) => {
+                    checkbox.addEventListener('change', (e) => {
                         e.stopPropagation();
-                        this.toggleEntrySelection(entry.id);
+                        if (e.target.checked) {
+                            this.selectedEntryIds.add(entry.id);
+                        } else {
+                            this.selectedEntryIds.delete(entry.id);
+                        }
+                        this.updateModeBar();
+
+                        // 更新条目样式
+                        if (e.target.checked) {
+                            item.classList.add('selected');
+                        } else {
+                            item.classList.remove('selected');
+                        }
                     });
                 }
 
@@ -296,12 +309,13 @@ const WorldBookV2 = {
 
         if (characterRadio && characterRadio.checked) {
             container.style.display = 'block';
+            this.updateCharacterList();
         } else {
             container.style.display = 'none';
             // 清空选择
-            document.querySelectorAll('input[name="entry-characters"]').forEach(cb => {
-                cb.checked = false;
-            });
+            if (this.currentEntry) {
+                this.currentEntry.characters = [];
+            }
             const exclude = document.getElementById('entry-exclude-mode');
             if (exclude) exclude.checked = false;
         }
@@ -433,7 +447,7 @@ const WorldBookV2 = {
                 bindType = 'character';
                 this.currentEntry.characters = [this.currentEntry.character];
             } else {
-                bindType = 'global';
+                bindType = 'inherit';
             }
         }
 
@@ -507,11 +521,8 @@ const WorldBookV2 = {
         const bindType = document.querySelector('input[name="entry-bind-type"]:checked')?.value || 'inherit';
         this.currentEntry.bindType = bindType;
 
-        // 如果是角色绑定，保存选中的角色
+        // 如果是角色绑定，保存排除模式
         if (bindType === 'character') {
-            const selectedChars = Array.from(document.querySelectorAll('input[name="entry-characters"]:checked'))
-                .map(cb => cb.value);
-            this.currentEntry.characters = selectedChars;
             this.currentEntry.excludeMode = document.getElementById('entry-exclude-mode').checked;
         } else {
             delete this.currentEntry.characters;
@@ -569,15 +580,17 @@ const WorldBookV2 = {
         }
     },
 
-    // 更新角色列表
-    updateCharacterList() {
-        const container = document.getElementById('character-checkboxes-container');
-        if (!container) return;
 
-        // 从状态管理获取实际的角色列表
+    // 更新角色下拉列表
+    updateCharacterList() {
+        const dropdown = document.getElementById('character-dropdown');
+        const container = document.getElementById('selected-characters-container');
+        if (!dropdown || !container) return;
+
+        // 从状态管理获取角色列表
         const state = StateManager.get();
         const characters = [];
-        
+
         // 获取主AI角色
         if (state.ai && state.ai.name) {
             characters.push({ 
@@ -585,17 +598,15 @@ const WorldBookV2 = {
                 name: state.ai.name 
             });
         }
-        
-        // 获取其他预设角色（从通用设置或API设置）
+
+        // 获取其他预设角色
         if (state.chats) {
             Object.keys(state.chats).forEach(chatId => {
                 const chat = state.chats[chatId];
                 if (chat.settings && chat.settings.aiPersona) {
-                    // 从aiPersona提取角色名
                     const personaName = chat.settings.aiPersona.split('。')[0]
                         .replace(/你是AI伴侣'|你是|'/g, '')
                         .trim();
-                    
                     if (personaName && !characters.find(c => c.name === personaName)) {
                         characters.push({
                             id: chatId,
@@ -605,61 +616,102 @@ const WorldBookV2 = {
                 }
             });
         }
-        
+
         // 如果没有找到任何角色，使用默认值
         if (characters.length === 0) {
             characters.push({ id: 'default', name: '默认AI' });
         }
 
-        // 清空并重建
-        container.innerHTML = '';
-        container.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px;';
-
+        // 更新下拉框
+        dropdown.innerHTML = '<option value="">选择要绑定的角色...</option>';
         characters.forEach(char => {
-            const label = document.createElement('label');
-            label.style.cssText = 'display:flex; align-items:center; padding:6px 12px; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; transition:all 0.2s; background:white;';
-            
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.name = 'entry-characters';
-            checkbox.value = char.id;
-            checkbox.style.marginRight = '6px';
-            
-            // 恢复选中状态
-            if (this.currentEntry?.characters?.includes(char.id)) {
-                checkbox.checked = true;
-                label.style.background = '#f0f9ff';
-                label.style.borderColor = '#3b82f6';
+            const isSelected = this.currentEntry?.characters?.includes(char.id);
+            if (!isSelected) {
+                const option = document.createElement('option');
+                option.value = char.id;
+                option.textContent = char.name;
+                option.dataset.name = char.name;
+                dropdown.appendChild(option);
             }
-            
-            checkbox.onchange = () => {
-                if (checkbox.checked) {
-                    label.style.background = '#f0f9ff';
-                    label.style.borderColor = '#3b82f6';
-                } else {
-                    label.style.background = 'white';
-                    label.style.borderColor = '#e2e8f0';
-                }
-            };
-            
-            const span = document.createElement('span');
-            span.textContent = char.name;
-            span.style.fontSize = '13px';
-            
-            label.appendChild(checkbox);
-            label.appendChild(span);
-            container.appendChild(label);
         });
+
+        // 显示已选择的角色
+        this.updateSelectedCharacters();
+    },
+
+    // 更新已选择的角色显示
+    updateSelectedCharacters() {
+        const container = document.getElementById('selected-characters-container');
+        if (!container) return;
         
-        // 添加说明文字
-        if (characters.length === 1) {
-            const hint = document.createElement('div');
-            hint.style.cssText = 'width:100%; margin-top:8px; font-size:11px; color:#999;';
-            hint.textContent = '提示：在通用设置中可以创建更多AI角色';
-            container.appendChild(hint);
+        container.innerHTML = '';
+        
+        if (!this.currentEntry?.characters || this.currentEntry.characters.length === 0) {
+            container.innerHTML = '<span class="character-empty-hint">尚未选择角色</span>';
+            return;
+        }
+        
+        // 获取角色信息
+        const state = StateManager.get();
+        const allCharacters = [];
+        
+        if (state.ai && state.ai.name) {
+            allCharacters.push({ id: 'default', name: state.ai.name });
+        }
+        
+        if (state.chats) {
+            Object.keys(state.chats).forEach(chatId => {
+                const chat = state.chats[chatId];
+                if (chat.settings && chat.settings.aiPersona) {
+                    const personaName = chat.settings.aiPersona.split('。')[0]
+                        .replace(/你是AI伴侣'|你是|'/g, '')
+                        .trim();
+                    if (personaName) {
+                        allCharacters.push({ id: chatId, name: personaName });
+                    }
+                }
+            });
+        }
+        
+        // 显示标签
+        this.currentEntry.characters.forEach(charId => {
+            const charInfo = allCharacters.find(c => c.id === charId);
+            if (charInfo) {
+                const tag = document.createElement('div');
+                tag.className = 'character-tag';
+                tag.innerHTML = `
+                    <span>${charInfo.name}</span>
+                    <span class="character-tag-remove" onclick="WorldBookV2.removeCharacter('${charId}')">×</span>
+                `;
+                container.appendChild(tag);
+            }
+        });
+    },
+
+    // 添加选中的角色
+    addSelectedCharacter() {
+        const dropdown = document.getElementById('character-dropdown');
+        if (!dropdown || !dropdown.value) return;
+        
+        if (!this.currentEntry.characters) {
+            this.currentEntry.characters = [];
+        }
+        
+        const charId = dropdown.value;
+        if (!this.currentEntry.characters.includes(charId)) {
+            this.currentEntry.characters.push(charId);
+            this.updateCharacterList();
+            dropdown.value = '';
         }
     },
 
+    // 移除角色
+    removeCharacter(charId) {
+        if (!this.currentEntry?.characters) return;
+        
+        this.currentEntry.characters = this.currentEntry.characters.filter(id => id !== charId);
+        this.updateCharacterList();
+    },
     // 测试条目
     testEntry() {
         if (!this.currentEntry) return;

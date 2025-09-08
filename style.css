@@ -905,3 +905,45 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
 .wb-swipe-delete {
     background: #ef4444;
 }
+/* 角色标签样式 */
+.character-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 16px;
+    font-size: 13px;
+    animation: tagAppear 0.2s ease;
+}
+
+@keyframes tagAppear {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.character-tag-remove {
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.character-tag-remove:hover {
+    opacity: 1;
+}
+
+/* 空状态提示 */
+.character-empty-hint {
+    color: #999;
+    font-size: 12px;
+    font-style: italic;
+}
