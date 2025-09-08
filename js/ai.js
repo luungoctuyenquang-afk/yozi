@@ -206,16 +206,17 @@ const AI = {
             });
 
             // 扫描历史消息（根据扫描深度）
-            const historyToScan = recentHistory.slice(-scanDepth * 2); // *2 因为包含用户和AI消息
+            const historyToScan = recentHistory.slice(-scanDepth);
             historyToScan.forEach(msg => {
                 if (msg.content) {
                     if (typeof msg.content === 'string') {
                         scanText += msg.content + ' ';
                     } else if (Array.isArray(msg.content)) {
                         msg.content.forEach(part => {
-                            if (part.text) scanText += part.text + ' ';
-                            if (part.type === 'text' && typeof part === 'object') {
-                                scanText += (part.text || '') + ' ';
+                            if (typeof part === 'string') {
+                                scanText += part + ' ';
+                            } else if (part && part.type === 'text' && part.text) {
+                                scanText += part.text + ' ';
                             }
                         });
                     }
