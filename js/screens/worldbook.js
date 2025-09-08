@@ -205,7 +205,7 @@ const WorldBookV2 = {
             if (modeBar) modeBar.style.display = 'none';
         } else {
             container.style.display = 'block';
-            emptyState.style.display = 'none';
+            if (emptyState) emptyState.style.display = 'none';
             if (modeBar) modeBar.style.display = 'flex';
 
             filteredEntries.forEach(entry => {
