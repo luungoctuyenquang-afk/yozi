@@ -849,7 +849,7 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
 .wb-entry-content {
     position: relative;
     z-index: 2;
-    background: white;
+    background: #fff;
     transition: transform 0.3s ease;
 }
 
