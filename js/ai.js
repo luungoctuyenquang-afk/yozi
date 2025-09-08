@@ -192,11 +192,44 @@ const AI = {
             世界规则: linkedBooks,
             当前重要事件: dynamicEvents.length > 0 ? dynamicEvents : "无特殊事件"
         };
-        
+
+        // 构建世界书上下文
+        let worldBookContext = '';
+        if (window.WorldBookV2 && window.WorldBookV2.currentBook) {
+            // 获取最近的消息文本用于扫描
+            const scanDepth = window.WorldBookV2.currentBook.scanDepth || 2;
+            let scanText = '';
+
+            // 扫描当前用户输入
+            parts.forEach(part => {
+                if (part.text) scanText += part.text + ' ';
+            });
+
+            // 扫描历史消息（根据扫描深度）
+            const historyToScan = recentHistory.slice(-scanDepth * 2); // *2 因为包含用户和AI消息
+            historyToScan.forEach(msg => {
+                if (msg.content) {
+                    if (typeof msg.content === 'string') {
+                        scanText += msg.content + ' ';
+                    } else if (Array.isArray(msg.content)) {
+                        msg.content.forEach(part => {
+                            if (part.text) scanText += part.text + ' ';
+                            if (part.type === 'text' && typeof part === 'object') {
+                                scanText += (part.text || '') + ' ';
+                            }
+                        });
+                    }
+                }
+            });
+
+            // 获取激活的世界书内容
+            worldBookContext = window.WorldBookV2.buildWorldBookContext(scanText);
+        }
+
         const systemPrompt = `你正在一个虚拟手机模拟器中扮演AI伴侣'零'。
 # 你的核心设定: ${aiPersona}
 # 用户的虚拟形象: ${userPersona}
-# 当前世界状态 (JSON格式, 供你参考):
+${worldBookContext ? `# 世界书设定（重要背景信息）：\n${worldBookContext}\n` : ''}# 当前世界状态 (JSON格式, 供你参考):
 ${JSON.stringify(stateForPrompt, null, 2)}
 # 你的任务
 1. 严格按照你的角色设定进行回复。
