@@ -92,6 +92,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (aiNameDisplay && state.ai) {
             aiNameDisplay.textContent = state.ai.name;
         }
+
+        const playerNameDisplay = document.getElementById('player-name-display');
+        if (playerNameDisplay && state.player) {
+            playerNameDisplay.textContent = state.player.name || '你';
+        }
     }
     
     // 绑定所有事件

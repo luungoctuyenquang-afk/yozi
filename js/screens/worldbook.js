@@ -4,6 +4,7 @@ const WorldBookV2 = {
     currentBook: null,
     currentEntry: null,
     isMultiSelectMode: false,  // 是否在多选模式
+    selectedEntryIds: new Set(),  // 选中的条目ID集合
     books: [],
     entries: [],
     
@@ -186,7 +187,7 @@ const WorldBookV2 = {
             filteredEntries.forEach(entry => {
                 const item = document.createElement('div');
                 const isSelected = this.selectedEntryIds.has(entry.id);
-                item.className = 'wb-entry-item' +
+                item.className = 'wb-entry-item wb-swipeable' +
                     (entry.enabled === false ? ' disabled' : '') +
                     (isSelected ? ' selected' : '');
 
@@ -195,28 +196,66 @@ const WorldBookV2 = {
 
                 // 创建HTML结构
                 item.innerHTML = `
-                <div class="wb-entry-content">
-                    <input type="checkbox" class="wb-entry-checkbox" 
-                           ${isSelected ? 'checked' : ''} 
-                           onclick="event.stopPropagation(); WorldBookV2.toggleEntrySelection('${entry.id}')">
-                    <div class="wb-entry-main" onclick="WorldBookV2.handleEntryClick('${entry.id}')">
-                        <div class="wb-entry-header">
-                            <div class="wb-entry-title">${entry.name || '未命名条目'}</div>
-                            <div class="wb-entry-badge">
-                                ${entry.constant ? '常驻' : '触发'}
-                                ${entry.enabled === false ? ' · 已禁用' : ''}
-                            </div>
-                        </div>
-                        <div class="wb-entry-preview">
-                            ${keys ? '🔑 ' + keys + ' ' : ''}${content}
-                        </div>
-                    </div>
+    <div class="wb-entry-content">
+        <input type="checkbox" class="wb-entry-checkbox" 
+               ${isSelected ? 'checked' : ''} 
+               data-entry-id="${entry.id}"
+               style="margin-right:10px;">
+        <div class="wb-entry-main" style="flex:1;">
+            <div class="wb-entry-header">
+                <div class="wb-entry-title">${entry.name || '未命名条目'}</div>
+                <div class="wb-entry-badge">
+                    ${entry.constant ? '常驻' : '触发'}
+                    ${entry.enabled === false ? ' · 已禁用' : ''}
                 </div>
-                <div class="wb-swipe-actions">
-                    <button class="wb-swipe-edit" onclick="WorldBookV2.editEntry(${JSON.stringify(entry).replace(/"/g, '&quot;')})">编辑</button>
-                    <button class="wb-swipe-delete" onclick="WorldBookV2.quickDeleteEntry('${entry.id}')">删除</button>
-                </div>
-            `;
+            </div>
+            <div class="wb-entry-preview">
+                ${keys ? '🔑 ' + keys + ' ' : ''}${content}
+            </div>
+        </div>
+    </div>
+    <div class="wb-swipe-actions">
+        <button class="wb-swipe-edit">编辑</button>
+        <button class="wb-swipe-delete">删除</button>
+    </div>
+`;
+
+                // 绑定事件
+                const checkbox = item.querySelector('.wb-entry-checkbox');
+                const main = item.querySelector('.wb-entry-main');
+                const editBtn = item.querySelector('.wb-swipe-edit');
+                const deleteBtn = item.querySelector('.wb-swipe-delete');
+
+                if (checkbox) {
+                    checkbox.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.toggleEntrySelection(entry.id);
+                    });
+                }
+
+                if (main) {
+                    main.addEventListener('click', () => {
+                        if (!this.isMultiSelectMode) {
+                            this.editEntry(entry);
+                        } else {
+                            this.toggleEntrySelection(entry.id);
+                        }
+                    });
+                }
+
+                if (editBtn) {
+                    editBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.editEntry(entry);
+                    });
+                }
+
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.quickDeleteEntry(entry.id);
+                    });
+                }
 
                 // 只在普通模式下添加滑动手势
                 if (!this.isMultiSelectMode) {
@@ -535,13 +574,42 @@ const WorldBookV2 = {
         const container = document.getElementById('character-checkboxes-container');
         if (!container) return;
 
-        // 预设的角色选项（将来可扩展）
-        const characters = [
-            { id: 'default', name: '默认AI（零）' },
-            { id: 'assistant', name: '助手模式' },
-            { id: 'friend', name: '朋友模式' },
-            { id: 'teacher', name: '老师模式' }
-        ];
+        // 从状态管理获取实际的角色列表
+        const state = StateManager.get();
+        const characters = [];
+        
+        // 获取主AI角色
+        if (state.ai && state.ai.name) {
+            characters.push({ 
+                id: 'default', 
+                name: state.ai.name 
+            });
+        }
+        
+        // 获取其他预设角色（从通用设置或API设置）
+        if (state.chats) {
+            Object.keys(state.chats).forEach(chatId => {
+                const chat = state.chats[chatId];
+                if (chat.settings && chat.settings.aiPersona) {
+                    // 从aiPersona提取角色名
+                    const personaName = chat.settings.aiPersona.split('。')[0]
+                        .replace(/你是AI伴侣'|你是|'/g, '')
+                        .trim();
+                    
+                    if (personaName && !characters.find(c => c.name === personaName)) {
+                        characters.push({
+                            id: chatId,
+                            name: personaName
+                        });
+                    }
+                }
+            });
+        }
+        
+        // 如果没有找到任何角色，使用默认值
+        if (characters.length === 0) {
+            characters.push({ id: 'default', name: '默认AI' });
+        }
 
         // 清空并重建
         container.innerHTML = '';
@@ -549,39 +617,47 @@ const WorldBookV2 = {
 
         characters.forEach(char => {
             const label = document.createElement('label');
-            label.style.cssText = 'display:flex; align-items:center; padding:6px 12px; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; transition:all 0.2s;';
-
+            label.style.cssText = 'display:flex; align-items:center; padding:6px 12px; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; transition:all 0.2s; background:white;';
+            
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.name = 'entry-characters';
             checkbox.value = char.id;
             checkbox.style.marginRight = '6px';
-
+            
             // 恢复选中状态
             if (this.currentEntry?.characters?.includes(char.id)) {
                 checkbox.checked = true;
                 label.style.background = '#f0f9ff';
                 label.style.borderColor = '#3b82f6';
             }
-
+            
             checkbox.onchange = () => {
                 if (checkbox.checked) {
                     label.style.background = '#f0f9ff';
                     label.style.borderColor = '#3b82f6';
                 } else {
-                    label.style.background = '';
+                    label.style.background = 'white';
                     label.style.borderColor = '#e2e8f0';
                 }
             };
-
+            
             const span = document.createElement('span');
             span.textContent = char.name;
             span.style.fontSize = '13px';
-
+            
             label.appendChild(checkbox);
             label.appendChild(span);
             container.appendChild(label);
         });
+        
+        // 添加说明文字
+        if (characters.length === 1) {
+            const hint = document.createElement('div');
+            hint.style.cssText = 'width:100%; margin-top:8px; font-size:11px; color:#999;';
+            hint.textContent = '提示：在通用设置中可以创建更多AI角色';
+            container.appendChild(hint);
+        }
     },
 
     // 测试条目
@@ -805,9 +881,6 @@ const WorldBookV2 = {
 
     // ========== 批量操作功能 ==========
 
-    // 选中的条目ID集合
-    selectedEntryIds: new Set(),
-
     // 切换单个条目选中状态
     toggleEntrySelection(entryId) {
         if (this.selectedEntryIds.has(entryId)) {
@@ -919,16 +992,6 @@ const WorldBookV2 = {
         this.toggleMode();
     },
 
-    // 处理条目点击
-    handleEntryClick(entryId) {
-        if (this.isMultiSelectMode) {
-            this.toggleEntrySelection(entryId);
-        } else {
-            const entry = this.entries.find(e => e.id === entryId);
-            if (entry) this.editEntry(entry);
-        }
-    },
-
     // 更新模式栏显示
     updateModeBar() {
         const selectedCount = document.getElementById('wb-selected-count');
@@ -956,14 +1019,14 @@ const WorldBookV2 = {
 
         const reset = () => {
             content.style.transform = '';
-            actions.style.opacity = '0';
-            actions.style.pointerEvents = 'none';
+            actions.classList.remove('visible');
+            actions.style.opacity = '';
         };
 
         const show = () => {
             content.style.transform = 'translateX(-100px)';
-            actions.style.opacity = '1';
-            actions.style.pointerEvents = 'auto';
+            actions.classList.add('visible');
+            actions.style.opacity = '';
         };
 
         // 重置其他条目
@@ -974,8 +1037,8 @@ const WorldBookV2 = {
                     const a = item.querySelector('.wb-swipe-actions');
                     if (c) c.style.transform = '';
                     if (a) {
-                        a.style.opacity = '0';
-                        a.style.pointerEvents = 'none';
+                        a.classList.remove('visible');
+                        a.style.opacity = '';
                     }
                 }
             });
@@ -996,6 +1059,7 @@ const WorldBookV2 = {
                 resetOthers();
                 const translate = Math.min(diff, 100);
                 content.style.transform = `translateX(-${translate}px)`;
+                actions.classList.add('visible');
                 actions.style.opacity = translate / 100;
             }
         }, {passive: true});
@@ -1026,6 +1090,21 @@ const WorldBookV2 = {
             this.entries = this.entries.filter(e => e.id !== entryId);
             this.saveData();
             this.renderEntries();
+        }
+    },
+
+    // 编辑玩家名称
+    editPlayerName() {
+        const state = StateManager.get();
+        const newName = prompt('请输入你的名字：', state.player.name);
+        if (newName && newName.trim()) {
+            state.player.name = newName.trim();
+            StateManager.set(state);
+            Database.saveWorldState();
+            const display = document.getElementById('player-name-display');
+            if (display) {
+                display.textContent = newName.trim();
+            }
         }
     },
 
