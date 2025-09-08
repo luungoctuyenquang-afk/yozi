@@ -94,10 +94,92 @@
             </select>
             <div class="wb-top-actions">
                 <button class="wb-mini-btn" onclick="WorldBookV2.createNewBook()" title="新建">➕</button>
-                <button class="wb-mini-btn" onclick="WorldBookV2.editBookSettings()" title="设置">⚙️</button>
+                <button class="wb-mini-btn" onclick="WorldBookV2.editBookSettings()" title="编辑">⚙️</button>
+                <button onclick="WorldBookV2.toggleGlobalSettings()" id="wb-global-settings-btn">⚙️ 全局设置</button>
             </div>
         </div>
-        
+
+        <!-- 全局世界书激活设置面板 -->
+        <div id="wb-global-settings" class="wb-global-settings" style="display: none;">
+            <div class="wb-settings-header">
+                <span>全局世界信息/知识书激活设置</span>
+                <button onclick="WorldBookV2.toggleGlobalSettings()" class="wb-close-btn">×</button>
+            </div>
+            
+            <!-- 基础设置 -->
+            <div class="wb-settings-section">
+                <div class="wb-settings-row">
+                    <div class="wb-setting-item">
+                        <label>扫描深度</label>
+                        <input type="number" id="wb-scan-depth" min="0" max="100" value="2">
+                        <small>回溯消息数量</small>
+                    </div>
+                    <div class="wb-setting-item">
+                        <label>上下文百分比</label>
+                        <input type="number" id="wb-context-percent" min="0" max="100" value="25">
+                        <small>占用上下文%</small>
+                    </div>
+                </div>
+                
+                <div class="wb-settings-row">
+                    <div class="wb-setting-item">
+                        <label>Token预算上限 ℹ️</label>
+                        <input type="number" id="wb-token-budget" min="0" max="8192" value="2048">
+                        <small>最大Token数</small>
+                    </div>
+                    <div class="wb-setting-item">
+                        <label>最小激活数 ⚠️</label>
+                        <input type="number" id="wb-min-activations" min="0" max="100" value="0">
+                        <small>最少触发条目</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 高级设置（可折叠） -->
+            <details class="wb-advanced-settings">
+                <summary>🔧 高级递归与匹配设置</summary>
+                <div class="wb-settings-section">
+                    <div class="wb-settings-row">
+                        <div class="wb-setting-item">
+                            <label>最大递归深度 ⚠️</label>
+                            <input type="number" id="wb-max-recursion" min="0" max="10" value="2">
+                            <small>递归层数限制</small>
+                        </div>
+                        <div class="wb-setting-item">
+                            <label>最大深度 ⚠️</label>
+                            <input type="number" id="wb-max-depth" min="0" max="999" value="100">
+                            <small>最大扫描深度</small>
+                        </div>
+                    </div>
+                    
+                    <div class="wb-settings-row">
+                        <div class="wb-setting-item full-width">
+                            <label>插入策略</label>
+                            <select id="wb-insertion-strategy">
+                                <option value="evenly">角色世界书优先</option>
+                                <option value="character_first">角色优先</option>
+                                <option value="global_first">全局优先</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="wb-checkbox-group">
+                        <label><input type="checkbox" id="wb-include-names" checked> 包括名称</label>
+                        <label><input type="checkbox" id="wb-recursive-scan" checked> 递归扫描</label>
+                        <label><input type="checkbox" id="wb-case-sensitive"> 区分大小写</label>
+                        <label><input type="checkbox" id="wb-match-whole-words"> 匹配整个单词</label>
+                        <label><input type="checkbox" id="wb-use-group-scoring"> 使用群组评分</label>
+                        <label><input type="checkbox" id="wb-overflow-alert" checked> 溢出警报</label>
+                    </div>
+                </div>
+            </details>
+            
+            <div class="wb-settings-footer">
+                <button onclick="WorldBookV2.saveGlobalSettings()" class="wb-save-btn">保存设置</button>
+                <button onclick="WorldBookV2.resetGlobalSettings()" class="wb-reset-btn">重置默认</button>
+            </div>
+        </div>
+
         <!-- 搜索栏 -->
         <div class="wb-search-bar">
             <input type="text" id="wb-search" class="wb-search-minimal" placeholder="搜索条目...">

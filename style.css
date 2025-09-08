@@ -963,3 +963,151 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
     font-size: 12px;
     font-style: italic;
 }
+
+/* 全局世界书设置面板 */
+.wb-global-settings {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin: 10px 0;
+    padding: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.wb-settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+}
+
+.wb-close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.wb-settings-section {
+    padding: 15px;
+}
+
+.wb-settings-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 15px;
+}
+
+.wb-setting-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.wb-setting-item.full-width {
+    flex: 1 1 100%;
+}
+
+.wb-setting-item label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+}
+
+.wb-setting-item input,
+.wb-setting-item select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.wb-setting-item small {
+    font-size: 11px;
+    color: #666;
+}
+
+.wb-checkbox-group {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.wb-checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.wb-checkbox-group input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.wb-advanced-settings {
+    border-top: 1px solid #eee;
+}
+
+.wb-advanced-settings summary {
+    padding: 12px 15px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: #667eea;
+    list-style: none;
+}
+
+.wb-advanced-settings summary::-webkit-details-marker {
+    display: none;
+}
+
+.wb-settings-footer {
+    padding: 15px;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.wb-save-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.wb-reset-btn {
+    background: #f0f0f0;
+    color: #666;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#wb-global-settings-btn {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+}
