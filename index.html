@@ -100,19 +100,28 @@
             <button class="wb-add-btn" onclick="WorldBookV2.addEntry()">+ 新条目</button>
         </div>
 
-        <!-- 批量操作栏（仅在有条目时显示） -->
-        <div class="wb-batch-bar" id="wb-batch-bar" style="display:none;">
-            <div class="wb-batch-info">
+        <!-- 模式切换栏 -->
+        <div class="wb-mode-bar" id="wb-mode-bar" style="display:none;">
+            <button class="wb-mode-btn" id="wb-toggle-mode" onclick="WorldBookV2.toggleMode()">
+                <span class="mode-icon">☰</span>
+                <span class="mode-text">多选</span>
+            </button>
+            <div class="wb-mode-info" id="wb-mode-info" style="display:none;">
                 <label class="wb-switch">
                     <input type="checkbox" id="wb-select-all" onchange="WorldBookV2.toggleSelectAll()">
                     <span>全选</span>
                 </label>
                 <span id="wb-selected-count" style="margin-left:10px;font-size:13px;color:#666;">已选: 0</span>
             </div>
+        </div>
+
+        <!-- 批量操作栏（仅在多选模式显示） -->
+        <div class="wb-batch-bar" id="wb-batch-bar" style="display:none;">
             <div class="wb-batch-actions">
                 <button class="wb-batch-btn" onclick="WorldBookV2.batchEnable(true)">启用</button>
                 <button class="wb-batch-btn" onclick="WorldBookV2.batchEnable(false)">禁用</button>
                 <button class="wb-batch-btn danger" onclick="WorldBookV2.batchDelete()">删除</button>
+                <button class="wb-batch-btn" onclick="WorldBookV2.exitMultiSelect()">取消</button>
             </div>
         </div>
 

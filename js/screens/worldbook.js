@@ -3,6 +3,7 @@ const WorldBookV2 = {
     // 当前状态
     currentBook: null,
     currentEntry: null,
+    isMultiSelectMode: false,  // 是否在多选模式
     books: [],
     entries: [],
     
@@ -151,11 +152,13 @@ const WorldBookV2 = {
     renderEntries() {
         const container = document.getElementById('wb-entries-list');
         const emptyState = document.getElementById('wb-empty-state');
+        const modeBar = document.getElementById('wb-mode-bar');
+
         if (!container || !this.currentBook) return;
 
         const bookEntries = this.entries.filter(e => e.bookId === this.currentBook.id);
-
         const searchTerm = (document.getElementById('wb-search')?.value || '').toLowerCase();
+
         let filteredEntries = bookEntries;
         if (searchTerm) {
             filteredEntries = bookEntries.filter(e => {
@@ -165,146 +168,65 @@ const WorldBookV2 = {
         }
 
         filteredEntries.sort((a, b) => b.order - a.order);
-
         container.innerHTML = '';
+
+        // 设置容器模式类
+        container.className = 'wb-entries-list ' +
+            (this.isMultiSelectMode ? 'wb-multiselect-mode' : 'wb-normal-mode');
 
         if (filteredEntries.length === 0) {
             container.style.display = 'none';
             emptyState.style.display = 'block';
+            modeBar.style.display = 'none';
         } else {
             container.style.display = 'block';
             emptyState.style.display = 'none';
+            modeBar.style.display = 'flex';
 
             filteredEntries.forEach(entry => {
                 const item = document.createElement('div');
                 const isSelected = this.selectedEntryIds.has(entry.id);
-                item.className = 'wb-entry-item wb-swipeable' +
+                item.className = 'wb-entry-item' +
                     (entry.enabled === false ? ' disabled' : '') +
                     (isSelected ? ' selected' : '');
 
                 const keys = entry.keys.slice(0, 2).join(', ');
                 const content = entry.content.substring(0, 80) + (entry.content.length > 80 ? '...' : '');
 
-                // 创建内容区域
-                const contentDiv = document.createElement('div');
-                contentDiv.className = 'wb-entry-content';
+                // 创建HTML结构
+                item.innerHTML = `
+                <div class="wb-entry-content">
+                    <input type="checkbox" class="wb-entry-checkbox" 
+                           ${isSelected ? 'checked' : ''} 
+                           onclick="event.stopPropagation(); WorldBookV2.toggleEntrySelection('${entry.id}')">
+                    <div class="wb-entry-main" onclick="WorldBookV2.handleEntryClick('${entry.id}')">
+                        <div class="wb-entry-header">
+                            <div class="wb-entry-title">${entry.name || '未命名条目'}</div>
+                            <div class="wb-entry-badge">
+                                ${entry.constant ? '常驻' : '触发'}
+                                ${entry.enabled === false ? ' · 已禁用' : ''}
+                            </div>
+                        </div>
+                        <div class="wb-entry-preview">
+                            ${keys ? '🔑 ' + keys + ' ' : ''}${content}
+                        </div>
+                    </div>
+                </div>
+                <div class="wb-swipe-actions">
+                    <button class="wb-swipe-edit" onclick="WorldBookV2.editEntry(${JSON.stringify(entry).replace(/"/g, '&quot;')})">编辑</button>
+                    <button class="wb-swipe-delete" onclick="WorldBookV2.quickDeleteEntry('${entry.id}')">删除</button>
+                </div>
+            `;
 
-                // 创建checkbox
-                const checkboxWrapper = document.createElement('div');
-                checkboxWrapper.style.cssText = 'display: flex; align-items: flex-start; gap: 8px;';
+                // 只在普通模式下添加滑动手势
+                if (!this.isMultiSelectMode) {
+                    this.addSimpleSwipe(item);
+                }
 
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.className = 'wb-entry-checkbox';
-                checkbox.checked = isSelected;
-                checkbox.onclick = (e) => {
-                    e.stopPropagation();
-                    this.toggleEntrySelection(entry.id);
-                };
-
-                // 创建主内容
-                const mainContent = document.createElement('div');
-                mainContent.style.flex = '1';
-
-                const header = document.createElement('div');
-                header.className = 'wb-entry-header';
-
-                const title = document.createElement('div');
-                title.className = 'wb-entry-title';
-                title.textContent = entry.name || '未命名条目';
-
-                const badge = document.createElement('div');
-                badge.className = 'wb-entry-badge';
-                badge.textContent = (entry.constant ? '常驻' : '触发') + (entry.enabled === false ? ' · 已禁用' : '');
-
-                const preview = document.createElement('div');
-                preview.className = 'wb-entry-preview';
-                preview.textContent = (keys ? '🔑 ' + keys + ' ' : '') + content;
-
-                // 组装内容结构
-                header.appendChild(title);
-                header.appendChild(badge);
-                mainContent.appendChild(header);
-                mainContent.appendChild(preview);
-                checkboxWrapper.appendChild(checkbox);
-                checkboxWrapper.appendChild(mainContent);
-                contentDiv.appendChild(checkboxWrapper);
-
-                // 创建操作按钮区域
-                const actionsDiv = document.createElement('div');
-                actionsDiv.className = 'wb-swipe-actions';
-
-                const editBtn = document.createElement('button');
-                editBtn.className = 'wb-swipe-edit';
-                editBtn.textContent = '编辑';
-
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'wb-swipe-delete';
-                deleteBtn.textContent = '删除';
-
-                actionsDiv.appendChild(editBtn);
-                actionsDiv.appendChild(deleteBtn);
-
-                // 添加到item
-                item.appendChild(contentDiv);
-                item.appendChild(actionsDiv);
-
-                // 存储entry数据
-                item.entryData = entry;
-
-                // 添加点击事件（确保可靠触发）
-                let isMoving = false;
-                let touchStartTime = 0;
-
-                // 触摸开始记录时间
-                contentDiv.addEventListener('touchstart', () => {
-                    isMoving = false;
-                    touchStartTime = Date.now();
-                });
-
-                // 触摸移动设置标志
-                contentDiv.addEventListener('touchmove', () => {
-                    isMoving = true;
-                });
-
-                // 点击编辑（移动端）
-                contentDiv.addEventListener('touchend', (e) => {
-                    const touchDuration = Date.now() - touchStartTime;
-                    // 如果不是滑动且点击时间小于300ms，认为是点击
-                    if (!isMoving && touchDuration < 300 && e.target !== checkbox) {
-                        this.editEntry(entry);
-                    }
-                });
-
-                // 点击编辑（桌面端）
-                contentDiv.addEventListener('click', (e) => {
-                    // 确保不是checkbox
-                    if (e.target !== checkbox && !e.target.classList.contains('wb-entry-checkbox')) {
-                        this.editEntry(entry);
-                    }
-                });
-
-                // 编辑按钮事件
-                editBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    this.editEntry(entry);
-                });
-
-                // 删除按钮事件
-                deleteBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    this.quickDeleteEntry(entry.id);
-                });
-
-                // 添加滑动手势
-                this.addSwipeGesture(item, entry);
                 container.appendChild(item);
             });
 
-            // 更新批量操作栏
-            this.updateBatchBar();
+            this.updateModeBar();
         }
     },
 
@@ -613,43 +535,53 @@ const WorldBookV2 = {
         const container = document.getElementById('character-checkboxes-container');
         if (!container) return;
 
-        // 获取当前系统中的角色
-        const state = StateManager.get();
+        // 预设的角色选项（将来可扩展）
         const characters = [
-            { id: 'user', name: state.player?.name || '用户' },
-            { id: 'ai', name: state.ai?.name || 'AI' },
-            { id: 'narrator', name: '旁白' },
-            { id: 'system', name: '系统' }
+            { id: 'default', name: '默认AI（零）' },
+            { id: 'assistant', name: '助手模式' },
+            { id: 'friend', name: '朋友模式' },
+            { id: 'teacher', name: '老师模式' }
         ];
 
-        // 清空容器
+        // 清空并重建
         container.innerHTML = '';
+        container.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px;';
 
-        // 生成checkbox（安全方式）
         characters.forEach(char => {
             const label = document.createElement('label');
-            label.className = 'wb-switch';
+            label.style.cssText = 'display:flex; align-items:center; padding:6px 12px; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; transition:all 0.2s;';
 
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.name = 'entry-characters';
             checkbox.value = char.id;
+            checkbox.style.marginRight = '6px';
+
+            // 恢复选中状态
+            if (this.currentEntry?.characters?.includes(char.id)) {
+                checkbox.checked = true;
+                label.style.background = '#f0f9ff';
+                label.style.borderColor = '#3b82f6';
+            }
+
+            checkbox.onchange = () => {
+                if (checkbox.checked) {
+                    label.style.background = '#f0f9ff';
+                    label.style.borderColor = '#3b82f6';
+                } else {
+                    label.style.background = '';
+                    label.style.borderColor = '#e2e8f0';
+                }
+            };
 
             const span = document.createElement('span');
-            span.textContent = char.name;  // 使用textContent防止XSS
+            span.textContent = char.name;
+            span.style.fontSize = '13px';
 
             label.appendChild(checkbox);
             label.appendChild(span);
             container.appendChild(label);
         });
-
-        // 如果当前条目有选中的角色，恢复选中状态
-        if (this.currentEntry && this.currentEntry.characters) {
-            this.currentEntry.characters.forEach(charId => {
-                const checkbox = container.querySelector(`input[value="${charId}"]`);
-                if (checkbox) checkbox.checked = true;
-            });
-        }
     },
 
     // 测试条目
@@ -883,7 +815,6 @@ const WorldBookV2 = {
         } else {
             this.selectedEntryIds.add(entryId);
         }
-        this.updateBatchBar();
         this.renderEntries();
     },
 
@@ -906,7 +837,6 @@ const WorldBookV2 = {
             selectAllCheckbox.checked = !allSelected;
         }
 
-        this.updateBatchBar();
         this.renderEntries();
     },
 
@@ -930,7 +860,6 @@ const WorldBookV2 = {
 
         this.saveData();
         this.selectedEntryIds.clear();
-        this.updateBatchBar();
         this.renderEntries();
 
         alert(`已${enable ? '启用' : '禁用'} ${count} 个条目`);
@@ -952,156 +881,144 @@ const WorldBookV2 = {
 
         this.saveData();
         this.selectedEntryIds.clear();
-        this.updateBatchBar();
         this.renderEntries();
 
         alert('已删除选中的条目');
     },
 
-    // 更新批量操作栏显示
-    updateBatchBar() {
+    // 切换模式
+    toggleMode() {
+        this.isMultiSelectMode = !this.isMultiSelectMode;
+
+        const modeBtn = document.getElementById('wb-toggle-mode');
+        const modeInfo = document.getElementById('wb-mode-info');
         const batchBar = document.getElementById('wb-batch-bar');
+
+        if (this.isMultiSelectMode) {
+            modeBtn.classList.add('active');
+            modeBtn.querySelector('.mode-text').textContent = '退出';
+            modeInfo.style.display = 'flex';
+            if (this.selectedEntryIds.size > 0) {
+                batchBar.style.display = 'block';
+            }
+        } else {
+            modeBtn.classList.remove('active');
+            modeBtn.querySelector('.mode-text').textContent = '多选';
+            modeInfo.style.display = 'none';
+            batchBar.style.display = 'none';
+            this.selectedEntryIds.clear();
+        }
+
+        this.renderEntries();
+    },
+
+    // 退出多选模式
+    exitMultiSelect() {
+        this.isMultiSelectMode = false;
+        this.selectedEntryIds.clear();
+        this.toggleMode();
+    },
+
+    // 处理条目点击
+    handleEntryClick(entryId) {
+        if (this.isMultiSelectMode) {
+            this.toggleEntrySelection(entryId);
+        } else {
+            const entry = this.entries.find(e => e.id === entryId);
+            if (entry) this.editEntry(entry);
+        }
+    },
+
+    // 更新模式栏显示
+    updateModeBar() {
         const selectedCount = document.getElementById('wb-selected-count');
-        const bookEntries = this.entries.filter(e => e.bookId === this.currentBook.id);
+        const batchBar = document.getElementById('wb-batch-bar');
 
-        if (!batchBar) return;
+        if (selectedCount) {
+            selectedCount.textContent = `已选: ${this.selectedEntryIds.size}`;
+        }
 
-        // 只有当前世界书有条目时才显示批量操作栏
-        if (bookEntries.length > 0) {
-            batchBar.style.display = 'flex';
-
-            // 更新选中数量显示
-            if (selectedCount) {
-                const selectedInCurrentBook = bookEntries.filter(e =>
-                    this.selectedEntryIds.has(e.id)
-                ).length;
-                selectedCount.textContent = `已选: ${selectedInCurrentBook}`;
-            }
-
-            // 更新全选checkbox状态
-            const selectAllCheckbox = document.getElementById('wb-select-all');
-            if (selectAllCheckbox) {
-                const allSelected = bookEntries.length > 0 &&
-                    bookEntries.every(e => this.selectedEntryIds.has(e.id));
-                selectAllCheckbox.checked = allSelected;
-            }
+        if (this.isMultiSelectMode && this.selectedEntryIds.size > 0) {
+            batchBar.style.display = 'block';
         } else {
             batchBar.style.display = 'none';
         }
     },
 
-    // 添加滑动手势
-    addSwipeGesture(element, entry) {
+    // 简化的滑动手势（只处理左滑）
+    addSimpleSwipe(element) {
         let startX = 0;
         let currentX = 0;
-        let startY = 0;
-        let currentY = 0;
-        let isDragging = false;
-        let isHorizontalSwipe = null;
-        const threshold = 50;
+        let isMoving = false;
 
         const content = element.querySelector('.wb-entry-content');
         const actions = element.querySelector('.wb-swipe-actions');
 
-        // 重置其他条目的滑动状态
-        const resetOtherItems = () => {
-            document.querySelectorAll('.wb-entry-item').forEach(otherItem => {
-                if (otherItem !== element) {
-                    const otherContent = otherItem.querySelector('.wb-entry-content');
-                    const otherActions = otherItem.querySelector('.wb-swipe-actions');
-                    if (otherContent) otherContent.style.transform = 'translateX(0)';
-                    if (otherActions) {
-                        otherActions.classList.remove('visible');
-                        otherActions.style.opacity = '0';
+        const reset = () => {
+            content.style.transform = '';
+            actions.style.opacity = '0';
+            actions.style.pointerEvents = 'none';
+        };
+
+        const show = () => {
+            content.style.transform = 'translateX(-100px)';
+            actions.style.opacity = '1';
+            actions.style.pointerEvents = 'auto';
+        };
+
+        // 重置其他条目
+        const resetOthers = () => {
+            document.querySelectorAll('.wb-entry-item').forEach(item => {
+                if (item !== element) {
+                    const c = item.querySelector('.wb-entry-content');
+                    const a = item.querySelector('.wb-swipe-actions');
+                    if (c) c.style.transform = '';
+                    if (a) {
+                        a.style.opacity = '0';
+                        a.style.pointerEvents = 'none';
                     }
                 }
             });
         };
 
-        // 触摸开始
-        element.addEventListener('touchstart', (e) => {
+        content.addEventListener('touchstart', (e) => {
             startX = e.touches[0].clientX;
-            startY = e.touches[0].clientY;
             currentX = startX;
-            currentY = startY;
-            isDragging = true;
-            isHorizontalSwipe = null;
-        }, { passive: true });
+            isMoving = false;
+        }, {passive: true});
 
-        // 触摸移动
-        element.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
-
+        content.addEventListener('touchmove', (e) => {
             currentX = e.touches[0].clientX;
-            currentY = e.touches[0].clientY;
+            const diff = startX - currentX;
+            isMoving = true;
 
-            const diffX = startX - currentX;
-            const diffY = Math.abs(startY - currentY);
-
-            // 判断滑动方向
-            if (isHorizontalSwipe === null && (Math.abs(diffX) > 5 || diffY > 5)) {
-                isHorizontalSwipe = Math.abs(diffX) > diffY;
+            if (diff > 10) {
+                resetOthers();
+                const translate = Math.min(diff, 100);
+                content.style.transform = `translateX(-${translate}px)`;
+                actions.style.opacity = translate / 100;
             }
+        }, {passive: true});
 
-            // 只处理水平滑动
-            if (isHorizontalSwipe === false) return;
+        content.addEventListener('touchend', () => {
+            const diff = startX - currentX;
 
-            // 阻止垂直滚动
-            if (isHorizontalSwipe === true) {
-                e.preventDefault();
-
-                // 重置其他条目
-                resetOtherItems();
-
-                // 左滑显示操作按钮
-                if (diffX > 0) {
-                    const translateX = Math.min(diffX, 120);
-                    content.style.transform = `translateX(-${translateX}px)`;
-                    actions.style.opacity = translateX / 120;
-                }
-                // 右滑恢复
-                else if (diffX < -10) {
-                    content.style.transform = 'translateX(0)';
-                    actions.style.opacity = 0;
-                }
+            if (isMoving && diff > 50) {
+                show();
+            } else {
+                reset();
             }
-        }, { passive: false });
+            isMoving = false;
+        }, {passive: true});
 
-        // 触摸结束
-        element.addEventListener('touchend', (e) => {
-            if (!isDragging) return;
-            isDragging = false;
-
-            const diffX = startX - currentX;
-
-            // 只处理水平滑动
-            if (isHorizontalSwipe === true) {
-                // 左滑超过阈值，显示操作
-                if (diffX > threshold) {
-                    content.style.transform = 'translateX(-120px)';
-                    actions.classList.add('visible');
-                    actions.style.opacity = '1';
-                }
-                // 否则复原
-                else {
-                    content.style.transform = 'translateX(0)';
-                    actions.classList.remove('visible');
-                    actions.style.opacity = '0';
-                }
+        // 点击其他地方关闭
+        document.addEventListener('click', (e) => {
+            if (!element.contains(e.target)) {
+                reset();
             }
-
-            isHorizontalSwipe = null;
-        }, { passive: true });
-
-        // 触摸取消
-        element.addEventListener('touchcancel', () => {
-            isDragging = false;
-            isHorizontalSwipe = null;
-            content.style.transform = 'translateX(0)';
-            actions.classList.remove('visible');
-            actions.style.opacity = '0';
         });
     },
+
 
     // 快速删除条目
     quickDeleteEntry(entryId) {
