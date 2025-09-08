@@ -828,7 +828,18 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
 }
 
 .wb-multiselect-mode .wb-entry-content {
+    /* 保持容器可点击，但禁用滑动操作 */
+    pointer-events: auto;
+}
+
+/* 在多选模式下，禁用主内容区域的点击（除了复选框） */
+.wb-multiselect-mode .wb-entry-main {
     pointer-events: none;
+}
+
+/* 但保持复选框可点击 */
+.wb-multiselect-mode .wb-entry-checkbox {
+    pointer-events: auto !important;
 }
 
 .wb-multiselect-mode .wb-swipe-actions {

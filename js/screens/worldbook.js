@@ -169,6 +169,14 @@ const WorldBookV2 = {
         }
 
         filteredEntries.sort((a, b) => b.order - a.order);
+        
+        // 清理旧的事件监听器，防止内存泄漏
+        container.querySelectorAll('.wb-entry-item').forEach(item => {
+            if (item._cleanupSwipeListener) {
+                item._cleanupSwipeListener();
+            }
+        });
+        
         container.innerHTML = '';
 
         // 设置容器模式类
@@ -194,40 +202,63 @@ const WorldBookV2 = {
                 const keys = entry.keys.slice(0, 2).join(', ');
                 const content = entry.content.substring(0, 80) + (entry.content.length > 80 ? '...' : '');
 
-                // 创建HTML结构
-                item.innerHTML = `
-    <div class="wb-entry-content">
-        <input type="checkbox" class="wb-entry-checkbox" 
-               ${isSelected ? 'checked' : ''} 
-               data-entry-id="${entry.id}"
-               style="margin-right:10px;">
-        <div class="wb-entry-main" style="flex:1;">
-            <div class="wb-entry-header">
-                <div class="wb-entry-title">${entry.name || '未命名条目'}</div>
-                <div class="wb-entry-badge">
-                    ${entry.constant ? '常驻' : '触发'}
-                    ${entry.enabled === false ? ' · 已禁用' : ''}
-                </div>
-            </div>
-            <div class="wb-entry-preview">
-                ${keys ? '🔑 ' + keys + ' ' : ''}${content}
-            </div>
-        </div>
-    </div>
-    <div class="wb-swipe-actions">
-        <button class="wb-swipe-edit">编辑</button>
-        <button class="wb-swipe-delete">删除</button>
-    </div>
-`;
+                // 安全地创建DOM结构，避免XSS攻击
+                const entryContent = document.createElement('div');
+                entryContent.className = 'wb-entry-content';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'wb-entry-checkbox';
+                checkbox.checked = isSelected;
+                checkbox.dataset.entryId = entry.id; // 安全的设置data属性
+                checkbox.style.marginRight = '10px';
+                
+                const entryMain = document.createElement('div');
+                entryMain.className = 'wb-entry-main';
+                entryMain.style.flex = '1';
+                
+                const entryHeader = document.createElement('div');
+                entryHeader.className = 'wb-entry-header';
+                
+                const entryTitle = document.createElement('div');
+                entryTitle.className = 'wb-entry-title';
+                entryTitle.textContent = entry.name || '未命名条目'; // 安全设置文本
+                
+                const entryBadge = document.createElement('div');
+                entryBadge.className = 'wb-entry-badge';
+                entryBadge.textContent = (entry.constant ? '常驻' : '触发') + 
+                    (entry.enabled === false ? ' · 已禁用' : '');
+                
+                const entryPreview = document.createElement('div');
+                entryPreview.className = 'wb-entry-preview';
+                entryPreview.textContent = (keys ? '🔑 ' + keys + ' ' : '') + content; // 安全设置文本
+                
+                const swipeActions = document.createElement('div');
+                swipeActions.className = 'wb-swipe-actions';
+                
+                const editBtn = document.createElement('button');
+                editBtn.className = 'wb-swipe-edit';
+                editBtn.textContent = '编辑';
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'wb-swipe-delete';
+                deleteBtn.textContent = '删除';
+                
+                // 组装DOM结构
+                entryHeader.appendChild(entryTitle);
+                entryHeader.appendChild(entryBadge);
+                entryMain.appendChild(entryHeader);
+                entryMain.appendChild(entryPreview);
+                entryContent.appendChild(checkbox);
+                entryContent.appendChild(entryMain);
+                swipeActions.appendChild(editBtn);
+                swipeActions.appendChild(deleteBtn);
+                item.appendChild(entryContent);
+                item.appendChild(swipeActions);
 
-                // 绑定事件 - 使用闭包保证this指向正确
-                const checkbox = item.querySelector('.wb-entry-checkbox');
-                const main = item.querySelector('.wb-entry-main');
-                const editBtn = item.querySelector('.wb-swipe-edit');
-                const deleteBtn = item.querySelector('.wb-swipe-delete');
+                // 绑定事件 - 直接使用已创建的DOM元素
 
                 // 修复勾选框事件
-                if (checkbox) {
                     checkbox.addEventListener('change', (e) => {
                         e.stopPropagation();
                         if (e.target.checked) {
@@ -244,31 +275,24 @@ const WorldBookV2 = {
                             item.classList.remove('selected');
                         }
                     });
-                }
 
-                if (main) {
-                    main.addEventListener('click', () => {
+                entryMain.addEventListener('click', () => {
                         if (!this.isMultiSelectMode) {
                             this.editEntry(entry);
                         } else {
                             this.toggleEntrySelection(entry.id);
                         }
                     });
-                }
 
-                if (editBtn) {
                     editBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         this.editEntry(entry);
                     });
-                }
 
-                if (deleteBtn) {
                     deleteBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         this.quickDeleteEntry(entry.id);
                     });
-                }
 
                 // 只在普通模式下添加滑动手势
                 if (!this.isMultiSelectMode) {
@@ -521,11 +545,16 @@ const WorldBookV2 = {
         const bindType = document.querySelector('input[name="entry-bind-type"]:checked')?.value || 'inherit';
         this.currentEntry.bindType = bindType;
 
-        // 如果是角色绑定，保存排除模式
+        // 如果是角色绑定，从当前UI重建字符列表，避免隐藏字符绑定持续存在
         if (bindType === 'character') {
+            const selectedChars = Array.from(document.querySelectorAll('input[name="entry-characters"]:checked'))
+                .map(cb => cb.value);
+            // 只保存实际选中的角色，清除所有过期的字符ID
+            this.currentEntry.characters = selectedChars;
             this.currentEntry.excludeMode = document.getElementById('entry-exclude-mode').checked;
         } else {
-            delete this.currentEntry.characters;
+            // 完全清理字符绑定相关字段
+            this.currentEntry.characters = [];
             delete this.currentEntry.excludeMode;
         }
 
@@ -574,7 +603,9 @@ const WorldBookV2 = {
         // 调用已有的变量替换功能
         try {
             const processed = window.replaceVariables ? window.replaceVariables(content) : content;
-            preview.innerHTML = processed.replace(/\n/g, '<br>');
+            // 安全地处理换行符，避免HTML注入
+            preview.textContent = processed;
+            preview.style.whiteSpace = 'pre-wrap'; // 保持换行格式
         } catch (e) {
             preview.textContent = content;
         }
@@ -679,10 +710,21 @@ const WorldBookV2 = {
             if (charInfo) {
                 const tag = document.createElement('div');
                 tag.className = 'character-tag';
-                tag.innerHTML = `
-                    <span>${charInfo.name}</span>
-                    <span class="character-tag-remove" onclick="WorldBookV2.removeCharacter('${charId}')">×</span>
-                `;
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = charInfo.name; // 安全设置文本
+                
+                const removeSpan = document.createElement('span');
+                removeSpan.className = 'character-tag-remove';
+                removeSpan.textContent = '×';
+                removeSpan.style.cursor = 'pointer';
+                // 安全的事件绑定，避免使用onclick属性
+                removeSpan.addEventListener('click', () => {
+                    this.removeCharacter(charId);
+                });
+                
+                tag.appendChild(nameSpan);
+                tag.appendChild(removeSpan);
                 container.appendChild(tag);
             }
         });
@@ -754,16 +796,28 @@ const WorldBookV2 = {
         matchDiv.className = 'test-match' + (isMatch ? ' active' : '');
         
         if (isMatch) {
-            matchDiv.innerHTML = `
-                <strong>✅ 条目已激活</strong><br>
-                匹配的关键词: ${matchedKeys.join(', ')}<br>
-                将注入内容 (${this.currentEntry.content.length} 字符)
-            `;
+            // 安全地创建测试结果
+            const header = document.createElement('strong');
+            header.textContent = '✅ 条目已激活';
+            
+            const keywordsText = document.createElement('div');
+            keywordsText.textContent = '匹配的关键词: ' + matchedKeys.join(', ');
+            
+            const contentText = document.createElement('div');
+            contentText.textContent = `将注入内容 (${this.currentEntry.content.length} 字符)`;
+            
+            matchDiv.appendChild(header);
+            matchDiv.appendChild(keywordsText);
+            matchDiv.appendChild(contentText);
         } else {
-            matchDiv.innerHTML = `
-                <strong>❌ 条目未激活</strong><br>
-                没有匹配的关键词
-            `;
+            const header = document.createElement('strong');
+            header.textContent = '❌ 条目未激活';
+            
+            const noMatchText = document.createElement('div');
+            noMatchText.textContent = '没有匹配的关键词';
+            
+            matchDiv.appendChild(header);
+            matchDiv.appendChild(noMatchText);
         }
         
         matches.appendChild(matchDiv);
@@ -1127,12 +1181,18 @@ const WorldBookV2 = {
             isMoving = false;
         }, {passive: true});
 
-        // 点击其他地方关闭
-        document.addEventListener('click', (e) => {
+        // 点击其他地方关闭 - 使用命名函数以便后续可以移除
+        const handleDocumentClick = (e) => {
             if (!element.contains(e.target)) {
                 reset();
             }
-        });
+        };
+        document.addEventListener('click', handleDocumentClick);
+        
+        // 保存清理函数，防止内存泄漏
+        element._cleanupSwipeListener = () => {
+            document.removeEventListener('click', handleDocumentClick);
+        };
     },
 
 
