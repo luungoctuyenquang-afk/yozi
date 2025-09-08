@@ -47,7 +47,8 @@ const Database = {
                 for (const book of state.worldBook) {
                     await this.db.worldBook.put(book);
                 }
-                
+
+                state.events = state.events || {};
                 await this.db.events.put({ id: 'main', ...state.events });
                 await this.db.apiConfig.put({ id: 'main', ...state.apiConfig });
                 
