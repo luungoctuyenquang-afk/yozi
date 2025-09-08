@@ -847,12 +847,27 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
 
 .wb-swipe-edit,
 .wb-swipe-delete {
-    padding: 8px 12px;
+    padding: 10px 14px;
     border: none;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 13px;
     cursor: pointer;
     color: white;
+    min-width: 50px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.wb-swipe-edit:active,
+.wb-swipe-delete:active {
+    opacity: 0.8;
+    transform: scale(0.95);
 }
 
 .wb-swipe-edit {
