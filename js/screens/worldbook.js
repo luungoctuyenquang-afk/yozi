@@ -1029,7 +1029,7 @@ const WorldBookV2 = {
 
     // 辅助方法：转义正则特殊字符
     escapeRegex(str) {
-        return str.replace(/[.*+?^${}()|[\]\]/g, '\$&');
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     },
     
     // 关闭测试对话框
