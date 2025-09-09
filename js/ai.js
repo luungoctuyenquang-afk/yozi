@@ -193,38 +193,96 @@ const AI = {
             当前重要事件: dynamicEvents.length > 0 ? dynamicEvents : "无特殊事件"
         };
 
-        // 构建世界书上下文
+        // 构建世界书上下文 - 增强版
         let worldBookContext = '';
-        if (window.WorldBookV2 && window.WorldBookV2.currentBook) {
-            // 获取最近的消息文本用于扫描
-            const scanDepth = window.WorldBookV2.currentBook.scanDepth || 2;
-            let scanText = '';
+        let activatedEntries = [];
 
-            // 扫描当前用户输入
-            parts.forEach(part => {
-                if (part.text) scanText += part.text + ' ';
-            });
-
-            // 扫描历史消息（根据扫描深度）
-            const historyToScan = recentHistory.slice(-scanDepth);
-            historyToScan.forEach(msg => {
-                if (msg.content) {
-                    if (typeof msg.content === 'string') {
-                        scanText += msg.content + ' ';
-                    } else if (Array.isArray(msg.content)) {
-                        msg.content.forEach(part => {
-                            if (typeof part === 'string') {
-                                scanText += part + ' ';
-                            } else if (part && part.type === 'text' && part.text) {
-                                scanText += part.text + ' ';
-                            }
-                        });
+        if (window.WorldBookV2) {
+            // 确保世界书已初始化
+            if (!window.WorldBookV2.currentBook && window.WorldBookV2.books.length > 0) {
+                window.WorldBookV2.currentBook = window.WorldBookV2.books[0];
+            }
+            
+            if (window.WorldBookV2.currentBook) {
+                // 获取扫描深度设置（优先使用全局设置）
+                const globalSettings = window.WorldBookV2.globalSettings || {};
+                const scanDepth = globalSettings.scanDepth || 
+                                  window.WorldBookV2.currentBook.scanDepth || 2;
+                
+                let scanText = '';
+                
+                // 1. 扫描当前用户输入
+                parts.forEach(part => {
+                    if (part.text) scanText += part.text + '\n';
+                });
+                
+                // 2. 根据扫描深度扫描历史消息
+                const historyToScan = recentHistory.slice(-scanDepth);
+                
+                // 如果启用了Include Names设置，添加说话者名称
+                const includeNames = globalSettings.includeNames !== false;
+                
+                historyToScan.forEach(msg => {
+                    let msgText = '';
+                    
+                    // 添加说话者名称（如果启用）
+                    if (includeNames) {
+                        msgText += `[${msg.sender === 'user' ? state.player.name : state.ai.name}]: `;
+                    }
+                    
+                    // 提取消息内容
+                    if (msg.content) {
+                        if (typeof msg.content === 'string') {
+                            msgText += msg.content;
+                        } else if (Array.isArray(msg.content)) {
+                            msg.content.forEach(part => {
+                                if (typeof part === 'string') {
+                                    msgText += part + ' ';
+                                } else if (part && part.text) {
+                                    msgText += part.text + ' ';
+                                }
+                            });
+                        }
+                    }
+                    
+                    scanText += msgText + '\n';
+                });
+                
+                // 3. 获取激活的条目并构建上下文
+                activatedEntries = window.WorldBookV2.getActiveEntries(scanText);
+                
+                // 4. 根据Token预算限制条目
+                const tokenBudget = globalSettings.tokenBudget || 
+                                   window.WorldBookV2.currentBook.tokenBudget || 2048;
+                let currentTokens = 0;
+                const maxTokens = Math.min(tokenBudget, 2048); // 安全上限
+                
+                const contextParts = [];
+                for (const entry of activatedEntries) {
+                    // 简单的Token估算（每4个字符约1个token）
+                    const entryTokens = Math.ceil(entry.content.length / 4);
+                    
+                    if (currentTokens + entryTokens <= maxTokens) {
+                        // 处理变量替换
+                        let content = entry.content;
+                        if (window.replaceVariables) {
+                            content = window.replaceVariables(content);
+                        }
+                        
+                        contextParts.push(`[${entry.name || entry.id}]: ${content}`);
+                        currentTokens += entryTokens;
+                    } else if (globalSettings.overflowAlert) {
+                        console.warn(`世界书条目"${entry.name}"因超出Token预算被跳过`);
                     }
                 }
-            });
-
-            // 获取激活的世界书内容
-            worldBookContext = window.WorldBookV2.buildWorldBookContext(scanText);
+                
+                worldBookContext = contextParts.join('\n\n');
+                
+                // 调试信息
+                if (activatedEntries.length > 0) {
+                    console.log(`[世界书] 激活了 ${activatedEntries.length} 个条目，使用了约 ${currentTokens} tokens`);
+                }
+            }
         }
 
         const systemPrompt = `你正在一个虚拟手机模拟器中扮演AI伴侣'零'。
