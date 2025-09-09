@@ -251,65 +251,134 @@ const AI = {
                 // 3. 获取激活的条目
                 activatedEntries = window.WorldBookV2.getActiveEntries(scanText);
 
-                // 4. 根据Token预算限制条目（SillyTavern风格）
-                const tokenBudget = globalSettings.tokenBudget || 
-                                   window.WorldBookV2.currentBook.tokenBudget || 2048;
+                // 4. 根据Token预算限制条目
+                const tokenBudget =
+                    globalSettings.tokenBudget ??
+                    window.WorldBookV2.currentBook.tokenBudget ??
+                    2048;
                 const maxTokens = Math.min(tokenBudget, 2048); // 安全上限
 
                 // 分离常驻和触发条目
                 const constantEntries = activatedEntries.filter(e => e.constant);
                 const triggeredEntries = activatedEntries.filter(e => !e.constant);
 
-                // 先处理常驻条目（不排序，按原顺序）
+                let contextParts = [];
                 let currentTokens = 0;
-                const contextParts = [];
 
-                for (const entry of constantEntries) {
-                    let content = entry.content || '';
-                    if (window.replaceVariables) {
-                        content = window.replaceVariables(content);
-                    }
-                    const entryTokens = Math.ceil(content.length / 4);
+                // 检查是否使用分桶配额
+                if (globalSettings.useBucketAllocation) {
+                    // === 分桶配额模式 ===
+                    const bucketTop = globalSettings.bucketTop || 40;
+                    const bucketExample = globalSettings.bucketExample || 15;
+                    const bucketEnd = globalSettings.bucketEnd || 45;
 
-                    if (currentTokens + entryTokens <= maxTokens) {
-                        contextParts.push({
-                            order: entry.order || 0,
-                            text: `[${entry.name || entry.id}]: ${content}`
-                        });
-                        currentTokens += entryTokens;
-                    } else if (globalSettings.overflowAlert) {
-                        console.warn(`常驻条目"${entry.name}"因超出Token预算被跳过`);
+                    // 计算各桶的Token限制
+                    const topBudget = Math.floor(maxTokens * bucketTop / 100);
+                    const exampleBudget = Math.floor(maxTokens * bucketExample / 100);
+                    const endBudget = maxTokens - topBudget - exampleBudget;
+
+                    // 按位置分类条目
+                    const topEntries = [];
+                    const exampleEntries = [];
+                    const endEntries = [];
+
+                    [...constantEntries, ...triggeredEntries].forEach(entry => {
+                        const pos = entry.position || 'after_char';
+                        if (pos.includes('char') || pos.includes('system')) {
+                            topEntries.push(entry);
+                        } else if (pos.includes('example')) {
+                            exampleEntries.push(entry);
+                        } else {
+                            endEntries.push(entry);
+                        }
+                    });
+
+                    // 处理各桶
+                    const processBucket = (entries, budget, bucketName) => {
+                        let used = 0;
+                        const results = [];
+
+                        for (const entry of entries) {
+                            let content = entry.content || '';
+                            if (window.replaceVariables) {
+                                content = window.replaceVariables(content);
+                            }
+                            const tokens = Math.ceil(content.length / 4);
+
+                            if (used + tokens <= budget) {
+                                results.push({
+                                    order: entry.order || 0,
+                                    position: entry.position || 'after_char',
+                                    text: `[${entry.name || entry.id}]: ${content}`
+                                });
+                                used += tokens;
+                            } else if (globalSettings.overflowAlert) {
+                                console.warn(`[分桶配额] ${bucketName}桶：条目"${entry.name}"超出预算`);
+                            }
+                        }
+
+                        return { results, used };
+                    };
+
+                    const top = processBucket(topEntries, topBudget, '前端');
+                    const example = processBucket(exampleEntries, exampleBudget, '示例');
+                    const end = processBucket(endEntries, endBudget, '末端');
+
+                    contextParts = [...top.results, ...example.results, ...end.results];
+                    currentTokens = top.used + example.used + end.used;
+
+                    console.log(`[世界书-分桶] 前端:${top.results.length}条/${top.used}t, 示例:${example.results.length}条/${example.used}t, 末端:${end.results.length}条/${end.used}t`);
+
+                } else {
+                    // === 统一预算模式（SillyTavern风格）===
+
+                    // 先处理常驻条目
+                    for (const entry of constantEntries) {
+                        let content = entry.content || '';
+                        if (window.replaceVariables) {
+                            content = window.replaceVariables(content);
+                        }
+                        const entryTokens = Math.ceil(content.length / 4);
+
+                        if (currentTokens + entryTokens <= maxTokens) {
+                            contextParts.push({
+                                order: entry.order || 0,
+                                position: entry.position || 'after_char',
+                                text: `[${entry.name || entry.id}]: ${content}`
+                            });
+                            currentTokens += entryTokens;
+                        } else if (globalSettings.overflowAlert) {
+                            console.warn(`常驻条目"${entry.name}"因超出Token预算被跳过`);
+                        }
                     }
+
+                    // 再处理触发条目
+                    for (const entry of triggeredEntries) {
+                        let content = entry.content || '';
+                        if (window.replaceVariables) {
+                            content = window.replaceVariables(content);
+                        }
+                        const entryTokens = Math.ceil(content.length / 4);
+
+                        if (currentTokens + entryTokens <= maxTokens) {
+                            contextParts.push({
+                                order: entry.order || 0,
+                                position: entry.position || 'after_char',
+                                text: `[${entry.name || entry.id}]: ${content}`
+                            });
+                            currentTokens += entryTokens;
+                        } else if (globalSettings.overflowAlert) {
+                            console.warn(`条目"${entry.name}"因超出Token预算被跳过`);
+                            break;
+                        }
+                    }
+
+                    console.log(`[世界书-统一] 注入${contextParts.length}条（${constantEntries.length}常驻+${contextParts.length - constantEntries.length}触发），使用${currentTokens}/${maxTokens} tokens`);
                 }
 
-                // 再处理触发条目（已经按order降序排序）
-                for (const entry of triggeredEntries) {
-                    let content = entry.content || '';
-                    if (window.replaceVariables) {
-                        content = window.replaceVariables(content);
-                    }
-                    const entryTokens = Math.ceil(content.length / 4);
-
-                    if (currentTokens + entryTokens <= maxTokens) {
-                        contextParts.push({
-                            order: entry.order || 0,
-                            text: `[${entry.name || entry.id}]: ${content}`
-                        });
-                        currentTokens += entryTokens;
-                    } else if (globalSettings.overflowAlert) {
-                        console.warn(`条目"${entry.name}"因超出Token预算被跳过`);
-                        break; // 预算用尽，停止处理
-                    }
-                }
-
-                // 最终按order排序（小的在前，大的在后=更靠近用户输入）
+                // 按order排序（小的在前，大的在后）
                 contextParts.sort((a, b) => a.order - b.order);
                 worldBookContext = contextParts.map(p => p.text).join('\n\n');
-
-                // 调试信息
-                if (contextParts.length > 0) {
-                    console.log(`[世界书] 注入了 ${contextParts.length} 个条目（${constantEntries.length}常驻+${triggeredEntries.filter(e => contextParts.some(p => p.text.includes(e.name || e.id))).length}触发），使用了约 ${currentTokens}/${maxTokens} tokens`);
-                }
             }
         }
 

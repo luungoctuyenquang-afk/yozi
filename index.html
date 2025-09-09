@@ -170,6 +170,30 @@
                         <label><input type="checkbox" id="wb-match-whole-words"> 匹配整个单词</label>
                         <label><input type="checkbox" id="wb-use-group-scoring"> 使用群组评分</label>
                         <label><input type="checkbox" id="wb-overflow-alert" checked> 溢出警报</label>
+                        <label title="启用后将Token预算分配到不同位置桶"><input type="checkbox" id="wb-use-bucket-allocation"> 启用分桶配额</label>
+                    </div>
+
+                    <!-- 分桶配额设置（仅在启用时显示） -->
+                    <div id="wb-bucket-settings" style="display:none; margin-top:15px; padding:10px; background:#f8f9fa; border-radius:8px;">
+                        <label style="font-size:13px; font-weight:600; color:#666;">分桶配额比例设置</label>
+                        <div class="wb-settings-row" style="margin-top:10px;">
+                            <div class="wb-setting-item">
+                                <label>前端 (系统/角色)</label>
+                                <input type="number" id="wb-bucket-top" min="0" max="100" value="40">
+                                <small>%</small>
+                            </div>
+                            <div class="wb-setting-item">
+                                <label>示例</label>
+                                <input type="number" id="wb-bucket-example" min="0" max="100" value="15">
+                                <small>%</small>
+                            </div>
+                            <div class="wb-setting-item">
+                                <label>末端 (作者注/深度)</label>
+                                <input type="number" id="wb-bucket-end" min="0" max="100" value="45">
+                                <small>%</small>
+                            </div>
+                        </div>
+                        <small style="color:#999; font-size:11px;">提示：三个比例之和应该等于100%</small>
                     </div>
                 </div>
             </details>
