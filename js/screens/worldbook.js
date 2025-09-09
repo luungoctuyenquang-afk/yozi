@@ -27,6 +27,11 @@ const WorldBookV2 = {
         const saved = localStorage.getItem('worldbook.globalSettings');
         if (saved) {
             this.globalSettings = JSON.parse(saved);
+            // 补充新字段的默认值
+            this.globalSettings.useBucketAllocation ??= false;
+            this.globalSettings.bucketTop ??= 40;
+            this.globalSettings.bucketExample ??= 15;
+            this.globalSettings.bucketEnd ??= 45;
         } else {
             // 使用默认设置
             this.globalSettings = {
@@ -42,7 +47,11 @@ const WorldBookV2 = {
                 caseSensitive: false,
                 matchWholeWords: false,
                 useGroupScoring: false,
-                overflowAlert: true
+                overflowAlert: true,
+                useBucketAllocation: false,
+                bucketTop: 40,
+                bucketExample: 15,
+                bucketEnd: 45
             };
             // 直接写入默认设置到存储，避免读取未初始化的UI值
             localStorage.setItem('worldbook.globalSettings', JSON.stringify(this.globalSettings));
@@ -75,7 +84,11 @@ const WorldBookV2 = {
             caseSensitive: document.getElementById('wb-case-sensitive')?.checked ?? false,
             matchWholeWords: document.getElementById('wb-match-whole-words')?.checked ?? false,
             useGroupScoring: document.getElementById('wb-use-group-scoring')?.checked ?? false,
-            overflowAlert: document.getElementById('wb-overflow-alert')?.checked ?? true
+            overflowAlert: document.getElementById('wb-overflow-alert')?.checked ?? true,
+            useBucketAllocation: document.getElementById('wb-use-bucket-allocation')?.checked ?? false,
+            bucketTop: parseInt(document.getElementById('wb-bucket-top')?.value) || 0,
+            bucketExample: parseInt(document.getElementById('wb-bucket-example')?.value) || 0,
+            bucketEnd: parseInt(document.getElementById('wb-bucket-end')?.value) || 0
         };
 
         // 保存到localStorage
@@ -112,6 +125,15 @@ const WorldBookV2 = {
         setIfExists('wb-match-whole-words', this.globalSettings.matchWholeWords);
         setIfExists('wb-use-group-scoring', this.globalSettings.useGroupScoring);
         setIfExists('wb-overflow-alert', this.globalSettings.overflowAlert);
+        setIfExists('wb-use-bucket-allocation', this.globalSettings.useBucketAllocation);
+        setIfExists('wb-bucket-top', this.globalSettings.bucketTop);
+        setIfExists('wb-bucket-example', this.globalSettings.bucketExample);
+        setIfExists('wb-bucket-end', this.globalSettings.bucketEnd);
+
+        const bucketSettings = document.getElementById('wb-bucket-settings');
+        if (bucketSettings) {
+            bucketSettings.style.display = this.globalSettings.useBucketAllocation ? 'block' : 'none';
+        }
     },
 
     // 重置全局设置
@@ -130,7 +152,11 @@ const WorldBookV2 = {
                 caseSensitive: false,
                 matchWholeWords: false,
                 useGroupScoring: false,
-                overflowAlert: true
+                overflowAlert: true,
+                useBucketAllocation: false,
+                bucketTop: 40,
+                bucketExample: 15,
+                bucketEnd: 45
             };
             // 先更新UI为默认值
             this.loadGlobalSettingsToUI();
@@ -1113,7 +1139,8 @@ const WorldBookV2 = {
 
         // 保存角色绑定
         if (this.currentBook.scope === 'character') {
-            const selected = Array.from(document.querySelectorAll('#book-characters-list input[type="checkbox"]:checked')).map(el => el.value);
+            const selected = Array.from(document.querySelectorAll('#book-characters-list input[type="checkbox"]:checked'))
+                .map(el => el.value);
             this.currentBook.characters = selected;
         } else {
             this.currentBook.characters = [];
@@ -1156,15 +1183,22 @@ const WorldBookV2 = {
     renderBookCharacterList() {
         const container = document.getElementById('book-characters-list');
         if (!container) return;
+
         container.innerHTML = '';
 
+        // 从状态管理获取角色列表
         const state = StateManager.get();
         const characters = [];
 
+        // 获取主AI角色
         if (state.ai && state.ai.name) {
-            characters.push({ id: 'default', name: state.ai.name });
+            characters.push({
+                id: 'default',
+                name: state.ai.name
+            });
         }
 
+        // 获取其他预设角色（从聊天设置中）
         if (state.chats) {
             Object.keys(state.chats).forEach(chatId => {
                 const chat = state.chats[chatId];
@@ -1172,33 +1206,42 @@ const WorldBookV2 = {
                     const personaName = chat.settings.aiPersona.split('。')[0]
                         .replace(/你是AI伴侣'|你是|'/g, '')
                         .trim();
-                    if (personaName) {
-                        characters.push({ id: chatId, name: personaName });
+                    if (personaName && !characters.find(c => c.name === personaName)) {
+                        characters.push({
+                            id: chatId,
+                            name: personaName
+                        });
                     }
                 }
             });
         }
 
+        // 如果没有找到任何角色，使用默认值
         if (characters.length === 0) {
-            characters.push({ id: 'default', name: '默认AI' });
+            characters.push({
+                id: 'default',
+                name: '默认AI'
+            });
         }
 
+        // 创建复选框
         characters.forEach(char => {
             const label = document.createElement('label');
             label.style.display = 'block';
+            label.style.marginBottom = '8px';
 
-            const input = document.createElement('input');
-            input.type = 'checkbox';
-            input.value = char.id;
-            if (this.currentBook?.characters?.includes(char.id)) {
-                input.checked = true;
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = char.id;
+            checkbox.style.marginRight = '8px';
+
+            // 检查是否已选中
+            if (this.currentBook.characters && this.currentBook.characters.includes(char.id)) {
+                checkbox.checked = true;
             }
 
-            const span = document.createElement('span');
-            span.textContent = char.name;
-
-            label.appendChild(input);
-            label.appendChild(span);
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(char.name));
             container.appendChild(label);
         });
     },
@@ -1318,6 +1361,17 @@ const WorldBookV2 = {
         if (probSlider) {
             probSlider.addEventListener('input', (e) => {
                 document.getElementById('prob-value').textContent = e.target.value + '%';
+            });
+        }
+
+        // 分桶配额开关
+        const bucketCheckbox = document.getElementById('wb-use-bucket-allocation');
+        if (bucketCheckbox) {
+            bucketCheckbox.addEventListener('change', (e) => {
+                const bucketSettings = document.getElementById('wb-bucket-settings');
+                if (bucketSettings) {
+                    bucketSettings.style.display = e.target.checked ? 'block' : 'none';
+                }
             });
         }
 
