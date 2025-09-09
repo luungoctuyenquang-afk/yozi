@@ -93,9 +93,9 @@
                 <option value="">选择世界书...</option>
             </select>
             <div class="wb-top-actions">
-                <button class="wb-mini-btn" onclick="WorldBookV2.createNewBook()" title="新建">➕</button>
-                <button class="wb-mini-btn" onclick="WorldBookV2.editBookSettings()" title="编辑">⚙️</button>
-                <button onclick="WorldBookV2.toggleGlobalSettings()" id="wb-global-settings-btn">⚙️ 全局设置</button>
+                <button class="wb-mini-btn" onclick="WorldBookV2.createNewBook()" title="新建世界书">➕</button>
+                <button class="wb-mini-btn" onclick="WorldBookV2.editBookSettings()" title="世界书设置">📚</button>
+                <button onclick="WorldBookV2.toggleGlobalSettings()" id="wb-global-settings-btn" title="全局激活设置">⚙️ 全局设置</button>
             </div>
         </div>
 
@@ -489,29 +489,39 @@
         </div>
         <div class="wb-modal-body">
             <div class="wb-field">
-                <label class="wb-label">名称</label>
-                <input type="text" id="book-name" class="wb-input">
+                <label class="wb-label">世界书名称</label>
+                <input type="text" id="book-name" class="wb-input" placeholder="例如：奇幻世界设定">
             </div>
             <div class="wb-field">
                 <label class="wb-label">描述</label>
-                <textarea id="book-description" rows="3" class="wb-textarea"></textarea>
+                <textarea id="book-description" rows="3" class="wb-textarea" placeholder="这本世界书的用途说明..."></textarea>
             </div>
             <div class="wb-field">
                 <label class="wb-label">作用域</label>
-                <select id="book-scope" class="wb-select">
-                    <option value="global">全局</option>
-                    <option value="character">特定角色</option>
+                <select id="book-scope" class="wb-select" onchange="WorldBookV2.toggleCharacterSelection()">
+                    <option value="global">🌍 全局（对所有角色生效）</option>
+                    <option value="character">👥 绑定角色（仅对选中角色生效）</option>
                 </select>
             </div>
-            <div class="wb-field">
-                <label class="wb-label">扫描深度</label>
-                <input type="number" id="book-scan-depth" min="0" max="20" value="2" class="wb-input">
-                <small>回溯多少条历史消息进行关键词匹配（0=仅当前消息）</small>
+
+            <!-- 角色选择区域（仅在选择"绑定角色"时显示） -->
+            <div id="book-character-selection" class="wb-field" style="display:none;">
+                <label class="wb-label">选择要绑定的角色</label>
+                <div id="book-characters-list" style="max-height: 150px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px;">
+                    <!-- 动态生成角色复选框 -->
+                </div>
             </div>
+
+            <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
+
             <div class="wb-field">
-                <label class="wb-label">Token预算</label>
-                <input type="number" id="book-token-budget" min="100" max="8000" value="2048" class="wb-input">
-                <small>世界书内容的最大Token数量</small>
+                <label class="wb-label">📥 导入世界书</label>
+                <button class="wb-btn-secondary" onclick="WorldBookV2.importBook()">选择文件</button>
+            </div>
+
+            <div class="wb-field">
+                <label class="wb-label">📤 导出世界书</label>
+                <button class="wb-btn-secondary" onclick="WorldBookV2.exportBook()">导出为JSON</button>
             </div>
         </div>
         <div class="wb-modal-footer">

@@ -248,39 +248,67 @@ const AI = {
                     scanText += msgText + '\n';
                 });
                 
-                // 3. 获取激活的条目并构建上下文
+                // 3. 获取激活的条目
                 activatedEntries = window.WorldBookV2.getActiveEntries(scanText);
-                
-                // 4. 根据Token预算限制条目
+
+                // 4. 根据Token预算限制条目（SillyTavern风格）
                 const tokenBudget = globalSettings.tokenBudget || 
                                    window.WorldBookV2.currentBook.tokenBudget || 2048;
-                let currentTokens = 0;
                 const maxTokens = Math.min(tokenBudget, 2048); // 安全上限
-                
+
+                // 分离常驻和触发条目
+                const constantEntries = activatedEntries.filter(e => e.constant);
+                const triggeredEntries = activatedEntries.filter(e => !e.constant);
+
+                // 先处理常驻条目（不排序，按原顺序）
+                let currentTokens = 0;
                 const contextParts = [];
-                for (const entry of activatedEntries) {
-                    // 简单的Token估算（每4个字符约1个token）
-                    const entryTokens = Math.ceil(entry.content.length / 4);
-                    
+
+                for (const entry of constantEntries) {
+                    let content = entry.content || '';
+                    if (window.replaceVariables) {
+                        content = window.replaceVariables(content);
+                    }
+                    const entryTokens = Math.ceil(content.length / 4);
+
                     if (currentTokens + entryTokens <= maxTokens) {
-                        // 处理变量替换
-                        let content = entry.content;
-                        if (window.replaceVariables) {
-                            content = window.replaceVariables(content);
-                        }
-                        
-                        contextParts.push(`[${entry.name || entry.id}]: ${content}`);
+                        contextParts.push({
+                            order: entry.order || 0,
+                            text: `[${entry.name || entry.id}]: ${content}`
+                        });
                         currentTokens += entryTokens;
                     } else if (globalSettings.overflowAlert) {
-                        console.warn(`世界书条目"${entry.name}"因超出Token预算被跳过`);
+                        console.warn(`常驻条目"${entry.name}"因超出Token预算被跳过`);
                     }
                 }
-                
-                worldBookContext = contextParts.join('\n\n');
-                
+
+                // 再处理触发条目（已经按order降序排序）
+                for (const entry of triggeredEntries) {
+                    let content = entry.content || '';
+                    if (window.replaceVariables) {
+                        content = window.replaceVariables(content);
+                    }
+                    const entryTokens = Math.ceil(content.length / 4);
+
+                    if (currentTokens + entryTokens <= maxTokens) {
+                        contextParts.push({
+                            order: entry.order || 0,
+                            text: `[${entry.name || entry.id}]: ${content}`
+                        });
+                        currentTokens += entryTokens;
+                    } else if (globalSettings.overflowAlert) {
+                        console.warn(`条目"${entry.name}"因超出Token预算被跳过`);
+                        break; // 预算用尽，停止处理
+                    }
+                }
+
+                // 最终按order排序（小的在前，大的在后=更靠近用户输入）
+                contextParts.sort((a, b) => a.order - b.order);
+                worldBookContext = contextParts.map(p => p.text).join('\n\n');
+
                 // 调试信息
-                if (activatedEntries.length > 0) {
-                    console.log(`[世界书] 激活了 ${activatedEntries.length} 个条目，使用了约 ${currentTokens} tokens`);
+                if (contextParts.length > 0) {
+                    console.log(`[世界书] 注入了 ${contextParts.length} 个条目（${constantEntries.length}常驻+${triggeredEntries.filter(e => contextParts.some(p => p.text.includes(e.name || e.id))).length}触发），使用了约 ${currentTokens}/${maxTokens} tokens`);
                 }
             }
         }

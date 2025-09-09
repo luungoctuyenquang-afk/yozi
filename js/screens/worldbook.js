@@ -176,7 +176,7 @@ const WorldBookV2 = {
             name: '迁移的世界书',
             description: '从旧版本迁移的世界书条目',
             scope: 'global',
-            character: null,
+            characters: [],
             scanDepth: 2,
             tokenBudget: 2048,
             recursive: true,
@@ -236,7 +236,7 @@ const WorldBookV2 = {
             name: '默认世界书',
             description: '系统默认的世界书',
             scope: 'global',
-            character: null,
+            characters: [],
             scanDepth: 2,
             tokenBudget: 2048,
             recursive: true,
@@ -1050,7 +1050,7 @@ const WorldBookV2 = {
             name: name,
             description: '',
             scope: 'global',
-            character: null,
+            characters: [],
             scanDepth: 2,
             tokenBudget: 2048,
             recursive: true,
@@ -1080,6 +1080,16 @@ const WorldBookV2 = {
         document.getElementById('book-name').value = this.currentBook.name;
         document.getElementById('book-description').value = this.currentBook.description || '';
         document.getElementById('book-scope').value = this.currentBook.scope || 'global';
+        // 确保角色数组存在（兼容旧数据）
+        if (!Array.isArray(this.currentBook.characters)) {
+            if (this.currentBook.character) {
+                this.currentBook.characters = [this.currentBook.character];
+                delete this.currentBook.character;
+            } else {
+                this.currentBook.characters = [];
+            }
+        }
+        this.toggleCharacterSelection();
 
         // 加载扫描深度和Token预算
         const scanDepthInput = document.getElementById('book-scan-depth');
@@ -1101,6 +1111,14 @@ const WorldBookV2 = {
         this.currentBook.description = document.getElementById('book-description').value;
         this.currentBook.scope = document.getElementById('book-scope').value;
 
+        // 保存角色绑定
+        if (this.currentBook.scope === 'character') {
+            const selected = Array.from(document.querySelectorAll('#book-characters-list input[type="checkbox"]:checked')).map(el => el.value);
+            this.currentBook.characters = selected;
+        } else {
+            this.currentBook.characters = [];
+        }
+
         // 保存扫描深度设置
         const scanDepthInput = document.getElementById('book-scan-depth');
         if (scanDepthInput) {
@@ -1118,6 +1136,71 @@ const WorldBookV2 = {
         this.closeBookSettings();
 
         alert('设置已保存！');
+    },
+
+    // 切换角色选择区域
+    toggleCharacterSelection() {
+        const scopeSelect = document.getElementById('book-scope');
+        const selection = document.getElementById('book-character-selection');
+        if (!scopeSelect || !selection) return;
+
+        if (scopeSelect.value === 'character') {
+            selection.style.display = 'block';
+            this.renderBookCharacterList();
+        } else {
+            selection.style.display = 'none';
+        }
+    },
+
+    // 渲染角色复选框列表
+    renderBookCharacterList() {
+        const container = document.getElementById('book-characters-list');
+        if (!container) return;
+        container.innerHTML = '';
+
+        const state = StateManager.get();
+        const characters = [];
+
+        if (state.ai && state.ai.name) {
+            characters.push({ id: 'default', name: state.ai.name });
+        }
+
+        if (state.chats) {
+            Object.keys(state.chats).forEach(chatId => {
+                const chat = state.chats[chatId];
+                if (chat.settings && chat.settings.aiPersona) {
+                    const personaName = chat.settings.aiPersona.split('。')[0]
+                        .replace(/你是AI伴侣'|你是|'/g, '')
+                        .trim();
+                    if (personaName) {
+                        characters.push({ id: chatId, name: personaName });
+                    }
+                }
+            });
+        }
+
+        if (characters.length === 0) {
+            characters.push({ id: 'default', name: '默认AI' });
+        }
+
+        characters.forEach(char => {
+            const label = document.createElement('label');
+            label.style.display = 'block';
+
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.value = char.id;
+            if (this.currentBook?.characters?.includes(char.id)) {
+                input.checked = true;
+            }
+
+            const span = document.createElement('span');
+            span.textContent = char.name;
+
+            label.appendChild(input);
+            label.appendChild(span);
+            container.appendChild(label);
+        });
     },
     
     // 关闭设置对话框
@@ -1145,11 +1228,52 @@ const WorldBookV2 = {
             this.closeBookSettings();
         }
     },
-    
+
+    // 导入世界书
+    importBook() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'application/json';
+        input.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const data = JSON.parse(reader.result);
+                    if (!data.book || !Array.isArray(data.entries)) {
+                        alert('导入文件格式不正确');
+                        return;
+                    }
+                    const newBook = { ...data.book, id: `imported_${Date.now()}`, createdAt: Date.now() };
+                    if (!Array.isArray(newBook.characters)) {
+                        newBook.characters = [];
+                    }
+                    const newEntries = data.entries.map((entry, idx) => ({
+                        ...entry,
+                        id: entry.id || `imported_entry_${Date.now()}_${idx}`,
+                        bookId: newBook.id
+                    }));
+                    this.books.push(newBook);
+                    this.entries.push(...newEntries);
+                    this.currentBook = newBook;
+                    this.saveData();
+                    this.render();
+                    alert('世界书导入成功！');
+                } catch (err) {
+                    console.error(err);
+                    alert('导入失败：文件解析错误');
+                }
+            };
+            reader.readAsText(file);
+        });
+        input.click();
+    },
+
     // 导出世界书
     exportBook() {
         if (!this.currentBook) return;
-        
+
         const bookEntries = this.entries.filter(e => e.bookId === this.currentBook.id);
         const exportData = {
             book: this.currentBook,
@@ -1157,7 +1281,7 @@ const WorldBookV2 = {
             version: '2.0',
             exportDate: new Date().toISOString()
         };
-        
+
         const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1535,8 +1659,9 @@ const WorldBookV2 = {
             }
         }
 
-        // 按优先级排序（数字越大越靠后，影响力越大）
-        activeEntries.sort((a, b) => (a.order || 0) - (b.order || 0));
+        // 按优先级排序（数字越大越优先选中，与SillyTavern一致）
+        // 注意：这是挑选顺序，不是最终插入位置
+        activeEntries.sort((a, b) => (b.order || 0) - (a.order || 0));
 
         return activeEntries;
     },
