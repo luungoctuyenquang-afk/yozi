@@ -1535,8 +1535,9 @@ const WorldBookV2 = {
             }
         }
 
-        // 按优先级排序（数字越大越靠后，影响力越大）
-        activeEntries.sort((a, b) => (a.order || 0) - (b.order || 0));
+        // 按优先级排序（数字越大越优先选中，与SillyTavern一致）
+        // 注意：这是挑选顺序，不是最终插入位置
+        activeEntries.sort((a, b) => (b.order || 0) - (a.order || 0));
 
         return activeEntries;
     },
