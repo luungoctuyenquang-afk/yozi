@@ -252,7 +252,10 @@ const AI = {
                 activatedEntries = window.WorldBookV2.getActiveEntries(scanText);
 
                 // 4. 根据Token预算限制条目
-                const tokenBudget = globalSettings.tokenBudget || 2048;
+                const tokenBudget =
+                    globalSettings.tokenBudget ??
+                    window.WorldBookV2.currentBook.tokenBudget ??
+                    2048;
                 const maxTokens = Math.min(tokenBudget, 2048); // 安全上限
 
                 // 分离常驻和触发条目
