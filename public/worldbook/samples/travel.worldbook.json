@@ -1,0 +1,163 @@
+{
+  "name": "Travel World Book",
+  "description": "A comprehensive world book for travel scenarios",
+  "version": "1.0.0",
+  "entries": [
+    {
+      "id": "wbe_001",
+      "name": "Constant Travel Context",
+      "keys": [],
+      "content": "The world is vast and filled with wonders to explore. Every journey begins with a single step, and every destination holds unique stories and experiences.",
+      "constant": true,
+      "position": "top",
+      "priority": 100,
+      "order": 1,
+      "comment": "Always active travel context"
+    },
+    {
+      "id": "wbe_002",
+      "name": "Paris Location",
+      "keys": ["Paris", "Eiffel Tower", "France", "French"],
+      "content": "Paris, the City of Light, is renowned for its art, fashion, gastronomy, and culture. The Eiffel Tower stands as its iconic landmark, while the Seine River flows through the heart of the city. Cafés line the streets, and museums like the Louvre house world-famous artworks.",
+      "position": "afterSystem",
+      "priority": 80,
+      "order": 10,
+      "group": "locations",
+      "probability": 0.9,
+      "sticky": true,
+      "cooldown": 3,
+      "comment": "High priority Paris information"
+    },
+    {
+      "id": "wbe_003", 
+      "name": "Tokyo Location",
+      "keys": ["Tokyo", "Japan", "Japanese", "Shibuya", "Mount Fuji"],
+      "content": "Tokyo is a bustling metropolis where traditional culture meets cutting-edge technology. From the busy crossing at Shibuya to the serene temples, Tokyo offers contrasts at every turn. Mount Fuji can be seen on clear days, and the city's cuisine ranges from street food to Michelin-starred restaurants.",
+      "position": "afterSystem",
+      "priority": 75,
+      "order": 11,
+      "group": "locations",
+      "probability": 0.85,
+      "delay": 2,
+      "comment": "Tokyo travel information"
+    },
+    {
+      "id": "wbe_004",
+      "name": "New York Location", 
+      "keys": ["New York", "NYC", "Manhattan", "Statue of Liberty", "Central Park"],
+      "content": "New York City, the Big Apple, never sleeps. Manhattan's skyline is iconic, Central Park provides green respite, and the Statue of Liberty symbolizes freedom. Broadway shows, world-class museums, and diverse neighborhoods make it a cultural melting pot.",
+      "position": "afterSystem",
+      "priority": 70,
+      "order": 12,
+      "group": "locations",
+      "probability": 0.8,
+      "comment": "New York City details"
+    },
+    {
+      "id": "wbe_005",
+      "name": "Travel Safety Tips",
+      "keys": ["safety", "secure", "dangerous", "risk", "emergency"],
+      "content": "Travel safety is paramount. Always keep copies of important documents, stay aware of your surroundings, use reputable transportation, and inform someone of your itinerary. Research local customs and potential risks before traveling.",
+      "position": "beforeMain",
+      "priority": 90,
+      "order": 5,
+      "selectiveLogic": "AND",
+      "minActivations": 1,
+      "comment": "Important safety information"
+    },
+    {
+      "id": "wbe_006",
+      "name": "Hotel Booking",
+      "keys": ["hotel", "accommodation", "booking", "reservation", "stay"],
+      "content": "When booking hotels, consider location, amenities, reviews, and cancellation policies. Book in advance for popular destinations and during peak seasons. Compare prices across platforms and read recent guest reviews.",
+      "position": "afterExample",
+      "priority": 60,
+      "order": 20,
+      "probability": 0.7,
+      "comment": "Hotel booking advice"
+    },
+    {
+      "id": "wbe_007",
+      "name": "Flight Information",
+      "keys": ["flight", "airplane", "airport", "airline", "departure", "arrival"],
+      "content": "Flight planning involves comparing prices, checking baggage policies, and considering departure times. Arrive at airports early, especially for international flights. Check-in online when possible and download airline apps for updates.",
+      "position": "afterExample", 
+      "priority": 65,
+      "order": 21,
+      "recursive": true,
+      "maxRecursionSteps": 2,
+      "comment": "Flight travel information"
+    },
+    {
+      "id": "wbe_008",
+      "name": "Local Transportation",
+      "keys": ["taxi", "bus", "subway", "metro", "transportation", "public transport"],
+      "content": "Local transportation options vary by destination. Research metro/subway systems, bus routes, and taxi services. Consider ride-sharing apps, bike rentals, or walking for short distances. Purchase travel cards for frequent public transport use.",
+      "position": "afterMain",
+      "priority": 50,
+      "order": 30,
+      "nonRecursable": true,
+      "comment": "Transportation within cities"
+    },
+    {
+      "id": "wbe_009",
+      "name": "Currency Exchange",
+      "keys": ["money", "currency", "exchange", "ATM", "cash", "credit card"],
+      "content": "Handle currency wisely when traveling. Use ATMs for better exchange rates than currency counters. Notify banks of travel plans to avoid card blocks. Carry some cash for places that don't accept cards, but don't carry excessive amounts.",
+      "position": "afterMain",
+      "priority": 55,
+      "order": 31,
+      "blockFurther": true,
+      "delayLevel": 1,
+      "comment": "Financial advice for travelers"
+    },
+    {
+      "id": "wbe_010",
+      "name": "Cultural Etiquette",
+      "keys": ["culture", "etiquette", "customs", "manners", "respect", "local traditions"],
+      "content": "Respect local cultures and customs. Learn basic phrases in the local language, dress appropriately for religious sites, understand tipping customs, and be mindful of photography restrictions. Research cultural norms before visiting.",
+      "position": "floating",
+      "priority": 40,
+      "order": 40,
+      "probability": 0.6,
+      "maxDepth": 2,
+      "comment": "Cultural awareness for respectful travel"
+    },
+    {
+      "id": "wbe_011",
+      "name": "Food and Dining",
+      "keys": ["food", "restaurant", "cuisine", "dining", "local food", "eating"],
+      "content": "Exploring local cuisine is a highlight of travel. Try street food from reputable vendors, make reservations at popular restaurants, consider dietary restrictions and allergies, and be adventurous with new flavors while being cautious with food safety.",
+      "position": "bottom",
+      "priority": 45,
+      "order": 50,
+      "comment": "Culinary travel experiences"
+    },
+    {
+      "id": "wbe_012",
+      "name": "Weather Considerations",
+      "keys": ["weather", "climate", "temperature", "rain", "season", "forecast"],
+      "content": "Weather significantly impacts travel experiences. Check forecasts before departure, pack appropriate clothing for the climate, consider seasonal variations and monsoons, and have backup indoor activities for rainy days.",
+      "position": "bottom",
+      "priority": 35,
+      "order": 51,
+      "probability": 0.75,
+      "comment": "Weather planning for travel"
+    }
+  ],
+  "settings": {
+    "defaultScanDepth": 1000,
+    "defaultRecursive": true,
+    "defaultMinActivations": 1,
+    "defaultMaxDepth": 3,
+    "defaultMaxRecursionSteps": 10,
+    "defaultTokenBudget": 2000,
+    "matchWholeWords": false
+  },
+  "metadata": {
+    "created": "2025-09-09",
+    "author": "WorldBook System",
+    "tags": ["travel", "tourism", "culture", "safety"],
+    "totalEntries": 12
+  }
+}

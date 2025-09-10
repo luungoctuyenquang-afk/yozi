@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>中文匹配测试</title>
+</head>
+<body>
+    <h1>中文匹配测试</h1>
+    <div id="results"></div>
+
+    <script src="./index.iife.js"></script>
+    <script>
+        // 测试数据
+        const testBook = {
+            "entries": [
+                {
+                    "id": "wbe_013",
+                    "name": "海南亚龙湾",
+                    "keys": ["海南", "亚龙湾", "三亚"],
+                    "content": "海南亚龙湾是中国著名的热带海滨旅游胜地",
+                    "enabled": true,
+                    "priority": 85
+                }
+            ],
+            "settings": {
+                "matchWholeWords": false,
+                "caseSensitive": false
+            }
+        };
+
+        const { WorldBookEngine, WorldBookImporter } = window.WorldBookKit;
+        
+        function runTests() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<h2>测试结果：</h2>';
+            
+            // 规范化数据
+            const normalizedBook = WorldBookImporter.import(testBook);
+            console.log('规范化后的数据:', normalizedBook);
+            
+            const engine = new WorldBookEngine({
+                matchWholeWords: false,
+                minActivations: 1
+            });
+
+            const testCases = [
+                "我想去海南亚龙湾",
+                "海南",
+                "亚龙湾", 
+                "去海南玩",
+                "亚龙湾好玩吗",
+                "hainan"
+            ];
+
+            testCases.forEach(testText => {
+                console.log(`\n=== 测试: "${testText}" ===`);
+                
+                try {
+                    const result = engine.process(normalizedBook, testText);
+                    console.log('引擎结果:', result);
+                    
+                    const activatedCount = result.activatedEntries ? result.activatedEntries.length : 0;
+                    const slotCount = result.slots ? Object.keys(result.slots).length : 0;
+                    
+                    results.innerHTML += `
+                        <div style="border: 1px solid #ccc; margin: 10px; padding: 10px;">
+                            <strong>测试: "${testText}"</strong><br>
+                            激活条目数: ${activatedCount}<br>
+                            插槽数: ${slotCount}<br>
+                            ${activatedCount > 0 ? '✅ 匹配成功' : '❌ 未匹配'}
+                        </div>
+                    `;
+                    
+                    // 手动测试匹配逻辑
+                    const entry = normalizedBook.entries[0];
+                    for (const key of entry.keys) {
+                        const matches = engine._textMatch(testText, key, {
+                            caseSensitive: false,
+                            wholeWords: false
+                        });
+                        console.log(`  关键词 "${key}" 匹配结果:`, matches);
+                    }
+                    
+                } catch (error) {
+                    console.error('测试错误:', error);
+                    results.innerHTML += `
+                        <div style="border: 1px solid red; margin: 10px; padding: 10px;">
+                            <strong>测试: "${testText}"</strong><br>
+                            ❌ 错误: ${error.message}
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        // 页面加载完成后运行测试
+        document.addEventListener('DOMContentLoaded', runTests);
+    </script>
+</body>
+</html>

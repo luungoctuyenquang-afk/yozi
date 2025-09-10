@@ -38,7 +38,7 @@ const AI = {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${config.apiKey}`
             };
-            const messages = this.buildOpenAiMessages(messageContent, activeChat, recentHistory);
+            const messages = await this.buildOpenAiMessages(messageContent, activeChat, recentHistory);
             requestBody = { model: config.model, messages: messages };
         }
         
@@ -137,7 +137,7 @@ const AI = {
     },
     
     // 构建OpenAI消息格式
-    buildOpenAiMessages(currentUserInputParts, activeChat, recentHistory) {
+    async buildOpenAiMessages(currentUserInputParts, activeChat, recentHistory) {
         const state = StateManager.get();
         const parts = Array.isArray(currentUserInputParts)
             ? currentUserInputParts
@@ -197,7 +197,32 @@ const AI = {
         let worldBookContext = '';
         let activatedEntries = [];
 
-        if (window.WorldBookV2) {
+        // 优先使用新的世界书引擎
+        if (window.buildWorldInfo) {
+            try {
+                // 构建扫描文本
+                let scanText = '';
+                
+                // 1. 当前用户输入
+                parts.forEach(part => {
+                    if (part.text) scanText += part.text + ' ';
+                });
+                
+                // 2. 最近的聊天历史
+                const recentHistory = state.chat.history.slice(-10) || [];
+                const { text: wiText } = await window.buildWorldInfo(scanText, recentHistory);
+                
+                if (wiText && wiText.trim()) {
+                    worldBookContext = `【世界书注入】\n${wiText}\n\n`;
+                    console.debug('[AI] WorldBook context injected:', wiText.length, 'chars');
+                }
+            } catch (error) {
+                console.error('[AI] WorldBook injection failed:', error);
+            }
+        }
+
+        // 回退到现有世界书系统
+        if (!worldBookContext && window.WorldBookV2) {
             // 确保世界书已初始化
             if (!window.WorldBookV2.currentBook && window.WorldBookV2.books.length > 0) {
                 window.WorldBookV2.currentBook = window.WorldBookV2.books[0];

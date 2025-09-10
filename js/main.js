@@ -174,6 +174,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
+        // MQTT聊天室应用
+        let mqttRoomApp = null;
+        Utils.safeBind(document.getElementById('open-mqtt-room-app'), 'click', () => {
+            Utils.showScreen('mqtt-room-screen');
+            const container = document.getElementById('mqtt-room-container');
+            if (container && !mqttRoomApp) {
+                mqttRoomApp = createMqttRoomApp({
+                    mountEl: container,
+                    getPlayerName: () => {
+                        const state = StateManager.get();
+                        return state.player?.name || '你';
+                    },
+                    brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+                });
+            }
+        });
+        
         // 聊天发送消息
         Utils.safeBind(document.getElementById('chat-input-form'), 'submit', async (event) => {
             event.preventDefault();
@@ -303,6 +320,23 @@ document.addEventListener('DOMContentLoaded', () => {
             SettingsScreen.fetchModels();
         });
         
+        // 世界书导入功能
+        Utils.safeBind(document.getElementById('wi-btn'), 'click', () => {
+            document.getElementById('wi-import').click();
+        });
+        
+        Utils.safeBind(document.getElementById('wi-import'), 'change', async (event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            try {
+                await window.importWorldBookFromFile(file);
+            } catch (error) {
+                console.error('WorldBook import failed:', error);
+            }
+            // 清空文件选择器
+            event.target.value = '';
+        });
+
         Utils.safeBind(document.getElementById('export-data-btn'), 'click', () => {
             SettingsScreen.exportData();
         });
