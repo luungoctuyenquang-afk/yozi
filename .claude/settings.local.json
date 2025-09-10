@@ -5,7 +5,9 @@
       "Bash(tree:*)",
       "Bash(start demo.html)",
       "Bash(start test-chinese-matching.html)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git config:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
