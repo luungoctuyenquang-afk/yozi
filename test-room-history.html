@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT聊天室房间历史记录功能测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-header {
+            color: #007bff;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .feature-demo {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+            margin: 15px 0;
+        }
+        .test-step {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+            border-left: 3px solid #28a745;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-button.secondary {
+            background: #28a745;
+        }
+        .test-button.secondary:hover {
+            background: #218838;
+        }
+        .highlight {
+            background: yellow;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .code {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            border: 1px solid #dee2e6;
+            margin: 8px 0;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .info {
+            color: #17a2b8;
+            font-weight: bold;
+        }
+        .warning {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .feature-list {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .feature-list ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .feature-list li {
+            margin: 5px 0;
+        }
+        @media (max-width: 768px) {
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1 class="test-header">🧪 MQTT聊天室房间历史记录功能测试</h1>
+        
+        <div class="feature-demo">
+            <h3>✨ 新功能介绍</h3>
+            <div class="feature-list">
+                <h4>📚 房间历史记录功能：</h4>
+                <ul>
+                    <li>自动记录最近使用的房间和昵称</li>
+                    <li>点击历史记录快速填充房间号和昵称</li>
+                    <li>显示最后使用时间（相对时间）</li>
+                    <li>支持删除单个历史记录</li>
+                    <li>支持清空所有历史记录</li>
+                    <li>最多保存10条历史记录</li>
+                </ul>
+                
+                <h4>⏰ 消息时间戳优化：</h4>
+                <ul>
+                    <li>智能时间显示：刚刚、X分钟前、X小时前</li>
+                    <li>昨天消息显示：昨天 HH:MM</li>
+                    <li>更早消息显示：MM-DD HH:MM</li>
+                    <li>更人性化的时间体验</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="demo-grid">
+            <div>
+                <h3>🎯 房间历史记录测试步骤</h3>
+                <div class="test-step">
+                    <strong>第1步：</strong> 打开虚拟手机应用
+                    <br><button class="test-button" onclick="openApp()">打开应用</button>
+                </div>
+                
+                <div class="test-step">
+                    <strong>第2步：</strong> 进入MQTT聊天室，连接一个房间
+                    <br><span class="info">建议房间号：test-history-001</span>
+                </div>
+                
+                <div class="test-step">
+                    <strong>第3步：</strong> 离开房间，重新进入聊天室
+                    <br><span class="success">应该看到历史记录区域出现</span>
+                </div>
+                
+                <div class="test-step">
+                    <strong>第4步：</strong> 点击历史记录项，验证自动填充
+                    <br><span class="success">房间号和昵称应该自动填充</span>
+                </div>
+                
+                <div class="test-step">
+                    <strong>第5步：</strong> 测试删除和清空功能
+                    <br><span class="info">点击×删除单条，点击🗑️清空所有</span>
+                </div>
+            </div>
+
+            <div>
+                <h3>⏰ 时间戳优化测试</h3>
+                <div class="test-step">
+                    <strong>时间显示测试：</strong>
+                    <ul>
+                        <li>发送消息后立即查看时间戳</li>
+                        <li>等待几分钟后发送新消息</li>
+                        <li>观察时间戳格式变化</li>
+                    </ul>
+                </div>
+                
+                <div class="test-step">
+                    <strong>多用户测试：</strong> 
+                    <br><button class="test-button secondary" onclick="openMultiple()">打开多个窗口</button>
+                    <br><small>使用不同昵称连接同一房间，测试历史记录</small>
+                </div>
+                
+                <div class="test-step">
+                    <strong>持久化测试：</strong> 刷新页面后重新进入，验证历史记录是否保存
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2 class="test-header">🔍 功能验证清单</h2>
+        
+        <div id="checklistContainer">
+            <h4>📚 房间历史记录功能：</h4>
+            <label><input type="checkbox" id="check1"> 连接房间后自动添加到历史记录</label><br>
+            <label><input type="checkbox" id="check2"> 历史记录区域正确显示</label><br>
+            <label><input type="checkbox" id="check3"> 点击历史记录项自动填充房间号和昵称</label><br>
+            <label><input type="checkbox" id="check4"> 显示相对时间（刚刚、X分钟前等）</label><br>
+            <label><input type="checkbox" id="check5"> 可以删除单个历史记录</label><br>
+            <label><input type="checkbox" id="check6"> 可以清空所有历史记录</label><br>
+            <label><input type="checkbox" id="check7"> 历史记录数量限制为10条</label><br>
+            <label><input type="checkbox" id="check8"> 页面刷新后历史记录仍然存在</label><br>
+            
+            <h4>⏰ 时间戳优化功能：</h4>
+            <label><input type="checkbox" id="check9"> 新消息显示"刚刚"</label><br>
+            <label><input type="checkbox" id="check10"> 几分钟前的消息显示"X分钟前"</label><br>
+            <label><input type="checkbox" id="check11"> 几小时前的消息显示"X小时前"</label><br>
+            <label><input type="checkbox" id="check12"> 昨天的消息显示"昨天 HH:MM"</label><br>
+            <label><input type="checkbox" id="check13"> 更早的消息显示"MM-DD HH:MM"</label><br>
+            
+            <h4>🎨 界面和交互：</h4>
+            <label><input type="checkbox" id="check14"> 历史记录样式美观</label><br>
+            <label><input type="checkbox" id="check15"> 鼠标悬停效果正常</label><br>
+            <label><input type="checkbox" id="check16"> 没有JavaScript错误</label><br>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button class="test-button" onclick="checkProgress()">检查测试进度</button>
+            <button class="test-button secondary" onclick="resetChecklist()">重置清单</button>
+        </div>
+        
+        <div id="progressResult"></div>
+    </div>
+
+    <div class="test-container">
+        <h2 class="test-header">🛠️ 技术实现详情</h2>
+        
+        <div class="code">
+            <strong>房间历史记录数据结构：</strong><br>
+            {<br>
+            &nbsp;&nbsp;roomId: string,<br>
+            &nbsp;&nbsp;nickname: string,<br>
+            &nbsp;&nbsp;timestamp: number,<br>
+            &nbsp;&nbsp;lastUsed: number<br>
+            }
+        </div>
+        
+        <div class="code">
+            <strong>关键函数：</strong><br>
+            • loadRoomHistory() - 从localStorage加载历史记录<br>
+            • saveRoomHistory() - 保存历史记录到localStorage<br>
+            • addToRoomHistory() - 添加房间到历史记录<br>
+            • updateRoomHistoryDisplay() - 更新UI显示<br>
+            • formatMessageTime() - 格式化消息时间戳
+        </div>
+        
+        <div class="code">
+            <strong>存储机制：</strong><br>
+            • 使用localStorage持久化存储<br>
+            • 最大保存10条历史记录<br>
+            • 自动去重，相同房间只保留最新记录<br>
+            • 按最后使用时间排序
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2 class="test-header">🐛 已知限制和改进建议</h2>
+        
+        <div class="test-step">
+            <strong>当前限制：</strong>
+            <ul>
+                <li>历史记录仅保存在当前浏览器中</li>
+                <li>无法跨设备同步历史记录</li>
+                <li>时间戳基于客户端时间，可能存在时区问题</li>
+            </ul>
+        </div>
+        
+        <div class="test-step">
+            <strong>未来优化方向：</strong>
+            <ul>
+                <li>添加历史记录搜索功能</li>
+                <li>支持历史记录分类（常用、最近等）</li>
+                <li>添加房间描述或标签</li>
+                <li>支持历史记录导出/导入</li>
+                <li>云端同步历史记录</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function openApp() {
+            window.open('http://localhost:3000', '_blank', 'width=400,height=800');
+        }
+        
+        function openMultiple() {
+            // 打开3个窗口用于多用户测试
+            for (let i = 1; i <= 3; i++) {
+                setTimeout(() => {
+                    window.open('http://localhost:3000', `_blank_${i}`, 'width=350,height=700,left=' + (i * 380));
+                }, i * 500);
+            }
+            alert('已打开3个测试窗口，请使用不同昵称连接到不同房间测试历史记录功能');
+        }
+        
+        function checkProgress() {
+            const checkboxes = document.querySelectorAll('#checklistContainer input[type="checkbox"]');
+            const total = checkboxes.length;
+            const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
+            const percentage = Math.round((checked / total) * 100);
+            
+            let result = `<div style="margin-top: 15px; padding: 15px; border-radius: 8px; `;
+            
+            if (percentage === 100) {
+                result += `background: #d4edda; color: #155724;">
+                    🎉 <strong>测试完成！</strong> 所有功能验证通过 (${checked}/${total})
+                    <br>房间历史记录和时间戳优化功能已成功集成并正常工作！`;
+            } else if (percentage >= 70) {
+                result += `background: #fff3cd; color: #856404;">
+                    ⚠️ <strong>基本功能正常</strong> 进度: ${checked}/${total} (${percentage}%)
+                    <br>建议完成剩余测试项目以确保功能完整性`;
+            } else {
+                result += `background: #f8d7da; color: #721c24;">
+                    ❌ <strong>需要进一步测试</strong> 进度: ${checked}/${total} (${percentage}%)
+                    <br>请按照测试步骤进行功能验证`;
+            }
+            
+            result += `</div>`;
+            document.getElementById('progressResult').innerHTML = result;
+        }
+        
+        function resetChecklist() {
+            const checkboxes = document.querySelectorAll('#checklistContainer input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = false);
+            document.getElementById('progressResult').innerHTML = '';
+        }
+        
+        // 页面加载时的说明
+        window.onload = function() {
+            console.log('🚀 MQTT聊天室房间历史记录功能测试页面加载完成');
+            console.log('📋 请按照页面上的步骤进行功能测试');
+            console.log('💡 建议测试多个房间的历史记录功能');
+        };
+    </script>
+</body>
+</html>

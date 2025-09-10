@@ -22,6 +22,14 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     let onlineUsers = new Set(); // 在线用户集合
     let userJoinTimes = new Map(); // 用户加入时间记录
     
+    // 房间历史记录管理
+    let roomHistory = []; // 房间历史记录数组
+    const MAX_HISTORY_SIZE = 10; // 最大历史记录数量
+    
+    // 聊天记录管理
+    let chatHistory = new Map(); // 聊天记录 Map<roomId, messages[]>
+    const MAX_CHAT_MESSAGES = 100; // 每个房间最大聊天记录数量
+    
     // 备选MQTT Broker列表
     const brokerUrls = [
         'wss://test.mosquitto.org:8081/mqtt',
@@ -44,6 +52,340 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         alert(message);
     }
     
+    // 加载房间历史记录
+    function loadRoomHistory() {
+        try {
+            const saved = localStorage.getItem('mqtt_room_history');
+            if (saved) {
+                roomHistory = JSON.parse(saved);
+                // 确保历史记录不超过最大数量
+                if (roomHistory.length > MAX_HISTORY_SIZE) {
+                    roomHistory = roomHistory.slice(0, MAX_HISTORY_SIZE);
+                }
+            }
+        } catch (error) {
+            console.warn('加载房间历史记录失败:', error);
+            roomHistory = [];
+        }
+    }
+    
+    // 保存房间历史记录
+    function saveRoomHistory() {
+        try {
+            localStorage.setItem('mqtt_room_history', JSON.stringify(roomHistory));
+        } catch (error) {
+            console.warn('保存房间历史记录失败:', error);
+        }
+    }
+    
+    // 加载聊天记录
+    function loadChatHistory() {
+        try {
+            const saved = localStorage.getItem('mqtt_chat_history');
+            if (saved) {
+                const data = JSON.parse(saved);
+                chatHistory = new Map(data);
+            }
+        } catch (error) {
+            console.warn('加载聊天记录失败:', error);
+            chatHistory = new Map();
+        }
+    }
+    
+    // 保存聊天记录
+    function saveChatHistory() {
+        try {
+            const data = Array.from(chatHistory.entries());
+            localStorage.setItem('mqtt_chat_history', JSON.stringify(data));
+        } catch (error) {
+            console.warn('保存聊天记录失败:', error);
+        }
+    }
+    
+    // 添加聊天消息到历史记录
+    function addToChatHistory(roomId, message) {
+        if (!roomId || !message) return;
+        
+        if (!chatHistory.has(roomId)) {
+            chatHistory.set(roomId, []);
+        }
+        
+        const messages = chatHistory.get(roomId);
+        messages.push(message);
+        
+        // 限制消息数量
+        if (messages.length > MAX_CHAT_MESSAGES) {
+            messages.splice(0, messages.length - MAX_CHAT_MESSAGES);
+        }
+        
+        saveChatHistory();
+    }
+    
+    // 获取房间的聊天记录
+    function getChatHistory(roomId) {
+        return chatHistory.get(roomId) || [];
+    }
+    
+    // 清空房间的聊天记录
+    function clearChatHistory(roomId) {
+        if (roomId) {
+            chatHistory.delete(roomId);
+        } else {
+            chatHistory.clear();
+        }
+        saveChatHistory();
+    }
+    
+    // 导出房间历史记录
+    function exportRoomHistory() {
+        try {
+            const exportData = {
+                roomHistory: roomHistory,
+                chatHistory: Array.from(chatHistory.entries()),
+                exportTime: new Date().toISOString(),
+                version: '1.0'
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `mqtt-room-history-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            log('system', '✅ 历史记录导出成功');
+        } catch (error) {
+            console.error('导出失败:', error);
+            log('system', '❌ 导出失败: ' + error.message);
+        }
+    }
+    
+    // 导入房间历史记录
+    function importRoomHistory(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const importData = JSON.parse(e.target.result);
+                
+                if (importData.version !== '1.0') {
+                    throw new Error('不支持的文件格式版本');
+                }
+                
+                // 合并房间历史记录
+                if (importData.roomHistory && Array.isArray(importData.roomHistory)) {
+                    const existingRoomIds = new Set(roomHistory.map(item => item.roomId));
+                    const newRooms = importData.roomHistory.filter(item => !existingRoomIds.has(item.roomId));
+                    roomHistory = [...newRooms, ...roomHistory];
+                    
+                    // 限制数量
+                    if (roomHistory.length > MAX_HISTORY_SIZE) {
+                        roomHistory = roomHistory.slice(0, MAX_HISTORY_SIZE);
+                    }
+                    
+                    saveRoomHistory();
+                }
+                
+                // 合并聊天记录
+                if (importData.chatHistory && Array.isArray(importData.chatHistory)) {
+                    importData.chatHistory.forEach(([roomId, messages]) => {
+                        if (!chatHistory.has(roomId)) {
+                            chatHistory.set(roomId, []);
+                        }
+                        
+                        const existingMessages = chatHistory.get(roomId);
+                        const existingTimestamps = new Set(existingMessages.map(msg => msg.timestamp));
+                        const newMessages = messages.filter(msg => !existingTimestamps.has(msg.timestamp));
+                        
+                        existingMessages.push(...newMessages);
+                        
+                        // 限制消息数量
+                        if (existingMessages.length > MAX_CHAT_MESSAGES) {
+                            existingMessages.splice(0, existingMessages.length - MAX_CHAT_MESSAGES);
+                        }
+                    });
+                    
+                    saveChatHistory();
+                }
+                
+                updateRoomHistoryDisplay();
+                log('system', `✅ 成功导入 ${importData.roomHistory?.length || 0} 个房间的历史记录`);
+                
+            } catch (error) {
+                console.error('导入失败:', error);
+                log('system', '❌ 导入失败: ' + error.message);
+            }
+        };
+        reader.readAsText(file);
+    }
+    
+    // 加载历史聊天记录到UI
+    function loadChatHistoryToUI(roomId) {
+        const messages = getChatHistory(roomId);
+        if (messages.length === 0) return;
+        
+        // 清空当前消息显示
+        clearMessages();
+        
+        // 显示历史记录提示
+        log('system', `📚 加载了 ${messages.length} 条历史消息`);
+        
+        // 加载历史消息
+        messages.forEach(msg => {
+            addChatMessage(msg.user, msg.text, msg.timestamp, msg.isOwnMessage);
+        });
+    }
+    
+    // 添加房间到历史记录
+    function addToRoomHistory(roomId, nickname, category = 'recent') {
+        if (!roomId || !nickname) return;
+        
+        const historyItem = {
+            roomId: roomId,
+            nickname: nickname,
+            timestamp: Date.now(),
+            lastUsed: Date.now(),
+            category: category,
+            tags: []
+        };
+        
+        // 移除已存在的相同房间记录
+        roomHistory = roomHistory.filter(item => item.roomId !== roomId);
+        
+        // 添加到开头
+        roomHistory.unshift(historyItem);
+        
+        // 限制历史记录数量
+        if (roomHistory.length > MAX_HISTORY_SIZE) {
+            roomHistory = roomHistory.slice(0, MAX_HISTORY_SIZE);
+        }
+        
+        saveRoomHistory();
+        updateRoomHistoryDisplay();
+    }
+    
+    // 更新房间历史记录显示
+    function updateRoomHistoryDisplay(searchTerm = '') {
+        const historyContainer = elements.roomHistoryContainer;
+        if (!historyContainer) return;
+        
+        if (roomHistory.length === 0) {
+            historyContainer.style.display = 'none';
+            return;
+        }
+        
+        historyContainer.style.display = 'block';
+        const historyList = elements.roomHistoryList;
+        historyList.innerHTML = '';
+        
+        // 过滤历史记录
+        const filteredHistory = roomHistory.filter(item => {
+            if (!searchTerm) return true;
+            return item.roomId.toLowerCase().includes(searchTerm) || 
+                   item.nickname.toLowerCase().includes(searchTerm);
+        });
+        
+        if (filteredHistory.length === 0 && searchTerm) {
+            historyList.innerHTML = '<div class="no-results">没有找到匹配的房间</div>';
+            return;
+        }
+        
+        filteredHistory.forEach((item, index) => {
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+            
+            const timeAgo = getTimeAgo(item.lastUsed);
+            historyItem.innerHTML = `
+                <div class="history-room">${escapeHtml(item.roomId)}</div>
+                <div class="history-nickname">${escapeHtml(item.nickname)}</div>
+                <div class="history-time">${timeAgo}</div>
+                <button class="history-remove" title="删除记录">×</button>
+            `;
+            
+            // 点击历史记录项快速填充
+            historyItem.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('history-remove')) {
+                    elements.roomInput.value = item.roomId;
+                    elements.nicknameInput.value = item.nickname;
+                    // 更新最后使用时间
+                    item.lastUsed = Date.now();
+                    saveRoomHistory();
+                    updateRoomHistoryDisplay(searchTerm);
+                }
+            });
+            
+            // 删除历史记录
+            const removeBtn = historyItem.querySelector('.history-remove');
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const originalIndex = roomHistory.findIndex(originalItem => originalItem.roomId === item.roomId);
+                if (originalIndex !== -1) {
+                    roomHistory.splice(originalIndex, 1);
+                    saveRoomHistory();
+                    updateRoomHistoryDisplay(searchTerm);
+                }
+            });
+            
+            historyList.appendChild(historyItem);
+        });
+    }
+    
+    // 获取相对时间显示
+    function getTimeAgo(timestamp) {
+        const now = Date.now();
+        const diff = now - timestamp;
+        const minutes = Math.floor(diff / 60000);
+        const hours = Math.floor(diff / 3600000);
+        const days = Math.floor(diff / 86400000);
+        
+        if (minutes < 1) return '刚刚';
+        if (minutes < 60) return `${minutes}分钟前`;
+        if (hours < 24) return `${hours}小时前`;
+        return `${days}天前`;
+    }
+    
+    // 格式化消息时间戳
+    function formatMessageTime(timestamp) {
+        const now = Date.now();
+        const messageTime = new Date(timestamp);
+        const diff = now - timestamp;
+        
+        // 如果是今天内的消息
+        if (diff < 86400000) { // 24小时内
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            
+            if (minutes < 1) {
+                return '刚刚';
+            } else if (minutes < 60) {
+                return `${minutes}分钟前`;
+            } else if (hours < 24) {
+                return `${hours}小时前`;
+            }
+        }
+        
+        // 如果是昨天的消息
+        const yesterday = new Date(now - 86400000);
+        if (messageTime.toDateString() === yesterday.toDateString()) {
+            return `昨天 ${messageTime.toLocaleTimeString('zh-CN', { 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            })}`;
+        }
+        
+        // 如果是更早的消息，显示完整日期
+        return messageTime.toLocaleString('zh-CN', {
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+    }
+    
     // 创建UI界面
     function createUI() {
         mountEl.innerHTML = `
@@ -60,6 +402,21 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                             <input type="text" class="room-input" placeholder="房间号" value="demo-room-001">
                             <input type="text" class="nickname-input" placeholder="昵称" value="">
                         </div>
+                        
+                        <!-- 房间历史记录 -->
+                        <div class="room-history" id="room-history-container" style="display: none;">
+                            <div class="history-header">
+                                <span class="history-title">📚 最近使用的房间</span>
+                                <div class="history-controls">
+                                    <input type="text" class="history-search" placeholder="搜索房间..." id="room-search-input">
+                                    <button class="history-export-btn" title="导出历史记录">📤</button>
+                                    <button class="history-import-btn" title="导入历史记录">📥</button>
+                                    <button class="history-clear-btn" title="清空历史记录">🗑️</button>
+                                </div>
+                            </div>
+                            <div class="history-list" id="room-history-list"></div>
+                        </div>
+                        
                         <div class="control-buttons">
                             <button class="connect-btn btn-connect">🔗 连接</button>
                             <button class="leave-btn btn-leave" disabled>❌ 离开</button>
@@ -106,6 +463,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     display: flex;
                     flex-direction: column;
                     box-sizing: border-box;
+                    overflow: hidden;
                 }
                 
                 .mqtt-header {
@@ -325,6 +683,142 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     text-align: center;
                 }
                 
+                .room-history {
+                    background: #f8f9fa;
+                    border: 1px solid #e9ecef;
+                    border-radius: 8px;
+                    margin: 10px 0;
+                    padding: 8px;
+                }
+                
+                .history-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 8px;
+                }
+                
+                .history-controls {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                
+                .history-search {
+                    padding: 4px 8px;
+                    border: 1px solid #e9ecef;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    width: 120px;
+                }
+                
+                .history-search:focus {
+                    outline: none;
+                    border-color: #007bff;
+                }
+                
+                .history-title {
+                    font-size: 12px;
+                    font-weight: bold;
+                    color: #495057;
+                }
+                
+                .history-export-btn,
+                .history-import-btn,
+                .history-clear-btn {
+                    background: none;
+                    border: none;
+                    font-size: 14px;
+                    cursor: pointer;
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    color: #6c757d;
+                }
+                
+                .history-export-btn:hover {
+                    background: #e9ecef;
+                    color: #28a745;
+                }
+                
+                .history-import-btn:hover {
+                    background: #e9ecef;
+                    color: #007bff;
+                }
+                
+                .history-clear-btn:hover {
+                    background: #e9ecef;
+                    color: #dc3545;
+                }
+                
+                .history-list {
+                    max-height: 120px;
+                    overflow-y: auto;
+                }
+                
+                .history-item {
+                    display: flex;
+                    align-items: center;
+                    padding: 6px 8px;
+                    margin: 2px 0;
+                    background: white;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    border: 1px solid transparent;
+                }
+                
+                .history-item:hover {
+                    background: #e3f2fd;
+                    border-color: #bbdefb;
+                }
+                
+                .history-room {
+                    flex: 1;
+                    font-weight: bold;
+                    color: #1976d2;
+                    font-size: 13px;
+                }
+                
+                .history-nickname {
+                    flex: 1;
+                    color: #666;
+                    font-size: 12px;
+                    margin: 0 8px;
+                }
+                
+                .history-time {
+                    font-size: 11px;
+                    color: #999;
+                    margin-right: 8px;
+                }
+                
+                .history-remove {
+                    background: none;
+                    border: none;
+                    color: #dc3545;
+                    cursor: pointer;
+                    font-size: 16px;
+                    padding: 0;
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                
+                .history-remove:hover {
+                    background: #f8d7da;
+                }
+                
+                .no-results {
+                    text-align: center;
+                    color: #999;
+                    font-size: 12px;
+                    padding: 20px;
+                    font-style: italic;
+                }
+                
                 .chat-container {
                     background: white;
                     border-radius: 12px;
@@ -334,6 +828,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     overflow: hidden;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
                     min-height: 300px;
+                    max-height: calc(100vh - 200px);
                 }
                 
                 .messages {
@@ -505,7 +1000,9 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             onlineCount: mountEl.querySelector('#online-count'),
             onlineList: mountEl.querySelector('#online-list'),
             onlineListContent: mountEl.querySelector('#online-list-content'),
-            onlineCountDisplay: mountEl.querySelector('.online-count')
+            onlineCountDisplay: mountEl.querySelector('.online-count'),
+            roomHistoryContainer: mountEl.querySelector('#room-history-container'),
+            roomHistoryList: mountEl.querySelector('#room-history-list')
         };
         
         // 验证关键元素是否存在
@@ -519,6 +1016,13 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         // 设置默认昵称
         elements.nicknameInput.value = getPlayerName() || '匿名用户';
         updateBrokerDisplay();
+        
+        // 加载房间历史记录
+        loadRoomHistory();
+        updateRoomHistoryDisplay();
+        
+        // 加载聊天记录
+        loadChatHistory();
         
         // 绑定事件
         bindEvents();
@@ -553,6 +1057,52 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             const isVisible = elements.onlineList.style.display !== 'none';
             elements.onlineList.style.display = isVisible ? 'none' : 'block';
         });
+        
+        // 清空历史记录按钮
+        const clearHistoryBtn = mountEl.querySelector('.history-clear-btn');
+        if (clearHistoryBtn) {
+            clearHistoryBtn.addEventListener('click', () => {
+                if (confirm('确定要清空所有房间历史记录吗？')) {
+                    roomHistory = [];
+                    saveRoomHistory();
+                    updateRoomHistoryDisplay();
+                }
+            });
+        }
+        
+        // 搜索功能
+        const searchInput = mountEl.querySelector('#room-search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                updateRoomHistoryDisplay(searchTerm);
+            });
+        }
+        
+        // 导出功能
+        const exportBtn = mountEl.querySelector('.history-export-btn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => {
+                exportRoomHistory();
+            });
+        }
+        
+        // 导入功能
+        const importBtn = mountEl.querySelector('.history-import-btn');
+        if (importBtn) {
+            importBtn.addEventListener('click', () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        importRoomHistory(file);
+                    }
+                };
+                input.click();
+            });
+        }
         
         // 页面可见性变化处理
         document.addEventListener('visibilitychange', () => {
@@ -634,6 +1184,10 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     if (!err) {
                         publishPresence('join');
                         updateUI(true);
+                        // 添加房间到历史记录
+                        addToRoomHistory(roomId, nickname);
+                        // 加载历史聊天记录
+                        loadChatHistoryToUI(roomId);
                     } else {
                         log('system', '订阅失败: ' + err.message);
                     }
@@ -845,16 +1399,21 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     }
     
     function addChatMessage(user, text, timestamp, isOwnMessage = false) {
+        // 保存聊天记录
+        const messageData = {
+            user: user,
+            text: text,
+            timestamp: timestamp,
+            isOwnMessage: isOwnMessage
+        };
+        addToChatHistory(roomId, messageData);
+        
         // 使用 requestAnimationFrame 优化DOM操作，避免界面卡顿
         requestAnimationFrame(() => {
             const messageEl = document.createElement('div');
             messageEl.className = `message chat ${isOwnMessage ? 'own-message' : ''}`;
 
-            const time = new Date(timestamp).toLocaleTimeString('zh-CN', { 
-                hour12: false, 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
+            const time = formatMessageTime(timestamp);
 
             // 限制消息数量，避免DOM元素过多导致卡顿
             if (elements.messages.children.length > 200) {
