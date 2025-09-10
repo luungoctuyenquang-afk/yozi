@@ -15,7 +15,7 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
 .app-name { font-size: 12px; }
 .back-btn { background: none; border: none; font-size: 28px; font-weight: bold; color: #007aff; cursor: pointer; padding-right: 15px; }
 /* ▼▼▼ 新增/修改 ▼▼▼ */
-#chat-screen, #wallet-screen, #store-screen, #backpack-screen, #world-book-screen, #settings-screen, #general-settings-screen { padding: 0; display: none; flex-direction: column; z-index: 6; }
+#chat-screen, #wallet-screen, #store-screen, #backpack-screen, #world-book-screen, #settings-screen, #general-settings-screen, #mqtt-room-screen { padding: 0; display: none; flex-direction: column; z-index: 6; }
 /* ▲▲▲ 新增/修改 ▲▲▲ */
 .chat-header, .wallet-header, .store-header, .backpack-header, .world-book-header, .settings-header { display: flex; align-items: center; padding: 10px 15px; border-bottom: 1px solid #e0e0e0; background-color: #f8f8f8; }
 .chat-header h2, .wallet-header h2, .store-header h2, .backpack-header h2, .world-book-header h2, .settings-header h2 { font-size: 18px; margin: 0; text-align: center; flex-grow: 1; }

@@ -18,7 +18,8 @@
       "Bash(start http://localhost:3000)",
       "Bash(start test-mqtt-fixes.html)",
       "Bash(start test-online-users.html)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

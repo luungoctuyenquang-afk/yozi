@@ -17,6 +17,14 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     let messageTopic = '';
     let presenceTopic = '';
     let currentBrokerIndex = 0;
+    let currentTheme = 'auto'; // auto, light, dark
+    let emojiPickerVisible = false; // 表情选择器状态
+    let privateChats = new Map(); // 私聊会话 Map<userId, messages[]>
+    let currentChatType = 'room'; // 'room' | 'private'
+    let currentPrivateUser = null; // 当前私聊对象
+    let heartbeatInterval = null; // 心跳定时器
+    let isRoomAdmin = false; // 是否为房间管理员
+    let roomConfig = null; // 当前房间配置
     
     // 在线用户管理
     let onlineUsers = new Set(); // 在线用户集合
@@ -35,6 +43,83 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         'wss://test.mosquitto.org:8081/mqtt',
         'wss://broker.hivemq.com:8884/mqtt'
     ];
+    
+    // 表情包数据
+    const emojiData = {
+        smileys: ['😀', '😃', '😄', '😁', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶'],
+        gestures: ['👍', '👎', '👌', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '👇', '☝️', '✋', '🤚', '🖐', '🖖', '👋', '🤙', '💪', '🖕', '✍️', '🙏', '👏', '🙌', '🤝', '👐', '🤲', '🤜', '🤛'],
+        people: ['👶', '👧', '🧒', '👦', '👩', '🧑', '👨', '👵', '🧓', '👴', '👲', '👳‍♀️', '👳‍♂️', '🧕', '🧔', '👱‍♂️', '👱‍♀️', '👨‍🦰', '👩‍🦰', '👨‍🦱', '👩‍🦱', '👨‍🦲', '👩‍🦲', '👨‍🦳', '👩‍🦳'],
+        animals: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐽', '🐸', '🐵', '🙈', '🙉', '🙊', '🐒', '🐔', '🐧', '🐦', '🐤', '🐣', '🐥', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝'],
+        food: ['🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍈', '🍒', '🍑', '🥭', '🍍', '🥥', '🥝', '🍅', '🍆', '🥑', '🥦', '🥬', '🥒', '🌶', '🌽', '🥕', '🥔', '🍠', '🥐', '🍞', '🥖', '🥨', '🧀', '🥚', '🍳', '🥞', '🥓', '🥩', '🍗', '🍖', '🌭', '🍔', '🍟', '🍕', '🥪', '🥙', '🌮', '🌯', '🥗', '🥘', '🍝'],
+        activities: ['⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🥅', '⛳', '🏹', '🎣', '🤿', '🥊', '🥋', '🎽', '🛹', '🛷', '⛸', '🥌', '🎿', '⛷', '🏂'],
+        objects: ['💡', '🔦', '🕯', '💸', '💵', '💴', '💶', '💷', '💰', '💳', '💎', '⚖️', '🔧', '🔨', '⚒', '🛠', '⛏', '🔩', '⚙️', '⛓', '🔫', '💣', '🔪', '🗡', '⚔️', '🛡', '🚬', '⚰️', '⚱️', '🏺', '🔮', '📿', '💈', '⚗️', '🔭', '🔬', '🕳', '💊', '💉', '🌡', '🚽', '🚰', '🚿', '🛁'],
+        symbols: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '☢️', '☣️', '📴', '📳']
+    };
+    
+    // 表情快捷码映射
+    const emojiShortcuts = {
+        ':)': '😊',
+        ':-)': '😊',
+        ':(': '😢',
+        ':-(': '😢',
+        ':D': '😃',
+        ':-D': '😃',
+        ':P': '😛',
+        ':-P': '😛',
+        ':p': '😛',
+        ':-p': '😛',
+        ';)': '😉',
+        ';-)': '😉',
+        ':o': '😮',
+        ':-o': '😮',
+        ':|': '😐',
+        ':-|': '😐',
+        ':*': '😘',
+        ':-*': '😘',
+        '<3': '❤️',
+        '</3': '💔',
+        ':heart:': '❤️',
+        ':love:': '😍',
+        ':laugh:': '😂',
+        ':cry:': '😭',
+        ':sad:': '😢',
+        ':happy:': '😊',
+        ':angry:': '😠',
+        ':mad:': '😡',
+        ':cool:': '😎',
+        ':thumbup:': '👍',
+        ':thumbdown:': '👎',
+        ':ok:': '👌',
+        ':fire:': '🔥',
+        ':star:': '⭐',
+        ':sun:': '☀️',
+        ':moon:': '🌙',
+        ':rainbow:': '🌈'
+    };
+    
+    // 默认房间配置
+    const defaultRoomConfig = {
+        maxUsers: 20,              // 最大用户数
+        password: '',              // 房间密码
+        isPrivate: false,          // 是否私密房间
+        category: 'chat',          // 房间分类: chat, game, ai, private
+        adminUsers: [],            // 管理员用户列表
+        features: {
+            voiceChat: false,      // 语音聊天
+            fileShare: false,      // 文件分享
+            encryption: false,     // 消息加密
+            aiBot: true,          // AI机器人
+            games: false          // 游戏功能
+        },
+        restrictions: {
+            mutedUsers: [],       // 禁言用户列表
+            bannedUsers: [],      // 封禁用户列表
+            messageRateLimit: 10, // 消息发送频率限制(每分钟)
+            maxMessageLength: 500 // 最大消息长度
+        },
+        createdAt: Date.now(),
+        createdBy: null
+    };
     
     // UI 元素引用
     let elements = {};
@@ -298,9 +383,9 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             
             const timeAgo = getTimeAgo(item.lastUsed);
             historyItem.innerHTML = `
-                <div class="history-room">${escapeHtml(item.roomId)}</div>
-                <div class="history-nickname">${escapeHtml(item.nickname)}</div>
-                <div class="history-time">${timeAgo}</div>
+                <span class="history-room">${escapeHtml(item.roomId)}</span>
+                <span class="history-nickname">@ ${escapeHtml(item.nickname)}</span>
+                <span class="history-time">${timeAgo}</span>
                 <button class="history-remove" title="删除记录">×</button>
             `;
             
@@ -344,6 +429,524 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         if (minutes < 60) return `${minutes}分钟前`;
         if (hours < 24) return `${hours}小时前`;
         return `${days}天前`;
+    }
+    
+    // 主题管理功能
+    function loadTheme() {
+        try {
+            const savedTheme = localStorage.getItem('mqtt_room_theme') || 'auto';
+            currentTheme = savedTheme;
+            applyTheme(savedTheme);
+        } catch (error) {
+            console.warn('加载主题设置失败:', error);
+            currentTheme = 'auto';
+            applyTheme('auto');
+        }
+    }
+    
+    function saveTheme(theme) {
+        try {
+            localStorage.setItem('mqtt_room_theme', theme);
+        } catch (error) {
+            console.warn('保存主题设置失败:', error);
+        }
+    }
+    
+    function applyTheme(theme) {
+        const mqttScreen = mountEl.querySelector('.mqtt-room-screen');
+        const themeBtn = elements.themeToggleBtn;
+        
+        if (!mqttScreen) return;
+        
+        // 移除所有主题类
+        mqttScreen.classList.remove('light-theme', 'dark-theme');
+        
+        switch (theme) {
+            case 'light':
+                mqttScreen.classList.add('light-theme');
+                if (themeBtn) themeBtn.textContent = '☀️';
+                break;
+            case 'dark':
+                mqttScreen.classList.add('dark-theme');
+                if (themeBtn) themeBtn.textContent = '🌙';
+                break;
+            case 'auto':
+            default:
+                // 使用系统偏好
+                if (themeBtn) themeBtn.textContent = '🌓';
+                break;
+        }
+    }
+    
+    function toggleTheme() {
+        const themes = ['auto', 'light', 'dark'];
+        const currentIndex = themes.indexOf(currentTheme);
+        const nextIndex = (currentIndex + 1) % themes.length;
+        const nextTheme = themes[nextIndex];
+        
+        currentTheme = nextTheme;
+        applyTheme(nextTheme);
+        saveTheme(nextTheme);
+        
+        // 显示主题切换提示
+        log('system', `已切换到${nextTheme === 'auto' ? '自动' : nextTheme === 'light' ? '浅色' : '深色'}主题`);
+    }
+    
+    // 表情选择器功能
+    function initEmojiPicker() {
+        const emojiPicker = elements.emojiPicker;
+        const emojiContent = elements.emojiPickerContent;
+        
+        if (!emojiPicker || !emojiContent) return;
+        
+        // 加载默认分类的表情
+        loadEmojiCategory('smileys');
+        
+        // 分类切换事件
+        const categories = emojiPicker.querySelectorAll('.emoji-category');
+        categories.forEach(cat => {
+            cat.addEventListener('click', () => {
+                categories.forEach(c => c.classList.remove('active'));
+                cat.classList.add('active');
+                loadEmojiCategory(cat.dataset.category);
+            });
+        });
+    }
+    
+    function loadEmojiCategory(category) {
+        const emojiContent = elements.emojiPickerContent;
+        if (!emojiContent) return;
+        
+        const emojis = emojiData[category] || [];
+        emojiContent.innerHTML = '';
+        
+        emojis.forEach(emoji => {
+            const span = document.createElement('span');
+            span.className = 'emoji-item';
+            span.textContent = emoji;
+            span.addEventListener('click', () => insertEmoji(emoji));
+            emojiContent.appendChild(span);
+        });
+    }
+    
+    function insertEmoji(emoji) {
+        const input = elements.messageInput;
+        if (!input) return;
+        
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        const text = input.value;
+        
+        input.value = text.substring(0, start) + emoji + text.substring(end);
+        input.selectionStart = input.selectionEnd = start + emoji.length;
+        input.focus();
+        
+        // 隐藏表情选择器
+        toggleEmojiPicker(false);
+    }
+    
+    function toggleEmojiPicker(show) {
+        const emojiPicker = elements.emojiPicker;
+        if (!emojiPicker) return;
+        
+        if (show === undefined) {
+            emojiPickerVisible = !emojiPickerVisible;
+        } else {
+            emojiPickerVisible = show;
+        }
+        
+        emojiPicker.style.display = emojiPickerVisible ? 'block' : 'none';
+    }
+    
+    // 处理表情快捷码自动替换
+    function handleEmojiShortcuts(inputText) {
+        let text = inputText;
+        
+        // 替换所有快捷码
+        Object.keys(emojiShortcuts).forEach(shortcut => {
+            const emoji = emojiShortcuts[shortcut];
+            // 使用正则表达式进行全局替换，需要转义特殊字符
+            const escapedShortcut = shortcut.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(escapedShortcut, 'g');
+            text = text.replace(regex, emoji);
+        });
+        
+        return text;
+    }
+    
+    // 实时检测并替换表情快捷码
+    function checkAndReplaceShortcuts() {
+        const input = elements.messageInput;
+        if (!input) return;
+        
+        const cursorPos = input.selectionStart;
+        const originalText = input.value;
+        const replacedText = handleEmojiShortcuts(originalText);
+        
+        if (originalText !== replacedText) {
+            // 计算光标位置的偏移
+            const beforeCursor = originalText.substring(0, cursorPos);
+            const replacedBeforeCursor = handleEmojiShortcuts(beforeCursor);
+            const offset = replacedBeforeCursor.length - beforeCursor.length;
+            
+            // 更新输入框内容
+            input.value = replacedText;
+            
+            // 恢复光标位置
+            const newCursorPos = cursorPos + offset;
+            input.selectionStart = input.selectionEnd = newCursorPos;
+        }
+    }
+    
+    // 私聊功能
+    function startPrivateChat(targetUser) {
+        if (!isConnected || !targetUser) return;
+        
+        currentChatType = 'private';
+        currentPrivateUser = targetUser;
+        
+        // 切换到私聊界面
+        switchToPrivateChat(targetUser);
+        
+        // 订阅私聊主题
+        subscribeToPrivateChat(targetUser);
+        
+        // 显示提示
+        log('system', `开始与 ${targetUser} 的私聊`);
+    }
+    
+    function switchToPrivateChat(targetUser) {
+        // 更新界面标题
+        const header = mountEl.querySelector('.mqtt-header h2');
+        if (header) {
+            header.innerHTML = `私聊 - ${escapeHtml(targetUser)} <button class="back-to-room-btn" id="back-to-room-btn">返回群聊</button>`;
+            
+            // 绑定返回按钮事件
+            const backBtn = header.querySelector('#back-to-room-btn');
+            if (backBtn) {
+                backBtn.addEventListener('click', () => backToRoomChat());
+            }
+        }
+        
+        // 清空消息区域
+        elements.messages.innerHTML = '';
+        
+        // 加载私聊历史
+        loadPrivateChatHistory(targetUser);
+        
+        // 更新输入框提示
+        elements.messageInput.placeholder = `发送私聊消息给 ${targetUser}...`;
+    }
+    
+    function subscribeToPrivateChat(targetUser) {
+        if (!client) return;
+        
+        // 订阅对方发给我的私聊消息
+        const incomingTopic = `game/${roomId}/private/${nickname}/${targetUser}`;
+        client.subscribe(incomingTopic, (err) => {
+            if (err) {
+                console.error('订阅私聊失败:', err);
+            }
+        });
+    }
+    
+    function loadPrivateChatHistory(targetUser) {
+        const history = privateChats.get(targetUser) || [];
+        history.forEach(msg => {
+            const isOwnMessage = msg.sender === nickname;
+            displayMessage(msg.type, msg.text, msg.sender, msg.timestamp, isOwnMessage);
+        });
+    }
+    
+    function sendPrivateMessage(targetUser, message) {
+        if (!client || !isConnected || !targetUser) return;
+        
+        // 私聊主题格式：game/<roomId>/private/<receiver>/<sender>
+        const privateTopic = `game/${roomId}/private/${targetUser}/${nickname}`;
+        
+        const messageData = {
+            type: 'private',
+            sender: nickname,
+            receiver: targetUser,
+            text: message,
+            timestamp: Date.now()
+        };
+        
+        client.publish(privateTopic, JSON.stringify(messageData), (err) => {
+            if (err) {
+                console.error('发送私聊消息失败:', err);
+                log('error', '私聊消息发送失败');
+            } else {
+                // 显示自己发送的私聊消息
+                displayMessage('private', message, nickname, messageData.timestamp, true);
+                
+                // 保存到私聊历史
+                savePrivateMessage(targetUser, messageData);
+            }
+        });
+    }
+    
+    function savePrivateMessage(targetUser, messageData) {
+        if (!privateChats.has(targetUser)) {
+            privateChats.set(targetUser, []);
+        }
+        
+        const history = privateChats.get(targetUser);
+        history.push(messageData);
+        
+        // 限制历史记录数量
+        if (history.length > 100) {
+            history.shift();
+        }
+    }
+    
+    function backToRoomChat() {
+        currentChatType = 'room';
+        currentPrivateUser = null;
+        
+        // 恢复群聊界面
+        const header = mountEl.querySelector('.mqtt-header h2');
+        if (header) {
+            header.textContent = 'MQTT聊天室';
+        }
+        
+        // 清空消息区域
+        elements.messages.innerHTML = '';
+        
+        // 重新加载群聊消息
+        const roomHistory = chatHistory.get(roomId) || [];
+        roomHistory.forEach(msg => {
+            const isOwnMessage = msg.sender === nickname;
+            displayMessage('chat', msg.text, msg.sender, msg.timestamp, isOwnMessage);
+        });
+        
+        // 恢复输入框提示
+        elements.messageInput.placeholder = '输入消息...';
+        
+        log('system', '已返回群聊');
+    }
+    
+    // 房间管理功能
+    function initRoomSettings() {
+        roomConfig = { ...defaultRoomConfig };
+        
+        // 绑定设置面板切换
+        const settingsToggleBtn = mountEl.querySelector('#settings-toggle-btn');
+        const settingsPanel = mountEl.querySelector('#settings-panel');
+        
+        if (settingsToggleBtn && settingsPanel) {
+            settingsToggleBtn.addEventListener('click', () => {
+                const isVisible = settingsPanel.style.display !== 'none';
+                settingsPanel.style.display = isVisible ? 'none' : 'block';
+                settingsToggleBtn.textContent = isVisible ? '⚙️ 房间设置' : '❌ 关闭设置';
+            });
+        }
+        
+        // 绑定密码保护复选框
+        const privateRoomCheckbox = mountEl.querySelector('#private-room-checkbox');
+        const passwordInput = mountEl.querySelector('.room-password-input');
+        
+        if (privateRoomCheckbox && passwordInput) {
+            privateRoomCheckbox.addEventListener('change', () => {
+                const isPrivate = privateRoomCheckbox.checked;
+                passwordInput.style.display = isPrivate ? 'block' : 'none';
+                roomConfig.isPrivate = isPrivate;
+                
+                if (!isPrivate) {
+                    passwordInput.value = '';
+                    roomConfig.password = '';
+                }
+            });
+        }
+        
+        // 绑定最大用户数选择
+        const maxUsersSelect = mountEl.querySelector('#max-users-select');
+        if (maxUsersSelect) {
+            maxUsersSelect.addEventListener('change', () => {
+                roomConfig.maxUsers = parseInt(maxUsersSelect.value);
+            });
+        }
+        
+        // 绑定房间类型选择
+        const categorySelect = mountEl.querySelector('#room-category-select');
+        if (categorySelect) {
+            categorySelect.addEventListener('change', () => {
+                roomConfig.category = categorySelect.value;
+            });
+        }
+    }
+    
+    function validateRoomAccess(targetRoomId, password = '') {
+        // 检查房间是否需要密码
+        if (roomConfig && roomConfig.isPrivate && roomConfig.password) {
+            if (password !== roomConfig.password) {
+                showAlert('房间密码错误！');
+                return false;
+            }
+        }
+        
+        // 检查房间人数限制
+        if (roomConfig && onlineUsers.size >= roomConfig.maxUsers) {
+            showAlert(`房间已满！最大容量：${roomConfig.maxUsers}人`);
+            return false;
+        }
+        
+        return true;
+    }
+    
+    function saveRoomConfig() {
+        if (!roomConfig) return;
+        
+        const passwordInput = mountEl.querySelector('.room-password-input');
+        if (passwordInput && roomConfig.isPrivate) {
+            roomConfig.password = passwordInput.value.trim();
+        }
+        
+        // 保存到本地存储
+        try {
+            const roomConfigs = JSON.parse(localStorage.getItem('mqtt_room_configs') || '{}');
+            roomConfigs[roomId] = roomConfig;
+            localStorage.setItem('mqtt_room_configs', JSON.stringify(roomConfigs));
+        } catch (error) {
+            console.warn('保存房间配置失败:', error);
+        }
+        
+        // 广播房间配置更新
+        if (client && isConnected) {
+            const configTopic = `game/${roomId}/config`;
+            client.publish(configTopic, JSON.stringify({
+                type: 'room_config',
+                config: roomConfig,
+                updatedBy: nickname,
+                timestamp: Date.now()
+            }));
+        }
+    }
+    
+    function loadRoomConfig(targetRoomId) {
+        try {
+            const roomConfigs = JSON.parse(localStorage.getItem('mqtt_room_configs') || '{}');
+            if (roomConfigs[targetRoomId]) {
+                roomConfig = { ...defaultRoomConfig, ...roomConfigs[targetRoomId] };
+                return roomConfig;
+            }
+        } catch (error) {
+            console.warn('加载房间配置失败:', error);
+        }
+        
+        // 使用默认配置
+        roomConfig = { ...defaultRoomConfig };
+        roomConfig.createdBy = nickname;
+        // 房间创建者自动成为管理员
+        roomConfig.adminUsers = [nickname];
+        return roomConfig;
+    }
+    
+    // 检查管理员权限
+    function checkAdminPrivileges() {
+        if (!roomConfig || !nickname) {
+            isRoomAdmin = false;
+            return false;
+        }
+        
+        // 检查是否为管理员
+        isRoomAdmin = roomConfig.adminUsers.includes(nickname);
+        
+        if (isRoomAdmin) {
+            log('system', '👑 您拥有管理员权限');
+        }
+        
+        return isRoomAdmin;
+    }
+    
+    // 添加管理员
+    function addAdmin(username) {
+        if (!isRoomAdmin) {
+            log('system', '❌ 只有管理员才能添加其他管理员');
+            return false;
+        }
+        
+        if (!roomConfig.adminUsers.includes(username)) {
+            roomConfig.adminUsers.push(username);
+            saveRoomConfig();
+            log('system', `👑 ${username} 已被设为管理员`);
+            
+            // 广播管理员变更
+            if (client && isConnected) {
+                client.publish(`game/${roomId}/admin`, JSON.stringify({
+                    type: 'admin_added',
+                    admin: username,
+                    by: nickname,
+                    timestamp: Date.now()
+                }));
+            }
+            
+            return true;
+        }
+        
+        return false;
+    }
+    
+    // 移除管理员
+    function removeAdmin(username) {
+        if (!isRoomAdmin || username === roomConfig.createdBy) {
+            log('system', '❌ 无法移除房间创建者的管理员权限');
+            return false;
+        }
+        
+        const index = roomConfig.adminUsers.indexOf(username);
+        if (index > -1) {
+            roomConfig.adminUsers.splice(index, 1);
+            saveRoomConfig();
+            log('system', `🚫 ${username} 的管理员权限已被移除`);
+            
+            // 广播管理员变更
+            if (client && isConnected) {
+                client.publish(`game/${roomId}/admin`, JSON.stringify({
+                    type: 'admin_removed',
+                    admin: username,
+                    by: nickname,
+                    timestamp: Date.now()
+                }));
+            }
+            
+            return true;
+        }
+        
+        return false;
+    }
+    
+    // 踢出用户 (管理员功能)
+    function kickUser(username, reason = '违反房间规则') {
+        if (!isRoomAdmin) {
+            log('system', '❌ 只有管理员才能踢出用户');
+            return false;
+        }
+        
+        if (username === nickname) {
+            log('system', '❌ 不能踢出自己');
+            return false;
+        }
+        
+        if (roomConfig.adminUsers.includes(username)) {
+            log('system', '❌ 不能踢出其他管理员');
+            return false;
+        }
+        
+        // 广播踢出消息
+        if (client && isConnected) {
+            client.publish(`game/${roomId}/moderation`, JSON.stringify({
+                type: 'user_kicked',
+                user: username,
+                reason: reason,
+                by: nickname,
+                timestamp: Date.now()
+            }));
+            
+            log('system', `🚫 ${username} 已被踢出房间 (${reason})`);
+        }
+        
+        return true;
     }
     
     // 格式化消息时间戳
@@ -393,7 +996,10 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 <header class="mqtt-header">
                     <button id="mqtt-back-btn" class="back-btn">‹</button>
                     <h2>MQTT聊天室</h2>
-                    <div class="connection-status" id="mqtt-status">未连接</div>
+                    <div class="header-controls">
+                        <button id="theme-toggle-btn" class="theme-toggle-btn" title="切换主题">🌙</button>
+                        <div class="connection-status" id="mqtt-status">未连接</div>
+                    </div>
                 </header>
                 
                 <div class="mqtt-content">
@@ -401,6 +1007,39 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         <div class="room-controls">
                             <input type="text" class="room-input" placeholder="房间号" value="demo-room-001">
                             <input type="text" class="nickname-input" placeholder="昵称" value="">
+                            <input type="password" class="room-password-input" placeholder="房间密码(可选)" maxlength="50" style="display: none;">
+                        </div>
+                        
+                        <div class="room-settings">
+                            <div class="settings-toggle">
+                                <button class="settings-toggle-btn" id="settings-toggle-btn">⚙️ 房间设置</button>
+                            </div>
+                            <div class="settings-panel" id="settings-panel" style="display: none;">
+                                <div class="setting-row">
+                                    <label class="setting-label">
+                                        <input type="checkbox" class="private-room-checkbox" id="private-room-checkbox">
+                                        密码保护房间
+                                    </label>
+                                </div>
+                                <div class="setting-row">
+                                    <label class="setting-label">最大人数:</label>
+                                    <select class="max-users-select" id="max-users-select">
+                                        <option value="5">5人</option>
+                                        <option value="10">10人</option>
+                                        <option value="20" selected>20人</option>
+                                        <option value="50">50人</option>
+                                    </select>
+                                </div>
+                                <div class="setting-row">
+                                    <label class="setting-label">房间类型:</label>
+                                    <select class="room-category-select" id="room-category-select">
+                                        <option value="chat">聊天室</option>
+                                        <option value="game">游戏房</option>
+                                        <option value="ai">AI助手</option>
+                                        <option value="study">学习讨论</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                         
                         <!-- 房间历史记录 -->
@@ -448,8 +1087,26 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                             </div>
                         </div>
                         <div class="input-area">
+                            <button class="emoji-btn" title="选择表情" disabled>😊</button>
                             <input type="text" class="message-input" placeholder="输入消息..." disabled>
                             <button class="send-btn" disabled>📤</button>
+                        </div>
+                        
+                        <!-- 表情选择器面板 -->
+                        <div class="emoji-picker" id="emoji-picker" style="display: none;">
+                            <div class="emoji-picker-header">
+                                <span class="emoji-category active" data-category="smileys">😊</span>
+                                <span class="emoji-category" data-category="gestures">👍</span>
+                                <span class="emoji-category" data-category="people">👨</span>
+                                <span class="emoji-category" data-category="animals">🐶</span>
+                                <span class="emoji-category" data-category="food">🍎</span>
+                                <span class="emoji-category" data-category="activities">⚽</span>
+                                <span class="emoji-category" data-category="objects">💡</span>
+                                <span class="emoji-category" data-category="symbols">❤️</span>
+                            </div>
+                            <div class="emoji-picker-content" id="emoji-picker-content">
+                                <!-- 动态加载表情 -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -494,7 +1151,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 
                 /* 浅色主题支持 */
                 @media (prefers-color-scheme: light) {
-                    .mqtt-room-screen {
+                    .mqtt-room-screen:not(.dark-theme) {
                         --bg-primary: #f6f8fb;
                         --bg-secondary: #ffffff;
                         --card-bg: rgba(255,255,255,0.9);
@@ -503,6 +1160,28 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         --text-secondary: #5b6b80;
                         --text-muted: #9ca3af;
                     }
+                }
+                
+                /* 强制浅色主题 */
+                .mqtt-room-screen.light-theme {
+                    --bg-primary: #f6f8fb;
+                    --bg-secondary: #ffffff;
+                    --card-bg: rgba(255,255,255,0.9);
+                    --card-border: rgba(0,0,0,0.08);
+                    --text-primary: #0b1c36;
+                    --text-secondary: #5b6b80;
+                    --text-muted: #9ca3af;
+                }
+                
+                /* 强制深色主题 */
+                .mqtt-room-screen.dark-theme {
+                    --bg-primary: #0b0f15;
+                    --bg-secondary: #1a1f26;
+                    --card-bg: rgba(255,255,255,.08);
+                    --card-border: rgba(255,255,255,.15);
+                    --text-primary: #e9eef6;
+                    --text-secondary: #9fb1c7;
+                    --text-muted: #6b7280;
                 }
                 
                 .mqtt-room-screen {
@@ -515,6 +1194,10 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     box-sizing: border-box;
                     overflow: hidden;
                     position: relative;
+                    /* 确保在虚拟手机中不会超出边界 */
+                    max-height: 667px;
+                    width: 100%;
+                    max-width: 375px;
                 }
                 
                 /* 背景渐变效果 */
@@ -548,7 +1231,38 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     gap: var(--spacing-lg);
                     position: sticky;
                     top: 0;
-                    z-index: 100;
+                    z-index: 1000;
+                    /* 确保头部固定且可点击 */
+                    flex-shrink: 0;
+                    min-height: 60px;
+                }
+                
+                .header-controls {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-md);
+                }
+                
+                .theme-toggle-btn {
+                    background: none;
+                    border: none;
+                    font-size: 18px;
+                    cursor: pointer;
+                    padding: 6px;
+                    width: 32px;
+                    height: 32px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 50%;
+                    color: var(--text-primary);
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    backdrop-filter: blur(10px);
+                }
+                
+                .theme-toggle-btn:hover {
+                    background: var(--card-border);
+                    transform: scale(1.1) rotate(15deg);
                 }
                 
                 .back-btn {
@@ -613,7 +1327,10 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     flex-direction: column;
                     padding: var(--spacing-lg);
                     gap: var(--spacing-lg);
-                    overflow: hidden;
+                    overflow-y: auto;
+                    /* 确保内容区域不会遮挡头部 */
+                    height: calc(100vh - 60px);
+                    max-height: calc(667px - 60px);
                 }
                 
                 .room-section {
@@ -624,6 +1341,9 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     border-radius: var(--border-radius-lg);
                     box-shadow: var(--shadow-md);
                     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    /* 优化房间控制区域，减少空间占用 */
+                    flex-shrink: 0;
+                    margin-bottom: var(--spacing-md);
                 }
                 
                 .room-section:hover {
@@ -686,6 +1406,88 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     opacity: 0.5;
                     cursor: not-allowed;
                     transform: none !important;
+                }
+                
+                /* 房间设置样式 */
+                .room-settings {
+                    margin-top: var(--spacing-md);
+                }
+                
+                .settings-toggle {
+                    text-align: center;
+                    margin-bottom: var(--spacing-sm);
+                }
+                
+                .settings-toggle-btn {
+                    background: var(--card-bg);
+                    border: 1px solid var(--card-border);
+                    color: var(--text-secondary);
+                    padding: var(--spacing-sm) var(--spacing-md);
+                    border-radius: var(--border-radius);
+                    cursor: pointer;
+                    font-size: 12px;
+                    transition: all 0.2s ease;
+                }
+                
+                .settings-toggle-btn:hover {
+                    background: var(--card-border);
+                    color: var(--text-primary);
+                }
+                
+                .settings-panel {
+                    background: var(--bg-secondary);
+                    border: 1px solid var(--card-border);
+                    border-radius: var(--border-radius);
+                    padding: var(--spacing-md);
+                    margin-top: var(--spacing-sm);
+                }
+                
+                .setting-row {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: var(--spacing-sm);
+                    font-size: 12px;
+                }
+                
+                .setting-label {
+                    color: var(--text-secondary);
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-xs);
+                }
+                
+                .setting-label input[type="checkbox"] {
+                    margin: 0;
+                }
+                
+                .max-users-select,
+                .room-category-select {
+                    background: var(--card-bg);
+                    border: 1px solid var(--card-border);
+                    color: var(--text-primary);
+                    padding: 4px 8px;
+                    border-radius: var(--border-radius-sm);
+                    font-size: 11px;
+                }
+                
+                .room-password-input {
+                    width: 100%;
+                    padding: var(--spacing-sm) var(--spacing-md);
+                    border: 2px solid var(--warning-color);
+                    border-radius: var(--border-radius);
+                    background: rgba(255, 193, 7, 0.1);
+                    color: var(--text-primary);
+                    font-size: 14px;
+                    margin-top: var(--spacing-sm);
+                    transition: all 0.2s ease;
+                    box-sizing: border-box;
+                }
+                
+                .room-password-input:focus {
+                    outline: none;
+                    border-color: var(--warning-color);
+                    box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.2);
                 }
                 
                 .btn-connect {
@@ -811,6 +1613,66 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     transform: translateY(-1px);
                 }
                 
+                .user-actions {
+                    display: flex;
+                    gap: 3px;
+                    margin-left: 5px;
+                }
+                
+                .private-chat-btn,
+                .admin-action-btn,
+                .kick-btn,
+                .remove-admin-btn {
+                    padding: 2px 6px;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 10px;
+                    transition: all 0.2s ease;
+                    min-width: 20px;
+                    height: 20px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                
+                .private-chat-btn {
+                    background: var(--info-color);
+                }
+                
+                .private-chat-btn:hover {
+                    background: #5a9fd4;
+                    transform: scale(1.1);
+                }
+                
+                .admin-action-btn {
+                    background: var(--warning-color);
+                }
+                
+                .admin-action-btn:hover {
+                    background: #e6a800;
+                    transform: scale(1.1);
+                }
+                
+                .kick-btn {
+                    background: var(--error-color);
+                }
+                
+                .kick-btn:hover {
+                    background: #e53e3e;
+                    transform: scale(1.1);
+                }
+                
+                .remove-admin-btn {
+                    background: var(--text-muted);
+                }
+                
+                .remove-admin-btn:hover {
+                    background: #718096;
+                    transform: scale(1.1);
+                }
+                
                 .warning {
                     background: rgba(255, 209, 102, 0.15);
                     border: 1px solid rgba(255, 209, 102, 0.3);
@@ -824,11 +1686,12 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 }
                 
                 .room-history {
-                    background: #f8f9fa;
-                    border: 1px solid #e9ecef;
-                    border-radius: 8px;
+                    background: var(--card-bg);
+                    border: 1px solid var(--card-border);
+                    border-radius: var(--border-radius-sm);
                     margin: 10px 0;
                     padding: 8px;
+                    backdrop-filter: blur(10px);
                 }
                 
                 .history-header {
@@ -846,21 +1709,25 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 
                 .history-search {
                     padding: 4px 8px;
-                    border: 1px solid #e9ecef;
+                    border: 1px solid var(--card-border);
                     border-radius: 4px;
                     font-size: 12px;
                     width: 120px;
+                    background: var(--bg-secondary);
+                    color: var(--text-primary);
+                    transition: all 0.2s ease;
                 }
                 
                 .history-search:focus {
                     outline: none;
-                    border-color: #007bff;
+                    border-color: var(--info-color);
+                    box-shadow: 0 0 0 2px rgba(112, 183, 255, 0.1);
                 }
                 
                 .history-title {
                     font-size: 12px;
                     font-weight: bold;
-                    color: #495057;
+                    color: var(--text-secondary);
                 }
                 
                 .history-export-btn,
@@ -872,22 +1739,23 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     cursor: pointer;
                     padding: 2px 6px;
                     border-radius: 4px;
-                    color: #6c757d;
+                    color: var(--text-muted);
+                    transition: all 0.2s ease;
                 }
                 
                 .history-export-btn:hover {
-                    background: #e9ecef;
-                    color: #28a745;
+                    background: var(--card-border);
+                    color: var(--success-color);
                 }
                 
                 .history-import-btn:hover {
-                    background: #e9ecef;
-                    color: #007bff;
+                    background: var(--card-border);
+                    color: var(--info-color);
                 }
                 
                 .history-clear-btn:hover {
-                    background: #e9ecef;
-                    color: #dc3545;
+                    background: var(--card-border);
+                    color: var(--error-color);
                 }
                 
                 .history-list {
@@ -900,42 +1768,46 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     align-items: center;
                     padding: 6px 8px;
                     margin: 2px 0;
-                    background: white;
+                    background: var(--bg-secondary);
                     border-radius: 6px;
                     cursor: pointer;
-                    transition: all 0.2s;
-                    border: 1px solid transparent;
+                    transition: all 0.2s ease;
+                    border: 1px solid var(--card-border);
                 }
                 
                 .history-item:hover {
-                    background: #e3f2fd;
-                    border-color: #bbdefb;
+                    background: var(--card-bg);
+                    border-color: var(--info-color);
+                    transform: translateY(-1px);
                 }
                 
                 .history-room {
-                    flex: 1;
                     font-weight: bold;
-                    color: #1976d2;
+                    color: var(--info-color);
                     font-size: 13px;
+                    margin-right: 8px;
+                    flex-shrink: 0;
                 }
                 
                 .history-nickname {
-                    flex: 1;
-                    color: #666;
+                    color: var(--text-secondary);
                     font-size: 12px;
-                    margin: 0 8px;
+                    margin-right: 8px;
+                    flex-shrink: 0;
                 }
                 
                 .history-time {
                     font-size: 11px;
-                    color: #999;
+                    color: var(--text-muted);
                     margin-right: 8px;
+                    flex-shrink: 0;
+                    margin-left: auto;
                 }
                 
                 .history-remove {
                     background: none;
                     border: none;
-                    color: #dc3545;
+                    color: var(--error-color);
                     cursor: pointer;
                     font-size: 16px;
                     padding: 0;
@@ -945,15 +1817,18 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     display: flex;
                     align-items: center;
                     justify-content: center;
+                    flex-shrink: 0;
+                    transition: all 0.2s ease;
                 }
                 
                 .history-remove:hover {
-                    background: #f8d7da;
+                    background: rgba(255, 107, 107, 0.15);
+                    transform: scale(1.1);
                 }
                 
                 .no-results {
                     text-align: center;
-                    color: #999;
+                    color: var(--text-muted);
                     font-size: 12px;
                     padding: 20px;
                     font-style: italic;
@@ -969,8 +1844,9 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     flex-direction: column;
                     overflow: hidden;
                     box-shadow: var(--shadow-md);
-                    min-height: 300px;
-                    max-height: calc(100vh - 200px);
+                    /* 优化聊天容器高度分配 */
+                    min-height: 350px;
+                    max-height: calc(100vh - 280px);
                     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 }
                 
@@ -983,6 +1859,67 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     overflow-y: auto;
                     padding: var(--spacing-lg);
                     background: transparent;
+                }
+                
+                /* 美化滚动条样式 */
+                .messages::-webkit-scrollbar {
+                    width: 6px;
+                }
+                
+                .messages::-webkit-scrollbar-track {
+                    background: transparent;
+                    border-radius: 3px;
+                }
+                
+                .messages::-webkit-scrollbar-thumb {
+                    background: var(--card-border);
+                    border-radius: 3px;
+                    transition: all 0.3s ease;
+                }
+                
+                .messages::-webkit-scrollbar-thumb:hover {
+                    background: var(--text-muted);
+                }
+                
+                /* Firefox滚动条样式 */
+                .messages {
+                    scrollbar-width: thin;
+                    scrollbar-color: var(--card-border) transparent;
+                }
+                
+                /* 其他滚动区域统一样式 */
+                .mqtt-content::-webkit-scrollbar,
+                .history-list::-webkit-scrollbar,
+                .online-list::-webkit-scrollbar {
+                    width: 4px;
+                }
+                
+                .mqtt-content::-webkit-scrollbar-track,
+                .history-list::-webkit-scrollbar-track,
+                .online-list::-webkit-scrollbar-track {
+                    background: transparent;
+                    border-radius: 2px;
+                }
+                
+                .mqtt-content::-webkit-scrollbar-thumb,
+                .history-list::-webkit-scrollbar-thumb,
+                .online-list::-webkit-scrollbar-thumb {
+                    background: var(--card-border);
+                    border-radius: 2px;
+                    transition: all 0.3s ease;
+                }
+                
+                .mqtt-content::-webkit-scrollbar-thumb:hover,
+                .history-list::-webkit-scrollbar-thumb:hover,
+                .online-list::-webkit-scrollbar-thumb:hover {
+                    background: var(--text-muted);
+                }
+                
+                .mqtt-content,
+                .history-list,
+                .online-list {
+                    scrollbar-width: thin;
+                    scrollbar-color: var(--card-border) transparent;
                 }
                 
                 .welcome-message {
@@ -1049,6 +1986,36 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     font-weight: 500;
                 }
                 
+                /* 私聊消息样式 */
+                .message.private {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border: 2px solid rgba(118, 75, 162, 0.3);
+                    position: relative;
+                }
+                
+                .message.private::before {
+                    content: '🔒 私聊';
+                    position: absolute;
+                    top: -8px;
+                    right: 10px;
+                    background: #764ba2;
+                    color: white;
+                    font-size: 10px;
+                    padding: 2px 6px;
+                    border-radius: 10px;
+                    font-weight: bold;
+                }
+                
+                .message.private.own-message {
+                    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                    border: 2px solid rgba(245, 87, 108, 0.3);
+                }
+                
+                .message.private.own-message::before {
+                    background: #f5576c;
+                }
+                
                 .message-header {
                     display: flex;
                     justify-content: space-between;
@@ -1080,6 +2047,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     border-top: 1px solid var(--card-border);
                     background: var(--card-bg);
                     backdrop-filter: blur(20px);
+                    position: relative;
                 }
                 
                 .input-area input {
@@ -1138,43 +2106,133 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     box-shadow: none !important;
                 }
                 
+                /* 表情按钮样式 */
+                .emoji-btn {
+                    width: 44px;
+                    height: 44px;
+                    background: var(--card-bg);
+                    color: var(--text-primary);
+                    border: 2px solid var(--card-border);
+                    border-radius: 50%;
+                    cursor: pointer;
+                    font-size: 20px;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                
+                .emoji-btn:hover:not(:disabled) {
+                    background: var(--accent-gradient);
+                    border-color: transparent;
+                    transform: scale(1.05) rotate(15deg);
+                }
+                
+                .emoji-btn:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+                
+                /* 表情选择器面板 */
+                .emoji-picker {
+                    position: absolute;
+                    bottom: 70px;
+                    left: var(--spacing-lg);
+                    right: var(--spacing-lg);
+                    background: var(--bg-secondary);
+                    border: 1px solid var(--card-border);
+                    border-radius: var(--border-radius-lg);
+                    box-shadow: var(--shadow-lg);
+                    z-index: 1000;
+                    backdrop-filter: blur(20px);
+                    max-height: 300px;
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                }
+                
+                .emoji-picker-header {
+                    display: flex;
+                    gap: 2px;
+                    padding: var(--spacing-sm);
+                    border-bottom: 1px solid var(--card-border);
+                    background: var(--card-bg);
+                    overflow-x: auto;
+                }
+                
+                .emoji-category {
+                    padding: var(--spacing-xs) var(--spacing-sm);
+                    border-radius: var(--border-radius-sm);
+                    cursor: pointer;
+                    font-size: 18px;
+                    transition: all 0.2s ease;
+                    flex-shrink: 0;
+                }
+                
+                .emoji-category:hover {
+                    background: var(--card-border);
+                    transform: scale(1.1);
+                }
+                
+                .emoji-category.active {
+                    background: var(--accent-gradient);
+                    transform: scale(1.15);
+                }
+                
+                .emoji-picker-content {
+                    padding: var(--spacing-md);
+                    overflow-y: auto;
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+                    gap: var(--spacing-xs);
+                    flex: 1;
+                }
+                
+                .emoji-item {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 40px;
+                    height: 40px;
+                    font-size: 24px;
+                    cursor: pointer;
+                    border-radius: var(--border-radius-sm);
+                    transition: all 0.2s ease;
+                }
+                
+                .emoji-item:hover {
+                    background: var(--card-bg);
+                    transform: scale(1.3);
+                    z-index: 10;
+                }
+                
                 /* 手机屏幕适配 - 专门为375px×667px虚拟手机优化 */
                 @media (max-width: 480px) {
-                    :root {
+                    .mqtt-room-screen {
+                        /* 调整小屏幕变量 */
                         --spacing-xs: 3px;
                         --spacing-sm: 6px;
-                        --spacing-md: 10px;
-                        --spacing-lg: 14px;
-                        --spacing-xl: 18px;
-                        --spacing-2xl: 22px;
-                        --border-radius: 10px;
+                        --spacing-md: 8px;
+                        --spacing-lg: 12px;
+                        --spacing-xl: 16px;
+                        --spacing-2xl: 20px;
+                        --border-radius: 8px;
                         --border-radius-sm: 6px;
-                        --border-radius-lg: 14px;
-                    }
-                    
-                    .mqtt-content {
-                        padding: var(--spacing-md);
-                        gap: var(--spacing-md);
-                    }
-                    
-                    .room-section {
-                        padding: var(--spacing-lg);
-                        border-radius: var(--border-radius-lg);
-                    }
-                    
-                    .room-controls {
-                        flex-direction: column;
-                        gap: var(--spacing-sm);
-                    }
-                    
-                    .room-controls input {
-                        min-width: unset;
-                        padding: var(--spacing-md) var(--spacing-lg);
-                        font-size: 15px;
+                        --border-radius-lg: 12px;
+                        
+                        /* 固定虚拟手机尺寸 */
+                        width: 375px !important;
+                        height: 667px !important;
+                        max-width: 375px !important;
+                        max-height: 667px !important;
+                        overflow: hidden;
                     }
                     
                     .mqtt-header {
-                        padding: var(--spacing-lg);
+                        padding: 12px 16px;
+                        min-height: 50px;
+                        max-height: 50px;
+                        flex-shrink: 0;
                     }
                     
                     .mqtt-header h2 {
@@ -1182,84 +2240,202 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         font-weight: 600;
                     }
                     
-                    .messages {
-                        padding: var(--spacing-md);
+                    .connection-status {
+                        font-size: 11px;
+                        padding: 4px 8px;
                     }
                     
-                    .message {
-                        padding: var(--spacing-sm) var(--spacing-md);
-                        margin-bottom: var(--spacing-sm);
+                    .mqtt-content {
+                        padding: 8px;
+                        gap: 8px;
+                        height: calc(100vh - 50px);
+                        overflow-y: auto;
+                        flex: 1;
                     }
                     
-                    .message.own-message {
-                        margin-left: 40px;
+                    .room-section {
+                        padding: 12px;
+                        border-radius: 12px;
+                        flex-shrink: 0;
+                        margin-bottom: 8px;
                     }
                     
-                    .input-area {
-                        padding: var(--spacing-md);
-                        gap: var(--spacing-sm);
+                    .room-controls {
+                        flex-direction: column;
+                        gap: 6px;
+                        margin-bottom: 8px;
                     }
                     
-                    .input-area input {
-                        padding: var(--spacing-sm) var(--spacing-md);
-                        font-size: 15px;
-                    }
-                    
-                    .input-area button {
-                        width: 40px;
-                        height: 40px;
+                    .room-controls input {
+                        min-width: unset;
+                        padding: 10px 12px;
                         font-size: 14px;
+                        height: 40px;
+                        box-sizing: border-box;
+                    }
+                    
+                    .control-buttons {
+                        margin-bottom: 8px;
+                        gap: 6px;
                     }
                     
                     .control-buttons button {
-                        padding: var(--spacing-sm) var(--spacing-md);
+                        padding: 8px 12px;
                         font-size: 13px;
-                    }
-                    
-                    .connection-status {
-                        font-size: 11px;
-                        padding: var(--spacing-xs) var(--spacing-sm);
+                        min-height: 36px;
                     }
                     
                     .chat-container {
-                        min-height: 250px;
-                        max-height: calc(100vh - 180px);
+                        /* 关键：给聊天容器分配剩余的所有空间 */
+                        flex: 1;
+                        min-height: 280px;
+                        max-height: calc(100vh - 280px);
+                        display: flex;
+                        flex-direction: column;
+                        border-radius: 12px;
+                    }
+                    
+                    .messages {
+                        /* 确保消息区域能够正常滚动，不会挤压输入区域 */
+                        flex: 1;
+                        overflow-y: auto;
+                        padding: 8px;
+                        min-height: 200px;
+                        max-height: calc(100vh - 380px);
+                        -webkit-overflow-scrolling: touch;
+                    }
+                    
+                    .message {
+                        padding: 6px 10px;
+                        margin-bottom: 6px;
+                        font-size: 13px;
+                        line-height: 1.4;
+                    }
+                    
+                    .message.own-message {
+                        margin-left: 30px;
+                        margin-right: 0px;
+                    }
+                    
+                    .message-header {
+                        margin-bottom: 3px;
+                    }
+                    
+                    .user-name {
+                        font-size: 12px;
+                        font-weight: 600;
+                    }
+                    
+                    .message-time {
+                        font-size: 10px;
+                    }
+                    
+                    .input-area {
+                        padding: 8px;
+                        gap: 6px;
+                        flex-shrink: 0;
+                        min-height: 60px;
+                        max-height: 60px;
+                    }
+                    
+                    .input-area input {
+                        padding: 8px 12px;
+                        font-size: 14px;
+                        height: 36px;
+                        box-sizing: border-box;
+                    }
+                    
+                    .input-area button {
+                        width: 36px;
+                        height: 36px;
+                        font-size: 14px;
+                        flex-shrink: 0;
                     }
                     
                     /* 优化小屏幕下的背景效果 */
                     .mqtt-room-screen::before {
-                        filter: blur(30px);
-                        opacity: 0.4;
+                        filter: blur(25px);
+                        opacity: 0.3;
                     }
                     
-                    @media (prefers-color-scheme: light) {
-                        .mqtt-room-screen::before {
-                            opacity: 0.2;
-                        }
+                    .mqtt-room-screen.light-theme::before,
+                    .mqtt-room-screen:not(.dark-theme)::before {
+                        opacity: 0.15;
+                    }
+                    
+                    .mqtt-room-screen.dark-theme::before {
+                        opacity: 0.3;
                     }
                     
                     /* 优化房间历史记录在小屏幕的显示 */
-                    .history-list {
+                    .room-history {
                         max-height: 100px;
+                        margin: 8px 0;
+                    }
+                    
+                    .history-list {
+                        max-height: 80px;
                     }
                     
                     .history-item {
-                        padding: var(--spacing-xs) var(--spacing-sm);
+                        padding: 4px 6px;
                         margin: 1px 0;
                     }
                     
                     .history-room, .history-nickname {
-                        font-size: 12px;
+                        font-size: 11px;
                     }
                     
                     .history-time {
-                        font-size: 10px;
+                        font-size: 9px;
                     }
                     
                     /* 在线用户信息优化 */
                     .online-count {
-                        font-size: 13px;
-                        padding: var(--spacing-xs) var(--spacing-sm);
+                        font-size: 12px;
+                        padding: 4px 8px;
+                    }
+                    
+                    .online-list {
+                        max-height: 80px;
+                        padding: 6px;
+                    }
+                    
+                    .online-user {
+                        font-size: 10px;
+                        padding: 2px 6px;
+                    }
+                    
+                    /* 状态显示优化 */
+                    .status-display {
+                        padding: 6px;
+                        font-size: 11px;
+                        margin-bottom: 6px;
+                    }
+                    
+                    .broker-info {
+                        margin-bottom: 6px;
+                        font-size: 11px;
+                    }
+                    
+                    .online-users-info {
+                        margin-bottom: 6px;
+                    }
+                    
+                    .warning {
+                        padding: 6px;
+                        font-size: 10px;
+                        margin-top: 6px;
+                    }
+                    
+                    /* 欢迎消息优化 */
+                    .welcome-message {
+                        padding: 12px;
+                        font-size: 12px;
+                    }
+                    
+                    .welcome-message p {
+                        margin: 6px 0;
                     }
                 }
             </style>
@@ -1268,6 +2444,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         // 获取UI元素引用
         elements = {
             backBtn: mountEl.querySelector('#mqtt-back-btn'),
+            themeToggleBtn: mountEl.querySelector('#theme-toggle-btn'),
             roomInput: mountEl.querySelector('.room-input'),
             nicknameInput: mountEl.querySelector('.nickname-input'),
             connectBtn: mountEl.querySelector('.connect-btn'),
@@ -1278,6 +2455,9 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             messages: mountEl.querySelector('#messages-container'),
             messageInput: mountEl.querySelector('.message-input'),
             sendBtn: mountEl.querySelector('.send-btn'),
+            emojiBtn: mountEl.querySelector('.emoji-btn'),
+            emojiPicker: mountEl.querySelector('#emoji-picker'),
+            emojiPickerContent: mountEl.querySelector('#emoji-picker-content'),
             onlineCount: mountEl.querySelector('#online-count'),
             onlineList: mountEl.querySelector('#online-list'),
             onlineListContent: mountEl.querySelector('#online-list-content'),
@@ -1293,6 +2473,9 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         if (!elements.messages) {
             console.error('MQTT聊天室：消息容器未找到');
         }
+        if (!elements.themeToggleBtn) {
+            console.error('MQTT聊天室：主题切换按钮未找到');
+        }
         
         // 设置默认昵称
         elements.nicknameInput.value = getPlayerName() || '匿名用户';
@@ -1305,11 +2488,37 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         // 加载聊天记录
         loadChatHistory();
         
+        // 加载并应用主题
+        loadTheme();
+        
+        // 初始化表情选择器
+        initEmojiPicker();
+        
+        // 初始化房间设置
+        initRoomSettings();
+        
         // 绑定事件
         bindEvents();
     }
     
     function bindEvents() {
+        // 主题切换按钮
+        if (elements.themeToggleBtn) {
+            elements.themeToggleBtn.addEventListener('click', () => toggleTheme());
+        }
+        
+        // 表情按钮
+        if (elements.emojiBtn) {
+            elements.emojiBtn.addEventListener('click', () => toggleEmojiPicker());
+        }
+        
+        // 点击其他地方关闭表情选择器
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.emoji-btn') && !e.target.closest('.emoji-picker')) {
+                toggleEmojiPicker(false);
+            }
+        });
+        
         // 连接按钮
         elements.connectBtn.addEventListener('click', () => connectRoom());
         
@@ -1322,6 +2531,20 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         // 回车发送消息
         elements.messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage();
+        });
+        
+        // 输入时检测表情快捷码
+        elements.messageInput.addEventListener('input', (e) => {
+            // 检测空格或特定字符触发快捷码替换
+            const lastChar = e.data;
+            if (lastChar === ' ' || lastChar === null) {
+                checkAndReplaceShortcuts();
+            }
+        });
+        
+        // 失去焦点时也检查一次
+        elements.messageInput.addEventListener('blur', () => {
+            checkAndReplaceShortcuts();
         });
         
         // 回车连接房间
@@ -1395,6 +2618,81 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         });
     }
     
+    async function getRoomUserCount(roomId) {
+        // 从localStorage获取房间用户统计
+        const roomStats = JSON.parse(localStorage.getItem(`room_stats_${roomId}`) || '{"users": [], "lastUpdate": 0}');
+        
+        // 清理超过5分钟没有活动的用户
+        const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+        roomStats.users = roomStats.users.filter(user => user.lastSeen > fiveMinutesAgo);
+        
+        // 保存清理后的统计
+        localStorage.setItem(`room_stats_${roomId}`, JSON.stringify(roomStats));
+        
+        return roomStats.users.length;
+    }
+    
+    function updateRoomUserCount(roomId, username, action = 'join') {
+        const roomStats = JSON.parse(localStorage.getItem(`room_stats_${roomId}`) || '{"users": [], "lastUpdate": 0}');
+        const now = Date.now();
+        
+        if (action === 'join') {
+            // 添加用户或更新最后在线时间
+            const existingUserIndex = roomStats.users.findIndex(u => u.name === username);
+            if (existingUserIndex >= 0) {
+                roomStats.users[existingUserIndex].lastSeen = now;
+            } else {
+                roomStats.users.push({ name: username, lastSeen: now });
+            }
+        } else if (action === 'leave') {
+            // 移除用户
+            roomStats.users = roomStats.users.filter(u => u.name !== username);
+        } else if (action === 'ping') {
+            // 更新心跳时间
+            const userIndex = roomStats.users.findIndex(u => u.name === username);
+            if (userIndex >= 0) {
+                roomStats.users[userIndex].lastSeen = now;
+            }
+        }
+        
+        roomStats.lastUpdate = now;
+        localStorage.setItem(`room_stats_${roomId}`, JSON.stringify(roomStats));
+        
+        return roomStats.users.length;
+    }
+
+    async function validateRoomAccess(roomId) {
+        const config = loadRoomConfig(roomId);
+        
+        // 检查密码保护
+        if (config.hasPassword && config.password) {
+            const passwordInput = mountEl.querySelector('.room-password-input');
+            if (!passwordInput) {
+                return { allowed: false, message: '需要输入房间密码！请先配置房间设置。' };
+            }
+            
+            const enteredPassword = passwordInput.value.trim();
+            if (!enteredPassword) {
+                return { allowed: false, message: '此房间需要密码，请输入密码后再连接！' };
+            }
+            
+            if (enteredPassword !== config.password) {
+                return { allowed: false, message: '房间密码错误！' };
+            }
+        }
+        
+        // 检查人数限制
+        if (config.maxUsers > 0) {
+            // 获取当前房间用户数（不包括即将加入的用户）
+            const currentUserCount = await getRoomUserCount(roomId);
+            if (currentUserCount >= config.maxUsers) {
+                return { allowed: false, message: `房间已满！当前人数 ${currentUserCount}/${config.maxUsers}` };
+            }
+        }
+        
+        return { allowed: true };
+    }
+
     async function connectRoom() {
         roomId = elements.roomInput.value.trim();
         nickname = elements.nicknameInput.value.trim();
@@ -1413,6 +2711,13 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         // 检查房间号格式
         if (!/^[a-zA-Z0-9\-_]+$/.test(roomId)) {
             showAlert('房间号只能包含字母、数字、横线和下划线！');
+            return;
+        }
+        
+        // 房间访问验证
+        const accessResult = await validateRoomAccess(roomId);
+        if (!accessResult.allowed) {
+            showAlert(accessResult.message);
             return;
         }
         
@@ -1461,7 +2766,10 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 clearOnlineUsers();
                 addOnlineUser(nickname);
                 
-                client.subscribe([messageTopic, presenceTopic], (err) => {
+                const adminTopic = `game/${roomId}/admin`;
+                const moderationTopic = `game/${roomId}/moderation`;
+                
+                client.subscribe([messageTopic, presenceTopic, adminTopic, moderationTopic], (err) => {
                     if (!err) {
                         publishPresence('join');
                         updateUI(true);
@@ -1469,6 +2777,17 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         addToRoomHistory(roomId, nickname);
                         // 加载历史聊天记录
                         loadChatHistoryToUI(roomId);
+                        
+                        // 加载房间配置并检查管理员权限
+                        loadRoomConfig(roomId);
+                        checkAdminPrivileges();
+                        
+                        // 启动心跳定时器，每30秒更新一次在线状态
+                        heartbeatInterval = setInterval(() => {
+                            if (isConnected && roomId) {
+                                updateRoomUserCount(roomId, nickname, 'ping');
+                            }
+                        }, 30000);
                     } else {
                         log('system', '订阅失败: ' + err.message);
                     }
@@ -1535,7 +2854,15 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     if (isConnected) {
                         // 发送离开消息
                         publishPresence('leave');
+                        // 更新用户计数
+                        updateRoomUserCount(roomId, nickname, 'leave');
                         log('system', '正在离开房间...');
+                    }
+                    
+                    // 清除心跳定时器
+                    if (heartbeatInterval) {
+                        clearInterval(heartbeatInterval);
+                        heartbeatInterval = null;
                     }
                     
                     // 强制断开连接
@@ -1586,6 +2913,14 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         // 检查消息长度
         if (text.length > 500) {
             showAlert('消息长度不能超过500个字符');
+            return;
+        }
+        
+        // 根据当前聊天类型发送消息
+        if (currentChatType === 'private' && currentPrivateUser) {
+            // 发送私聊消息
+            sendPrivateMessage(currentPrivateUser, text);
+            elements.messageInput.value = '';
             return;
         }
         
@@ -1664,18 +2999,74 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 // 处理用户加入/离开的presence消息
                 if (data.type === 'join') {
                     addOnlineUser(data.name);
+                    updateRoomUserCount(roomId, data.name, 'join');
                     if (data.name !== nickname) {
                         log('presence', `${data.name} 加入了房间`, data.timestamp);
                     }
                 } else if (data.type === 'leave') {
                     removeOnlineUser(data.name);
+                    updateRoomUserCount(roomId, data.name, 'leave');
                     if (data.name !== nickname) {
                         log('presence', `${data.name} 离开了房间`, data.timestamp);
                     }
                 }
+            } else if (topic.includes('/private/') && data.type === 'private') {
+                // 处理私聊消息
+                if (data.receiver === nickname && data.sender !== nickname) {
+                    // 收到别人发给我的私聊消息
+                    if (currentChatType === 'private' && currentPrivateUser === data.sender) {
+                        // 当前正在与发送者私聊，直接显示
+                        displayMessage('private', data.text, data.sender, data.timestamp, false);
+                    } else {
+                        // 当前不在私聊界面或在与其他人私聊，显示通知
+                        log('system', `💬 ${data.sender} 发来私聊消息`);
+                    }
+                    
+                    // 保存私聊消息
+                    savePrivateMessage(data.sender, data);
+                }
+            } else if (topic.includes('/admin') && data.type) {
+                // 处理管理员相关消息
+                handleAdminMessage(data);
+            } else if (topic.includes('/moderation') && data.type) {
+                // 处理管理操作消息
+                handleModerationMessage(data);
             }
         } catch (error) {
             log('system', `消息解析错误: ${error.message}`);
+        }
+    }
+    
+    function handleAdminMessage(data) {
+        if (data.type === 'admin_added') {
+            log('system', `👑 ${data.admin} 被 ${data.by} 设为管理员`);
+            if (data.admin === nickname) {
+                // 刷新自己的管理员状态
+                loadRoomConfig(roomId);
+                checkAdminPrivileges();
+            }
+        } else if (data.type === 'admin_removed') {
+            log('system', `🚫 ${data.admin} 的管理员权限被 ${data.by} 移除`);
+            if (data.admin === nickname) {
+                // 刷新自己的管理员状态
+                isRoomAdmin = false;
+                log('system', '⚠️ 您的管理员权限已被移除');
+            }
+        }
+    }
+    
+    function handleModerationMessage(data) {
+        if (data.type === 'user_kicked') {
+            if (data.user === nickname) {
+                // 自己被踢出
+                log('system', `🚫 您被管理员 ${data.by} 踢出房间: ${data.reason}`);
+                setTimeout(() => {
+                    leaveRoom();
+                }, 2000);
+            } else {
+                log('system', `🚫 ${data.user} 被管理员 ${data.by} 踢出房间: ${data.reason}`);
+                removeOnlineUser(data.user);
+            }
         }
     }
     
@@ -1799,14 +3190,74 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             onlineUsers.forEach(user => {
                 const userEl = document.createElement('div');
                 userEl.className = 'online-user';
-                userEl.textContent = user;
+                
+                // 检查是否为管理员
+                const isUserAdmin = roomConfig && roomConfig.adminUsers && roomConfig.adminUsers.includes(user);
                 
                 // 如果是当前用户，添加特殊样式
                 if (user === nickname) {
-                    userEl.style.background = '#e8f5e8';
-                    userEl.style.color = '#2e7d32';
+                    userEl.style.background = isUserAdmin ? '#fff3cd' : '#e8f5e8';
+                    userEl.style.color = isUserAdmin ? '#856404' : '#2e7d32';
                     userEl.style.fontWeight = 'bold';
-                    userEl.textContent = user + ' (我)';
+                    userEl.textContent = user + (isUserAdmin ? ' 👑 (我)' : ' (我)');
+                } else {
+                    // 为其他用户添加私聊按钮
+                    const userNameSpan = document.createElement('span');
+                    userNameSpan.textContent = user + (isUserAdmin ? ' 👑' : '');
+                    if (isUserAdmin) {
+                        userNameSpan.style.color = '#856404';
+                        userNameSpan.style.fontWeight = 'bold';
+                    }
+                    
+                    const buttonContainer = document.createElement('span');
+                    buttonContainer.className = 'user-actions';
+                    
+                    // 私聊按钮
+                    const privateChatBtn = document.createElement('button');
+                    privateChatBtn.className = 'private-chat-btn';
+                    privateChatBtn.title = `与 ${user} 私聊`;
+                    privateChatBtn.innerHTML = '💬';
+                    privateChatBtn.onclick = () => startPrivateChat(user);
+                    buttonContainer.appendChild(privateChatBtn);
+                    
+                    // 管理员专用按钮
+                    if (isRoomAdmin && !isUserAdmin) {
+                        // 设为管理员按钮
+                        const makeAdminBtn = document.createElement('button');
+                        makeAdminBtn.className = 'admin-action-btn';
+                        makeAdminBtn.title = `设 ${user} 为管理员`;
+                        makeAdminBtn.innerHTML = '👑';
+                        makeAdminBtn.onclick = () => addAdmin(user);
+                        buttonContainer.appendChild(makeAdminBtn);
+                        
+                        // 踢出用户按钮
+                        const kickBtn = document.createElement('button');
+                        kickBtn.className = 'kick-btn';
+                        kickBtn.title = `踢出 ${user}`;
+                        kickBtn.innerHTML = '🚫';
+                        kickBtn.onclick = () => {
+                            const reason = prompt(`踢出用户 ${user} 的理由:`, '违反房间规则');
+                            if (reason !== null) {
+                                kickUser(user, reason);
+                            }
+                        };
+                        buttonContainer.appendChild(kickBtn);
+                    } else if (isRoomAdmin && isUserAdmin && user !== roomConfig.createdBy) {
+                        // 移除管理员权限按钮
+                        const removeAdminBtn = document.createElement('button');
+                        removeAdminBtn.className = 'remove-admin-btn';
+                        removeAdminBtn.title = `移除 ${user} 的管理员权限`;
+                        removeAdminBtn.innerHTML = '👤';
+                        removeAdminBtn.onclick = () => {
+                            if (confirm(`确定要移除 ${user} 的管理员权限吗？`)) {
+                                removeAdmin(user);
+                            }
+                        };
+                        buttonContainer.appendChild(removeAdminBtn);
+                    }
+                    
+                    userEl.appendChild(userNameSpan);
+                    userEl.appendChild(buttonContainer);
                 }
                 
                 elements.onlineListContent.appendChild(userEl);
@@ -1852,6 +3303,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         elements.leaveBtn.disabled = !connected;
         elements.messageInput.disabled = !connected;
         elements.sendBtn.disabled = !connected;
+        elements.emojiBtn.disabled = !connected;
         elements.roomInput.disabled = connected;
         elements.nicknameInput.disabled = connected;
         

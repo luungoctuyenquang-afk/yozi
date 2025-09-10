@@ -19,6 +19,6 @@
     "install-service": "node install-service.js",
     "test:e2e": "playwright test",
     "build": "tsup worldbook/*.ts --format=esm,iife --global-name=WorldBookKit --dts --minify --out-dir public/worldbook",
-    "test": "vitest run"
+    "test": "vitest run -c vitest.config.ts"
   }
 }

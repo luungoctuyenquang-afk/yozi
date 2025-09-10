@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT聊天室界面优化测试</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .test-container {
+            width: 375px;
+            height: 667px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+        }
+        #mqtt-test-container {
+            width: 100%;
+            height: 100%;
+        }
+        .test-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            z-index: 9999;
+            pointer-events: none;
+            backdrop-filter: blur(10px);
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 9999;
+        }
+        .control-btn {
+            flex: 1;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+        }
+        .control-btn:hover {
+            background: rgba(0,0,0,0.9);
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-info">UI优化测试 v1.0</div>
+        <div id="mqtt-test-container"></div>
+    </div>
+    
+    <div class="controls">
+        <button class="control-btn" onclick="simulateHistory()">模拟历史记录</button>
+        <button class="control-btn" onclick="toggleTheme()">切换主题</button>
+        <button class="control-btn" onclick="simulateMessages()">模拟消息</button>
+    </div>
+    
+    <script src="js/screens/mqtt-room.js"></script>
+    <script>
+        // 模拟获取玩家名称的函数
+        function getPlayerName() {
+            return 'UI测试用户' + Math.floor(Math.random() * 100);
+        }
+        
+        // 创建MQTT聊天室应用
+        const testContainer = document.getElementById('mqtt-test-container');
+        const mqttApp = createMqttRoomApp({
+            mountEl: testContainer,
+            getPlayerName: getPlayerName,
+            brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+        });
+        
+        // 测试函数
+        function simulateHistory() {
+            // 模拟添加历史记录
+            const mockHistory = [
+                { roomId: 'game-room-001', nickname: '玩家A', lastUsed: Date.now() - 60000 },
+                { roomId: 'chat-lobby', nickname: '聊天用户', lastUsed: Date.now() - 120000 },
+                { roomId: 'test-channel', nickname: '测试账号', lastUsed: Date.now() - 300000 },
+                { roomId: 'dev-meeting', nickname: '开发者', lastUsed: Date.now() - 600000 }
+            ];
+            
+            localStorage.setItem('mqtt_room_history', JSON.stringify(mockHistory));
+            location.reload(); // 重载页面以显示历史记录
+        }
+        
+        function toggleTheme() {
+            const themeBtn = testContainer.querySelector('#theme-toggle-btn');
+            if (themeBtn) {
+                themeBtn.click();
+            }
+        }
+        
+        function simulateMessages() {
+            const messagesContainer = testContainer.querySelector('#messages-container');
+            if (messagesContainer) {
+                // 清空现有内容
+                messagesContainer.innerHTML = '';
+                
+                // 添加一些测试消息
+                const messages = [
+                    { user: '用户A', text: '大家好！这是一个测试消息', time: '2分钟前' },
+                    { user: '用户B', text: '界面看起来不错', time: '1分钟前' },
+                    { user: '测试用户', text: '滚动条优化效果如何？', time: '30秒前', isOwn: true },
+                    { user: '用户C', text: '主题切换功能很棒！', time: '10秒前' }
+                ];
+                
+                messages.forEach((msg, index) => {
+                    setTimeout(() => {
+                        const messageEl = document.createElement('div');
+                        messageEl.className = `message chat ${msg.isOwn ? 'own-message' : ''}`;
+                        
+                        if (msg.isOwn) {
+                            messageEl.innerHTML = `
+                                <div class="message-header">
+                                    <span class="message-time">${msg.time}</span>
+                                </div>
+                                <div class="message-text">${msg.text}</div>
+                            `;
+                        } else {
+                            messageEl.innerHTML = `
+                                <div class="message-header">
+                                    <span class="user-name">${msg.user}</span>
+                                    <span class="message-time">${msg.time}</span>
+                                </div>
+                                <div class="message-text">${msg.text}</div>
+                            `;
+                        }
+                        
+                        messagesContainer.appendChild(messageEl);
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    }, index * 500);
+                });
+            }
+        }
+        
+        // 页面加载完成后的测试
+        setTimeout(() => {
+            console.log('=== UI优化功能测试 ===');
+            console.log('1. 滚动条美化:', testContainer.querySelector('.messages') ? '✅ 已应用' : '❌ 未找到');
+            console.log('2. 主题切换:', testContainer.querySelector('#theme-toggle-btn') ? '✅ 已集成' : '❌ 未找到');
+            console.log('3. 房间历史记录:', testContainer.querySelector('#room-history-container') ? '✅ 已优化' : '❌ 未找到');
+            console.log('4. 响应式布局:', window.innerWidth <= 480 ? '✅ 小屏幕适配' : '📱 大屏幕模式');
+            console.log('=====================');
+        }, 1000);
+    </script>
+</body>
+</html>

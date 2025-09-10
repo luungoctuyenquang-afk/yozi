@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT聊天室 Phase 2 - 房间管理测试</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .test-wrapper {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .test-container {
+            width: 375px;
+            height: 667px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #mqtt-test-container-admin, #mqtt-test-container-user {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .test-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            z-index: 9999;
+            pointer-events: none;
+            backdrop-filter: blur(10px);
+        }
+        
+        .admin-info {
+            background: rgba(255, 140, 0, 0.9);
+        }
+        
+        .feature-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-width: 350px;
+            margin: 10px;
+        }
+        
+        .feature-panel h3 {
+            margin-top: 0;
+            color: #764ba2;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+        
+        .feature-section {
+            margin-bottom: 20px;
+        }
+        
+        .feature-section h4 {
+            color: #667eea;
+            margin: 15px 0 8px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .feature-item {
+            padding: 6px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: #555;
+            font-size: 12px;
+            border-left: 3px solid transparent;
+            padding-left: 10px;
+            margin: 4px 0;
+        }
+        
+        .feature-item.implemented {
+            border-left-color: #4cd964;
+            background: rgba(76, 217, 100, 0.1);
+        }
+        
+        .feature-item.testing {
+            border-left-color: #ff9500;
+            background: rgba(255, 149, 0, 0.1);
+        }
+        
+        .icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .implemented .icon {
+            background: #4cd964;
+        }
+        
+        .testing .icon {
+            background: #ff9500;
+        }
+        
+        .test-scenarios {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        
+        .test-scenarios h4 {
+            margin-top: 0;
+            color: #667eea;
+            font-size: 13px;
+        }
+        
+        .scenario {
+            background: #f9f9f9;
+            padding: 8px 10px;
+            border-radius: 6px;
+            margin: 6px 0;
+            border-left: 3px solid #764ba2;
+        }
+        
+        .scenario-title {
+            font-weight: bold;
+            color: #764ba2;
+            margin-bottom: 4px;
+        }
+        
+        .scenario-steps {
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .config-example {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 11px;
+            margin: 8px 0;
+            color: #333;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-left: 5px;
+        }
+        
+        .status-indicator.active {
+            background: #4cd964;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator.inactive {
+            background: #ccc;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .quick-setup {
+            background: linear-gradient(135deg, #ff9500, #ffb84d);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .quick-setup:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 149, 0, 0.3);
+        }
+        
+        .quick-setup h5 {
+            margin: 0 0 5px 0;
+            font-size: 12px;
+        }
+        
+        .quick-setup p {
+            margin: 0;
+            font-size: 10px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-wrapper">
+        <!-- 管理员测试容器 -->
+        <div class="test-container">
+            <div class="test-info admin-info">房间管理员 👑</div>
+            <div id="mqtt-test-container-admin"></div>
+        </div>
+        
+        <!-- 功能说明面板 -->
+        <div class="feature-panel">
+            <h3>🏠 Phase 2: 房间管理系统</h3>
+            
+            <div class="feature-section">
+                <h4>🔐 密码保护功能 <span class="status-indicator active"></span></h4>
+                <div class="feature-item implemented">
+                    <span>房间密码设置</span>
+                    <span class="icon">✓</span>
+                </div>
+                <div class="feature-item implemented">
+                    <span>连接时密码验证</span>
+                    <span class="icon">✓</span>
+                </div>
+                <div class="feature-item implemented">
+                    <span>密码错误提示</span>
+                    <span class="icon">✓</span>
+                </div>
+            </div>
+            
+            <div class="feature-section">
+                <h4>👥 人数限制功能 <span class="status-indicator active"></span></h4>
+                <div class="feature-item implemented">
+                    <span>最大人数设置</span>
+                    <span class="icon">✓</span>
+                </div>
+                <div class="feature-item implemented">
+                    <span>房间满员检测</span>
+                    <span class="icon">✓</span>
+                </div>
+                <div class="feature-item implemented">
+                    <span>实时用户计数</span>
+                    <span class="icon">✓</span>
+                </div>
+            </div>
+            
+            <div class="feature-section">
+                <h4>⚙️ 房间配置系统 <span class="status-indicator active"></span></h4>
+                <div class="feature-item implemented">
+                    <span>房间设置面板</span>
+                    <span class="icon">✓</span>
+                </div>
+                <div class="feature-item implemented">
+                    <span>房间分类选择</span>
+                    <span class="icon">✓</span>
+                </div>
+                <div class="feature-item testing">
+                    <span>配置持久化存储</span>
+                    <span class="icon">🧪</span>
+                </div>
+            </div>
+            
+            <div class="test-scenarios">
+                <h4>🧪 测试场景</h4>
+                
+                <div class="scenario">
+                    <div class="scenario-title">场景1: 密码保护房间</div>
+                    <div class="scenario-steps">
+                        1. 管理员设置房间密码 "test123"<br>
+                        2. 普通用户尝试无密码连接 ❌<br>
+                        3. 输入错误密码连接 ❌<br>
+                        4. 输入正确密码连接 ✅
+                    </div>
+                </div>
+                
+                <div class="scenario">
+                    <div class="scenario-title">场景2: 房间人数限制</div>
+                    <div class="scenario-steps">
+                        1. 设置最大人数为 3 人<br>
+                        2. 3个用户成功加入<br>
+                        3. 第4个用户被拒绝 ❌<br>
+                        4. 有用户离开后可再次加入 ✅
+                    </div>
+                </div>
+                
+                <div class="scenario">
+                    <div class="scenario-title">场景3: 房间配置持久化</div>
+                    <div class="scenario-steps">
+                        1. 设置房间配置并保存<br>
+                        2. 刷新页面重新连接<br>
+                        3. 配置应该被保持 ✅<br>
+                        4. 其他用户看到相同限制 ✅
+                    </div>
+                </div>
+            </div>
+            
+            <div class="config-example">
+                <strong>房间配置示例：</strong><br>
+                房间密码: test123<br>
+                最大人数: 5人<br>
+                房间分类: 聊天室<br>
+                私密房间: 是
+            </div>
+            
+            <div class="quick-setup" onclick="quickSetupRoom()">
+                <h5>⚡ 快速设置测试房间</h5>
+                <p>自动配置密码保护和人数限制</p>
+            </div>
+        </div>
+        
+        <!-- 普通用户测试容器 -->
+        <div class="test-container">
+            <div class="test-info">普通用户 👤</div>
+            <div id="mqtt-test-container-user"></div>
+        </div>
+    </div>
+    
+    <script src="js/screens/mqtt-room.js"></script>
+    <script>
+        // 创建管理员和普通用户实例
+        const adminApp = createMqttRoomApp({
+            mountEl: document.getElementById('mqtt-test-container-admin'),
+            getPlayerName: () => '管理员',
+            brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+        });
+        
+        const userApp = createMqttRoomApp({
+            mountEl: document.getElementById('mqtt-test-container-user'),
+            getPlayerName: () => '普通用户',
+            brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+        });
+        
+        // 快速设置测试房间
+        function quickSetupRoom() {
+            const adminContainer = document.getElementById('mqtt-test-container-admin');
+            const roomInput = adminContainer.querySelector('.room-input');
+            const nicknameInput = adminContainer.querySelector('.nickname-input');
+            const settingsBtn = adminContainer.querySelector('.settings-toggle-btn');
+            
+            if (roomInput && nicknameInput) {
+                // 设置房间信息
+                roomInput.value = 'test-room-' + Math.floor(Date.now() / 1000);
+                nicknameInput.value = '房间管理员';
+                
+                // 延迟点击设置按钮
+                setTimeout(() => {
+                    if (settingsBtn) {
+                        settingsBtn.click();
+                        
+                        // 再延迟配置房间设置
+                        setTimeout(() => {
+                            const passwordCheckbox = adminContainer.querySelector('#passwordProtected');
+                            const passwordInput = adminContainer.querySelector('.room-password-input');
+                            const maxUsersSelect = adminContainer.querySelector('.max-users-select');
+                            
+                            if (passwordCheckbox && passwordInput && maxUsersSelect) {
+                                passwordCheckbox.checked = true;
+                                passwordCheckbox.dispatchEvent(new Event('change'));
+                                
+                                setTimeout(() => {
+                                    passwordInput.value = 'test123';
+                                    maxUsersSelect.value = '5';
+                                    
+                                    console.log('✅ 测试房间已快速配置：');
+                                    console.log('   房间号:', roomInput.value);
+                                    console.log('   密码: test123');
+                                    console.log('   最大人数: 5人');
+                                    
+                                    // 为普通用户设置相同房间号
+                                    const userContainer = document.getElementById('mqtt-test-container-user');
+                                    const userRoomInput = userContainer.querySelector('.room-input');
+                                    if (userRoomInput) {
+                                        userRoomInput.value = roomInput.value;
+                                    }
+                                }, 200);
+                            }
+                        }, 500);
+                    }
+                }, 200);
+            }
+        }
+        
+        console.log('%c🏠 Phase 2: 房间管理系统测试环境', 'color: #764ba2; font-size: 16px; font-weight: bold;');
+        console.log('新功能测试：');
+        console.log('🔐 密码保护 - 设置房间密码保护');
+        console.log('👥 人数限制 - 限制房间最大人数');
+        console.log('⚙️  房间配置 - 房间设置持久化');
+        console.log('📊 用户计数 - 实时用户数跟踪');
+        console.log('');
+        console.log('🧪 测试步骤：');
+        console.log('1. 点击"快速设置测试房间"按钮');
+        console.log('2. 管理员连接房间（会自动设置密码）');
+        console.log('3. 普通用户尝试连接（先不输入密码测试）');
+        console.log('4. 普通用户输入密码 test123 后连接');
+        console.log('5. 观察人数限制和密码保护效果');
+    </script>
+</body>
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT聊天室 Phase 1 功能测试</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .test-wrapper {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .test-container {
+            width: 375px;
+            height: 667px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #mqtt-test-container-1, #mqtt-test-container-2 {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .test-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            z-index: 9999;
+            pointer-events: none;
+            backdrop-filter: blur(10px);
+        }
+        
+        .feature-checklist {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-width: 300px;
+        }
+        
+        .feature-checklist h3 {
+            margin-top: 0;
+            color: #764ba2;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+        
+        .feature-item {
+            padding: 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .feature-item .icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .feature-item.completed .icon {
+            background: #4cd964;
+            color: white;
+        }
+        
+        .feature-item.pending .icon {
+            background: #f0f0f0;
+            color: #999;
+        }
+        
+        .test-instructions {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .test-instructions h4 {
+            margin-top: 0;
+            color: #667eea;
+        }
+        
+        .test-instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .test-instructions li {
+            margin: 5px 0;
+        }
+        
+        .emoji-demo {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        
+        .emoji-demo-title {
+            font-weight: bold;
+            color: #764ba2;
+            margin-bottom: 5px;
+        }
+        
+        .shortcut-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            font-size: 12px;
+        }
+        
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 5px;
+            background: white;
+            border-radius: 4px;
+        }
+        
+        .shortcut-code {
+            color: #667eea;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-wrapper">
+        <!-- 第一个虚拟手机 -->
+        <div class="test-container">
+            <div class="test-info">用户A</div>
+            <div id="mqtt-test-container-1"></div>
+        </div>
+        
+        <!-- 功能清单 -->
+        <div class="feature-checklist">
+            <h3>✨ Phase 1 新功能</h3>
+            
+            <div class="feature-item completed">
+                <span class="icon">✓</span>
+                <span>表情选择器</span>
+            </div>
+            
+            <div class="feature-item completed">
+                <span class="icon">✓</span>
+                <span>表情快捷输入</span>
+            </div>
+            
+            <div class="feature-item completed">
+                <span class="icon">✓</span>
+                <span>私聊功能</span>
+            </div>
+            
+            <div class="feature-item completed">
+                <span class="icon">✓</span>
+                <span>在线用户管理</span>
+            </div>
+            
+            <div class="feature-item completed">
+                <span class="icon">✓</span>
+                <span>房间历史记录</span>
+            </div>
+            
+            <div class="feature-item completed">
+                <span class="icon">✓</span>
+                <span>主题切换</span>
+            </div>
+            
+            <div class="test-instructions">
+                <h4>🧪 测试步骤</h4>
+                <ol>
+                    <li>两个用户连接同一房间</li>
+                    <li>点击表情按钮选择表情</li>
+                    <li>输入快捷码测试（见下方）</li>
+                    <li>点击在线用户的💬按钮私聊</li>
+                    <li>切换主题查看效果</li>
+                </ol>
+            </div>
+            
+            <div class="emoji-demo">
+                <div class="emoji-demo-title">表情快捷码示例：</div>
+                <div class="shortcut-list">
+                    <div class="shortcut-item">
+                        <span class="shortcut-code">:)</span>
+                        <span>😊</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="shortcut-code">:(</span>
+                        <span>😢</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="shortcut-code">:D</span>
+                        <span>😃</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="shortcut-code">&lt;3</span>
+                        <span>❤️</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="shortcut-code">:fire:</span>
+                        <span>🔥</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="shortcut-code">:star:</span>
+                        <span>⭐</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 第二个虚拟手机 -->
+        <div class="test-container">
+            <div class="test-info">用户B</div>
+            <div id="mqtt-test-container-2"></div>
+        </div>
+    </div>
+    
+    <script src="js/screens/mqtt-room.js"></script>
+    <script>
+        // 创建两个MQTT聊天室实例模拟多用户
+        const mqttApp1 = createMqttRoomApp({
+            mountEl: document.getElementById('mqtt-test-container-1'),
+            getPlayerName: () => '测试用户A',
+            brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+        });
+        
+        const mqttApp2 = createMqttRoomApp({
+            mountEl: document.getElementById('mqtt-test-container-2'),
+            getPlayerName: () => '测试用户B',
+            brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+        });
+        
+        console.log('%c🎉 Phase 1 功能测试环境已就绪', 'color: #667eea; font-size: 16px; font-weight: bold;');
+        console.log('新功能包括：');
+        console.log('1. 😊 表情选择器 - 点击表情按钮');
+        console.log('2. ⚡ 快捷输入 - 输入 :) 等快捷码');
+        console.log('3. 💬 私聊功能 - 点击在线用户旁的聊天按钮');
+        console.log('4. 🌙 主题切换 - 点击顶部主题按钮');
+    </script>
+</body>
+</html>

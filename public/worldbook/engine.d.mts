@@ -1,21 +1,32 @@
-import { ActivationSettings, WorldBook, EngineContext, ProcessResult } from './types.mjs';
+import { ActivationSettings, WorldBook, ActivatedEntry, InsertionSlot } from './types.mjs';
 
 declare class WorldBookEngine {
     private settings;
     private timedEffectsState;
     private rand;
-    constructor(options?: ActivationSettings & {
+    private runtimeOptions;
+    constructor(opts?: {
         seed?: number;
         random?: () => number;
     });
-    setOptions(options: ActivationSettings): void;
-    private tickTimedEffects;
-    private commitTimedEffects;
-    process(worldbook: WorldBook, context: string | EngineContext): ProcessResult;
+    private getDefaultSettings;
+    setOptions(o: Partial<ActivationSettings & {
+        recursive?: boolean;
+    }>): void;
+    process(book: WorldBook, scanText: string): {
+        activatedEntries: ActivatedEntry[];
+        slots: InsertionSlot[];
+        finalPrompt: string;
+        totalTokens?: number;
+    };
+    private activate;
     private selectCandidates;
     private applyFilters;
+    private tickTimedEffects;
+    private commitTimedEffects;
     private applyTimedEffects;
     private applyScoring;
+    private getProb;
     private applyProbability;
     private recursiveScan;
     private applyBudget;
@@ -27,7 +38,7 @@ declare class WorldBookEngine {
     private textMatch;
     private calculateActivationScore;
     private calculateGroupBonus;
-    private resolveInclusionGroups;
+    resolveInclusionGroups(cands: ActivatedEntry[]): ActivatedEntry[];
     private selectFromGroup;
     private minActivationScan;
     private calculateTotalTokens;
