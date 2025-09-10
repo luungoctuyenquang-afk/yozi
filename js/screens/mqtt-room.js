@@ -678,7 +678,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 log('error', '私聊消息发送失败');
             } else {
                 // 显示自己发送的私聊消息
-                displayMessage('private', message, nickname, messageData.timestamp, true);
+                addChatMessage(nickname, message, messageData.timestamp, true);
                 
                 // 保存到私聊历史
                 savePrivateMessage(targetUser, messageData);
@@ -716,8 +716,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         // 重新加载群聊消息
         const roomHistory = chatHistory.get(roomId) || [];
         roomHistory.forEach(msg => {
-            const isOwnMessage = msg.sender === nickname;
-            displayMessage('chat', msg.text, msg.sender, msg.timestamp, isOwnMessage);
+            addChatMessage(msg.user, msg.text, msg.timestamp, msg.isOwnMessage);
         });
         
         // 恢复输入框提示
@@ -747,15 +746,48 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         const passwordInput = mountEl.querySelector('.room-password-input');
         
         if (privateRoomCheckbox && passwordInput) {
+            const passwordInputGroup = mountEl.querySelector('.password-input-group');
+            
             privateRoomCheckbox.addEventListener('change', () => {
                 const isPrivate = privateRoomCheckbox.checked;
-                passwordInput.style.display = isPrivate ? 'block' : 'none';
+                if (passwordInputGroup) {
+                    passwordInputGroup.style.display = isPrivate ? 'flex' : 'none';
+                } else {
+                    passwordInput.style.display = isPrivate ? 'block' : 'none';
+                }
                 roomConfig.isPrivate = isPrivate;
                 
                 if (!isPrivate) {
                     passwordInput.value = '';
                     roomConfig.password = '';
+                    roomConfig.hasPassword = false;
+                } else {
+                    roomConfig.hasPassword = true;
                 }
+            });
+        }
+        
+        // 绑定密码保存按钮
+        const savePasswordBtn = mountEl.querySelector('#save-password-btn');
+        if (savePasswordBtn && passwordInput) {
+            savePasswordBtn.addEventListener('click', () => {
+                const password = passwordInput.value.trim();
+                if (!password) {
+                    showAlert('请输入密码！');
+                    return;
+                }
+                
+                if (password.length < 3) {
+                    showAlert('密码长度至少3位！');
+                    return;
+                }
+                
+                roomConfig.password = password;
+                roomConfig.hasPassword = true;
+                saveRoomConfig();
+                
+                log('system', '💾 房间密码已保存');
+                showAlert('密码保存成功！');
             });
         }
         
@@ -834,11 +866,15 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             console.warn('加载房间配置失败:', error);
         }
         
-        // 使用默认配置
+        // 使用默认配置 - 只有当房间不存在时才创建新配置
         roomConfig = { ...defaultRoomConfig };
         roomConfig.createdBy = nickname;
-        // 房间创建者自动成为管理员
         roomConfig.adminUsers = [nickname];
+        
+        // 立即保存新房间配置
+        saveRoomConfig();
+        log('system', `🏠 您创建了新房间 "${targetRoomId}"`);
+        
         return roomConfig;
     }
     
@@ -1007,7 +1043,10 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         <div class="room-controls">
                             <input type="text" class="room-input" placeholder="房间号" value="demo-room-001">
                             <input type="text" class="nickname-input" placeholder="昵称" value="">
-                            <input type="password" class="room-password-input" placeholder="房间密码(可选)" maxlength="50" style="display: none;">
+                            <div class="password-input-group" style="display: none;">
+                                <input type="password" class="room-password-input" placeholder="房间密码(可选)" maxlength="50">
+                                <button class="save-password-btn" id="save-password-btn">💾 保存密码</button>
+                            </div>
                         </div>
                         
                         <div class="room-settings">
@@ -1471,15 +1510,21 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     font-size: 11px;
                 }
                 
+                .password-input-group {
+                    display: flex;
+                    gap: var(--spacing-sm);
+                    margin-top: var(--spacing-sm);
+                    align-items: center;
+                }
+                
                 .room-password-input {
-                    width: 100%;
+                    flex: 1;
                     padding: var(--spacing-sm) var(--spacing-md);
                     border: 2px solid var(--warning-color);
                     border-radius: var(--border-radius);
                     background: rgba(255, 193, 7, 0.1);
                     color: var(--text-primary);
                     font-size: 14px;
-                    margin-top: var(--spacing-sm);
                     transition: all 0.2s ease;
                     box-sizing: border-box;
                 }
@@ -1488,6 +1533,28 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     outline: none;
                     border-color: var(--warning-color);
                     box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.2);
+                }
+                
+                .save-password-btn {
+                    padding: var(--spacing-sm) var(--spacing-md);
+                    background: var(--success-color);
+                    color: white;
+                    border: none;
+                    border-radius: var(--border-radius);
+                    cursor: pointer;
+                    font-size: 12px;
+                    font-weight: 500;
+                    transition: all 0.2s ease;
+                    white-space: nowrap;
+                }
+                
+                .save-password-btn:hover {
+                    background: #4aa450;
+                    transform: translateY(-1px);
+                }
+                
+                .save-password-btn:active {
+                    transform: translateY(0);
                 }
                 
                 .btn-connect {
@@ -2664,11 +2731,14 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     async function validateRoomAccess(roomId) {
         const config = loadRoomConfig(roomId);
         
-        // 检查密码保护
-        if (config.hasPassword && config.password) {
+        // 如果是房间创建者，跳过密码验证
+        const isCreator = config.createdBy === nickname;
+        
+        // 检查密码保护（房间创建者除外）
+        if (!isCreator && config.hasPassword && config.password) {
             const passwordInput = mountEl.querySelector('.room-password-input');
-            if (!passwordInput) {
-                return { allowed: false, message: '需要输入房间密码！请先配置房间设置。' };
+            if (!passwordInput || passwordInput.style.display === 'none') {
+                return { allowed: false, message: '此房间需要密码！请先勾选"密码保护房间"并输入密码。' };
             }
             
             const enteredPassword = passwordInput.value.trim();
@@ -3016,7 +3086,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     // 收到别人发给我的私聊消息
                     if (currentChatType === 'private' && currentPrivateUser === data.sender) {
                         // 当前正在与发送者私聊，直接显示
-                        displayMessage('private', data.text, data.sender, data.timestamp, false);
+                        addChatMessage(data.sender, data.text, data.timestamp, false);
                     } else {
                         // 当前不在私聊界面或在与其他人私聊，显示通知
                         log('system', `💬 ${data.sender} 发来私聊消息`);
