@@ -364,16 +364,18 @@ document.addEventListener('DOMContentLoaded', () => {
             Utils.showScreen('home-screen');
         });
         
-        // MQTT聊天室返回按钮
-        Utils.safeBind(document.getElementById('mqtt-back-btn'), 'click', () => {
-            console.log('主应用中的MQTT返回按钮被点击');
-            // 如果MQTT应用存在且连接中，先断开连接
-            if (window.currentMqttRoomApp && typeof window.currentMqttRoomApp.leave === 'function') {
-                console.log('正在离开MQTT房间...');
-                window.currentMqttRoomApp.leave();
+        // MQTT聊天室返回按钮（使用事件委托，避免时序问题）
+        Utils.safeBind(document, 'click', (e) => {
+            if (e.target && e.target.id === 'mqtt-back-btn') {
+                console.log('主应用中的MQTT返回按钮被点击');
+                // 如果MQTT应用存在且连接中，先断开连接
+                if (window.currentMqttRoomApp && typeof window.currentMqttRoomApp.leave === 'function') {
+                    console.log('正在离开MQTT房间...');
+                    window.currentMqttRoomApp.leave();
+                }
+                console.log('切换到主页面');
+                Utils.showScreen('home-screen');
             }
-            console.log('切换到主页面');
-            Utils.showScreen('home-screen');
         });
         
         Utils.safeBind(document.getElementById('save-general-settings-btn'), 'click', () => {

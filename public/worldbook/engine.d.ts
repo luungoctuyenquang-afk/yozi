@@ -2,28 +2,36 @@ import { ActivationSettings, WorldBook, EngineContext, ProcessResult } from './t
 
 declare class WorldBookEngine {
     private settings;
-    private activationHistory;
-    constructor(options?: ActivationSettings);
+    private timedEffectsState;
+    private rand;
+    constructor(options?: ActivationSettings & {
+        seed?: number;
+        random?: () => number;
+    });
     setOptions(options: ActivationSettings): void;
+    private tickTimedEffects;
+    private commitTimedEffects;
     process(worldbook: WorldBook, context: string | EngineContext): ProcessResult;
     private selectCandidates;
     private applyFilters;
-    private applyTimeFilters;
+    private applyTimedEffects;
     private applyScoring;
-    private applyProbabilityFilter;
-    private handleRecursion;
-    private applyBudgetLimits;
-    private organizeByPosition;
+    private applyProbability;
+    private recursiveScan;
+    private applyBudget;
+    private distributeToSlots;
     private createActivatedEntry;
     private matchKeys;
+    private containsCJK;
+    private makeWholeWordRegex;
     private textMatch;
     private calculateActivationScore;
     private calculateGroupBonus;
-    private ensureMinimumActivations;
+    private resolveInclusionGroups;
+    private selectFromGroup;
+    private minActivationScan;
     private calculateTotalTokens;
     private estimateTokens;
-    private toHalfWidth;
-    private hasCJK;
     private escapeRegex;
 }
 

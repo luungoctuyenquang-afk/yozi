@@ -9,6 +9,7 @@ export interface Entry {
   
   // Position control
   position?: 'before_char' | 'after_char' | 'before_example' | 'after_example' | 'before_an' | 'after_an' | 'at_depth';
+  role?: string;
   
   // Priority and ordering
   priority?: number;
@@ -30,6 +31,9 @@ export interface Entry {
   // Group behavior
   group?: string;
   probability?: number;
+  useGroupScoring?: boolean;
+  prioritizeInclusion?: boolean;
+  groupWeight?: number;
   
   // Recursion and sticky behavior
   recursive?: boolean;
@@ -73,6 +77,7 @@ export interface WorldBookSettings {
 export interface ActivationSettings {
   scanDepth?: number;
   recursive?: boolean;
+  recursiveScan?: boolean;
   minActivations?: number;
   maxDepth?: number;
   maxRecursionSteps?: number;
@@ -82,6 +87,7 @@ export interface ActivationSettings {
   contextPercent?: number;
   useGroupScoring?: boolean;
   prioritizeInclusion?: boolean;
+  chatHistory?: any[];
 }
 
 export interface ActivatedEntry extends Entry {
@@ -92,11 +98,15 @@ export interface ActivatedEntry extends Entry {
   activationTime?: number;
   stickyUntil?: number;
   cooldownUntil?: number;
+  stickyRemaining?: number;
+  recursionLevel?: number;
 }
 
 export interface InsertionSlot {
   position: string;
   entries: ActivatedEntry[];
+  depth?: number;
+  role?: string;
 }
 
 export interface ProcessResult {

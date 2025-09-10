@@ -2,9 +2,11 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "ESNext",
-    "lib": ["ES2020","DOM"],
+    "moduleResolution": "Bundler",
+    "lib": ["ES2020", "DOM"],
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["worldbook/**/*.ts"]
 }

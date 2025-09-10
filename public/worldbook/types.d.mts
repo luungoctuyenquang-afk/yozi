@@ -5,6 +5,7 @@ interface Entry {
     content: string;
     enabled?: boolean;
     position?: 'before_char' | 'after_char' | 'before_example' | 'after_example' | 'before_an' | 'after_an' | 'at_depth';
+    role?: string;
     priority?: number;
     order?: number;
     constant?: boolean;
@@ -18,6 +19,9 @@ interface Entry {
     };
     group?: string;
     probability?: number;
+    useGroupScoring?: boolean;
+    prioritizeInclusion?: boolean;
+    groupWeight?: number;
     recursive?: boolean;
     sticky?: number;
     cooldown?: number;
@@ -56,6 +60,7 @@ interface WorldBookSettings {
 interface ActivationSettings {
     scanDepth?: number;
     recursive?: boolean;
+    recursiveScan?: boolean;
     minActivations?: number;
     maxDepth?: number;
     maxRecursionSteps?: number;
@@ -65,6 +70,7 @@ interface ActivationSettings {
     contextPercent?: number;
     useGroupScoring?: boolean;
     prioritizeInclusion?: boolean;
+    chatHistory?: any[];
 }
 interface ActivatedEntry extends Entry {
     matchedKeys: string[];
@@ -74,10 +80,14 @@ interface ActivatedEntry extends Entry {
     activationTime?: number;
     stickyUntil?: number;
     cooldownUntil?: number;
+    stickyRemaining?: number;
+    recursionLevel?: number;
 }
 interface InsertionSlot {
     position: string;
     entries: ActivatedEntry[];
+    depth?: number;
+    role?: string;
 }
 interface ProcessResult {
     slots: InsertionSlot[];

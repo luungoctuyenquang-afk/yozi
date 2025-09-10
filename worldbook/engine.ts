@@ -2,9 +2,18 @@ import { WorldBook, Entry, ActivatedEntry, InsertionSlot, ProcessResult, Activat
 
 export class WorldBookEngine {
   private settings: ActivationSettings;
-  private activationHistory: Map<string, { time: number; stickyUntil?: number; cooldownUntil?: number }> = new Map();
+  private timedEffectsState: Map<string, { stickyRemaining: number; cooldownRemaining: number; messagesSeen: number }> = new Map();
+  private rand: () => number = Math.random;
 
-  constructor(options: ActivationSettings = {}) {
+  constructor(options: ActivationSettings & { seed?: number; random?: () => number } = {}) {
+    if (options?.random) this.rand = options.random;
+    else if (typeof options?.seed === 'number') {
+      let s = (options.seed >>> 0) || 1;
+      this.rand = () => ((s = (1664525 * s + 1013904223) >>> 0) & 0xffffffff) / 0x100000000;
+    } else {
+      this.rand = Math.random;
+    }
+
     this.settings = {
       scanDepth: 1000,
       recursive: true,
@@ -25,8 +34,26 @@ export class WorldBookEngine {
     this.settings = { ...this.settings, ...options };
   }
 
+  private tickTimedEffects(): void {
+    for (const s of this.timedEffectsState.values()) {
+      if (s.stickyRemaining > 0) s.stickyRemaining--;
+      if (s.cooldownRemaining > 0) s.cooldownRemaining--;
+    }
+  }
+
+  private commitTimedEffects(activated: ActivatedEntry[]): void {
+    for (const e of activated) {
+      const st = this.timedEffectsState.get(e.id) || { stickyRemaining: 0, cooldownRemaining: 0, messagesSeen: 0 };
+      if (e.sticky) st.stickyRemaining = e.sticky;
+      if (e.cooldown) st.cooldownRemaining = e.cooldown;
+      this.timedEffectsState.set(e.id, st);
+    }
+  }
+
   process(worldbook: WorldBook, context: string | EngineContext): ProcessResult {
     const startTime = performance.now();
+    this.tickTimedEffects();
+    
     const ctx: EngineContext = typeof context === 'string' 
       ? { text: context, currentTime: Date.now() } 
       : { currentTime: Date.now(), ...context };
@@ -35,36 +62,30 @@ export class WorldBookEngine {
     const effectiveSettings = { ...this.settings, ...worldbook.settings };
     this.settings = effectiveSettings;
 
-    // Phase 1: Candidate selection (ALWAYS/ON_KEY)
-    const candidates = this.selectCandidates(worldbook.entries, ctx);
-
-    // Phase 2: Trigger/role/source filtering
-    const filtered = this.applyFilters(candidates, ctx);
-
-    // Phase 3: Time-based filtering (sticky/cooldown/delay)
-    const timeFiltered = this.applyTimeFilters(filtered, ctx);
-
-    // Phase 4: Group scoring and prioritization
-    const scored = this.applyScoring(timeFiltered, ctx);
-
-    // Phase 5: Probability filtering (skip if sticky)
-    const probabilityFiltered = this.applyProbabilityFilter(scored, ctx);
-
-    // Phase 6: Recursion handling
-    const withRecursion = this.handleRecursion(probabilityFiltered, worldbook.entries, ctx);
-
-    // Phase 7: Budget truncation
-    const budgetFiltered = this.applyBudgetLimits(withRecursion);
-
-    // Phase 8: Position organization
-    const slots = this.organizeByPosition(budgetFiltered);
+    let candidates = this.selectCandidates(worldbook.entries, ctx);
+    candidates = this.applyFilters(candidates, ctx);
+    candidates = this.applyTimedEffects(candidates, ctx);
+    candidates = this.applyProbability(candidates);
+    
+    // Handle recursion vs minActivations mutually exclusively
+    const recursionOn = !!this.settings.recursiveScan && (this.settings.maxRecursionSteps ?? 0) !== 0;
+    if (recursionOn) {
+      candidates = this.recursiveScan(candidates, worldbook, ctx, this.settings);
+    } else if ((this.settings.minActivations ?? 0) > 0) {
+      candidates = this.minActivationScan(candidates, worldbook, ctx, this.settings);
+    }
+    
+    candidates = this.applyBudget(candidates, this.settings);
+    this.commitTimedEffects(candidates);
+    
+    const slots = this.distributeToSlots(candidates);
 
     const endTime = performance.now();
     
     return {
       slots,
-      activatedEntries: budgetFiltered,
-      totalTokens: this.calculateTotalTokens(budgetFiltered),
+      activatedEntries: candidates,
+      totalTokens: this.calculateTotalTokens(candidates),
       processTime: endTime - startTime
     };
   }
@@ -104,18 +125,19 @@ export class WorldBookEngine {
     return candidates.filter(entry => {
       // Optional filter logic
       if (entry.optionalFilter) {
-        const f = entry.optionalFilter;
-        const keys = f.keys || [];
-        const matches = keys.map(k => this.textMatch(ctx.text, k, {
-          caseSensitive: entry.caseSensitive ?? this.settings.caseSensitive ?? false,
-          wholeWords: false
-        }));
+        const filter = entry.optionalFilter;
+        const caseSensitive = entry.caseSensitive ?? this.settings.caseSensitive ?? false;
+        const text = ctx.text;
+        
+        const T = caseSensitive ? text : text.toLowerCase();
+        const okArr = filter.keys.map((k: string) => caseSensitive ? k : k.toLowerCase())
+                           .map((k: string) => T.includes(k));
         
         const ok = 
-          f.logic === 'AND_ALL' ? matches.every(Boolean) :
-          f.logic === 'NOT_ANY' ? !matches.some(Boolean) :
-          f.logic === 'NOT_ALL' ? !matches.every(Boolean) :
-          /* AND_ANY */ matches.some(Boolean);
+          filter.logic === 'AND_ALL' ? okArr.every(Boolean) :
+          filter.logic === 'NOT_ANY' ? !okArr.some(Boolean) :
+          filter.logic === 'NOT_ALL' ? !okArr.every(Boolean) :
+          /* AND_ANY */ okArr.some(Boolean);
         
         if (!ok) return false;
       }
@@ -124,32 +146,18 @@ export class WorldBookEngine {
     });
   }
 
-  private applyTimeFilters(candidates: ActivatedEntry[], ctx: EngineContext): ActivatedEntry[] {
-    const currentTime = ctx.currentTime ?? Date.now();
-    const filtered: ActivatedEntry[] = [];
-
-    for (const entry of candidates) {
-      const history = this.activationHistory.get(entry.id);
-      
-      // Check cooldown
-      if (history?.cooldownUntil && currentTime < history.cooldownUntil) {
-        continue;
-      }
-
-      // Check delay
-      if (entry.delay && (!history || currentTime - history.time < entry.delay * 1000)) {
-        continue;
-      }
-
-      // Apply sticky behavior
-      if (entry.sticky && history?.stickyUntil && currentTime < history.stickyUntil) {
-        entry.activationScore = (entry.activationScore || 0) + 1000; // Boost sticky entries
-      }
-
-      filtered.push(entry);
+  private applyTimedEffects(cands: ActivatedEntry[], ctx?: ActivationSettings): ActivatedEntry[] {
+    const res: ActivatedEntry[] = [];
+    const msgCount = ctx?.chatHistory?.length ?? 0;
+    for (const e of cands) {
+      const st = this.timedEffectsState.get(e.id) || { stickyRemaining: 0, cooldownRemaining: 0, messagesSeen: 0 };
+      if (e.delay && msgCount < e.delay) continue;
+      if (st.cooldownRemaining > 0) continue;
+      const copy = { ...e };
+      if (st.stickyRemaining > 0) copy.stickyRemaining = st.stickyRemaining;
+      res.push(copy);
     }
-
-    return filtered;
+    return res;
   }
 
   private applyScoring(candidates: ActivatedEntry[], ctx: EngineContext): ActivatedEntry[] {
@@ -184,96 +192,63 @@ export class WorldBookEngine {
     return candidates.sort((a, b) => (b.activationScore || 0) - (a.activationScore || 0));
   }
 
-  private applyProbabilityFilter(candidates: ActivatedEntry[], ctx: EngineContext): ActivatedEntry[] {
-    const currentTime = ctx.currentTime ?? Date.now();
-    
-    return candidates.filter(entry => {
-      // Skip probability check if entry is sticky and still active
-      const history = this.activationHistory.get(entry.id);
-      if (entry.sticky && history?.stickyUntil && currentTime < history.stickyUntil) {
-        return true;
-      }
-
-      // Apply probability filter
-      if (entry.probability !== undefined && Math.random() > entry.probability) {
-        return false;
-      }
-
-      return true;
-    });
+  private applyProbability(cands: ActivatedEntry[]): ActivatedEntry[] {
+    return cands.filter(e => (e.stickyRemaining && e.stickyRemaining > 0) ? true : (this.rand() < ((e.probability ?? 100) / 100)));
   }
 
-  private handleRecursion(candidates: ActivatedEntry[], allEntries: Entry[], ctx: EngineContext, depth = 0): ActivatedEntry[] {
-    if (!this.settings.recursive || depth >= (this.settings.maxDepth ?? 3)) {
-      return candidates;
-    }
-
-    const result = [...candidates];
-    const maxRecursionSteps = this.settings.maxRecursionSteps ?? 10;
-
-    for (const entry of candidates) {
-      if (entry.nonRecursable || depth >= maxRecursionSteps) continue;
-
-      // Recursive activation on entry content
-      if (entry.recursive !== false && entry.content) {
-        const recursiveCtx: EngineContext = { ...ctx, text: entry.content };
-        const recursiveCandidates = this.selectCandidates(allEntries, recursiveCtx);
-        const recursiveFiltered = this.applyFilters(recursiveCandidates, recursiveCtx);
+  private recursiveScan(initial: ActivatedEntry[], book: WorldBook, context: EngineContext, settings: ActivationSettings): ActivatedEntry[] {
+    const result: ActivatedEntry[] = [...initial];
+    const seen = new Set(result.map(e => e.id));
+    let level = 1; 
+    let stop = false;
+    
+    while (!stop && level <= (settings.maxRecursionSteps ?? 2)) {
+      const buffer = result.map(e => e.content).join('\n');
+      const levelCands: ActivatedEntry[] = [];
+      
+      for (const entry of book.entries) {
+        if (seen.has(entry.id)) continue;
+        if (entry.nonRecursable) continue;
+        if (entry.delayLevel && level < entry.delayLevel) continue;
         
-        for (const recursive of recursiveFiltered) {
-          recursive.depth = depth + 1;
-          result.push(recursive);
+        const matched = this.matchKeys(entry, buffer);
+        if (matched.length > 0) {
+          levelCands.push({ 
+            ...entry, 
+            matchedKeys: matched, 
+            recursionLevel: level, 
+            activationScore: matched.length,
+            depth: level
+          });
         }
-
-        // Handle blockFurther
-        if (entry.blockFurther) break;
       }
+      
+      if (levelCands.length === 0) break;
+      
+      let chosen = this.resolveInclusionGroups(levelCands);
+      chosen = this.applyProbability(chosen);
+      
+      result.push(...chosen);
+      chosen.forEach(e => seen.add(e.id));
+      
+      if (chosen.some(e => e.blockFurther)) stop = true;
+      level++;
     }
-
-    // Apply minimum activations if no recursion happened
-    if (result.length === candidates.length && this.settings.minActivations) {
-      const minActivated = this.ensureMinimumActivations(allEntries, ctx);
-      result.push(...minActivated);
-    }
-
+    
     return result;
   }
 
-  private applyBudgetLimits(candidates: ActivatedEntry[]): ActivatedEntry[] {
-    const budget = this.settings.tokenBudget ?? 2000;
-    const contextPercent = this.settings.contextPercent ?? 0.7;
+  private applyBudget(candidates: ActivatedEntry[], settings: ActivationSettings): ActivatedEntry[] {
+    const budget = settings.tokenBudget ?? 2000;
+    const contextPercent = settings.contextPercent ?? 0.7;
     const maxTokens = Math.floor(budget * contextPercent);
 
     let currentTokens = 0;
     const result: ActivatedEntry[] = [];
 
-    // Apply group limits first
-    const groups: Record<string, ActivatedEntry[]> = {};
-    const ungrouped: ActivatedEntry[] = [];
+    candidates.sort((a, b) => (b.activationScore || 0) - (a.activationScore || 0));
 
     for (const entry of candidates) {
-      if (entry.group) {
-        if (!groups[entry.group]) groups[entry.group] = [];
-        groups[entry.group].push(entry);
-      } else {
-        ungrouped.push(entry);
-      }
-    }
-
-    // Take best from each group
-    for (const [groupName, groupEntries] of Object.entries(groups)) {
-      groupEntries.sort((a, b) => (b.activationScore || 0) - (a.activationScore || 0));
-      if (groupEntries.length > 0) {
-        const tokens = this.estimateTokens(groupEntries[0].content);
-        if (currentTokens + tokens <= maxTokens) {
-          result.push(groupEntries[0]);
-          currentTokens += tokens;
-        }
-      }
-    }
-
-    // Add ungrouped entries
-    for (const entry of ungrouped) {
       const tokens = this.estimateTokens(entry.content);
       if (currentTokens + tokens <= maxTokens) {
         result.push(entry);
@@ -286,34 +261,55 @@ export class WorldBookEngine {
     return result;
   }
 
-  private organizeByPosition(entries: ActivatedEntry[]): InsertionSlot[] {
-    const slots: Record<string, ActivatedEntry[]> = {
-      'before_char': [],
-      'after_char': [],
-      'before_example': [],
-      'after_example': [],
-      'before_an': [],
-      'after_an': [],
-      'at_depth': []
+  private distributeToSlots(entries: ActivatedEntry[]): InsertionSlot[] {
+    const slots = new Map<string, InsertionSlot>();
+    const positionMap: Record<string, string> = {
+      'before_char': 'before_char',
+      'after_char': 'after_char',
+      'before_example': 'before_example',
+      'after_example': 'after_example',
+      'before_an': 'before_an',
+      'after_an': 'after_an',
+      'at_depth': 'at_depth'
     };
 
     for (const entry of entries) {
       const position = entry.position || 'after_char';
-      if (slots[position]) {
-        slots[position].push(entry);
-      } else {
-        slots['after_char'].push(entry);
+      const slotKey = positionMap[position] || 'after_char';
+      
+      if (!slots.has(slotKey)) {
+        slots.set(slotKey, { 
+          position: slotKey, 
+          entries: [],
+          depth: entry.depth,
+          role: entry.role
+        });
       }
+      slots.get(slotKey)!.entries.push(entry);
     }
 
-    // Sort by order within each position
-    for (const position in slots) {
-      slots[position].sort((a, b) => (a.order || 0) - (b.order || 0));
+    const posRank = (s: InsertionSlot) => {
+      const roleRank = (r?: string) => r === 'system' ? 0 : (r === 'user' ? 1 : 2);
+      switch (s.position) {
+        case 'before_an': return 0;
+        case 'before_char': return 1;
+        case 'before_example': return 2;
+        case 'at_depth': return 3 + (s.depth ?? 0) * 0.01 + roleRank(s.role) * 0.001;
+        case 'after_example': return 4;
+        case 'after_char': return 5;
+        case 'after_an': return 6;
+        default: return 5;
+      }
+    };
+    
+    // 槽内排序
+    for (const slot of slots.values()) {
+      slot.entries.sort((a, b) => (a.order || 0) - (b.order || 0));
     }
-
-    return Object.entries(slots)
-      .filter(([_, entries]) => entries.length > 0)
-      .map(([position, entries]) => ({ position, entries }));
+    
+    // 槽之间排序
+    const ordered = Array.from(slots.values()).sort((a, b) => posRank(a) - posRank(b));
+    return ordered;
   }
 
   private createActivatedEntry(entry: Entry, matchedKeys: string[], depth: number, ctx: EngineContext): ActivatedEntry {
@@ -325,15 +321,6 @@ export class WorldBookEngine {
       activationTime: ctx.currentTime
     };
 
-    // Update activation history
-    const currentTime = ctx.currentTime ?? Date.now();
-    const history = {
-      time: currentTime,
-      stickyUntil: entry.sticky ? currentTime + (entry.sticky * 1000) : undefined,
-      cooldownUntil: entry.cooldown ? currentTime + (entry.cooldown * 1000) : undefined
-    };
-    this.activationHistory.set(entry.id, history);
-
     return activated;
   }
 
@@ -343,44 +330,55 @@ export class WorldBookEngine {
     const wholeWords = entry.matchWholeWords ?? this.settings.matchWholeWords ?? false;
 
     for (const key of entry.keys || []) {
-      if (this.textMatch(text, key, { caseSensitive, wholeWords })) {
-        matched.push(key);
+      // 在 matchKeys 的普通文本分支：
+      const T = caseSensitive ? text : text.toLowerCase();
+      const K = caseSensitive ? key : key.toLowerCase();
+      if (wholeWords) { 
+        const re = this.makeWholeWordRegex(K, caseSensitive); 
+        if (re.test(text)) matched.push(key); 
+      } else { 
+        if (T.includes(K)) matched.push(key); 
       }
     }
 
     return matched;
   }
 
+  private containsCJK(s: string): boolean {
+    return /[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/.test(s);
+  }
+  
+  private makeWholeWordRegex(k: string, cs: boolean): RegExp {
+    const flags = cs ? 'g' : 'gi';
+    if (this.containsCJK(k)) return new RegExp(this.escapeRegex(k), flags); // CJK 退化为子串
+    return new RegExp(`(^|\\W)${this.escapeRegex(k)}(\\W|$)`, flags);
+  }
+
   private textMatch(text: string, key: string, options: { caseSensitive?: boolean; wholeWords?: boolean } = {}): boolean {
     const { caseSensitive = false, wholeWords = false } = options;
     
-    const t = caseSensitive ? text : this.toHalfWidth(text).toLowerCase();
-    const k = caseSensitive ? key : this.toHalfWidth(key).toLowerCase();
-
     // Handle regex keys
-    if (k.startsWith('/') && k.lastIndexOf('/') > 0) {
+    if (key.startsWith('/') && key.lastIndexOf('/') > 0) {
       try {
-        const i = k.lastIndexOf('/');
-        const pattern = k.slice(1, i);
-        const flags = k.slice(i + 1) || (caseSensitive ? '' : 'i');
+        const i = key.lastIndexOf('/');
+        const pattern = key.slice(1, i);
+        const flags = key.slice(i + 1) || (caseSensitive ? '' : 'i');
         return new RegExp(pattern, flags).test(text);
       } catch (e) {
         return false;
       }
     }
 
-    // CJK text: no word boundaries, direct inclusion match
-    if (this.hasCJK(k) || this.hasCJK(t)) {
-      return t.includes(k);
-    }
-
-    // English: use word boundaries if wholeWords is true
+    const t = caseSensitive ? text : text.toLowerCase();
+    const k = caseSensitive ? key : key.toLowerCase();
     if (wholeWords) {
-      const regex = new RegExp(`\\b${this.escapeRegex(k)}\\b`, caseSensitive ? '' : 'i');
-      return regex.test(text);
+      const re = this.makeWholeWordRegex(k, caseSensitive);
+      if (re.test(text)) return true;
+    } else {
+      if (t.includes(k)) return true;
     }
     
-    return t.includes(k);
+    return false;
   }
 
   private calculateActivationScore(entry: Entry, text: string, matchedKeys: string[]): number {
@@ -408,9 +406,71 @@ export class WorldBookEngine {
     return groupMembers.length * 10;
   }
 
-  private ensureMinimumActivations(entries: Entry[], ctx: EngineContext): ActivatedEntry[] {
-    // Simplified minimum activation logic
-    return [];
+  private resolveInclusionGroups(entries: ActivatedEntry[]): ActivatedEntry[] {
+    const groups: Record<string, ActivatedEntry[]> = {};
+    const ungrouped: ActivatedEntry[] = [];
+
+    for (const entry of entries) {
+      if (entry.group) {
+        if (!groups[entry.group]) groups[entry.group] = [];
+        groups[entry.group].push(entry);
+      } else {
+        ungrouped.push(entry);
+      }
+    }
+
+    const result: ActivatedEntry[] = [...ungrouped];
+    
+    // 同一组只留一条
+    for (const [groupName, groupEntries] of Object.entries(groups)) {
+      const selected = this.selectFromGroup(groupEntries);
+      if (selected) result.push(selected);
+    }
+
+    return result;
+  }
+
+  private selectFromGroup(entries: ActivatedEntry[]): ActivatedEntry | null {
+    if (entries.length <= 1) return entries[0] ?? null;
+    const useScore = entries.some(e => e.useGroupScoring);
+    const usePrior = entries.some(e => e.prioritizeInclusion);
+    let pool = entries;
+    
+    if (useScore) {
+      const max = Math.max(...pool.map(e => e.activationScore ?? 0));
+      pool = pool.filter(e => (e.activationScore ?? 0) === max);
+    }
+    
+    if (usePrior) {
+      return pool.reduce((a, b) => ((b.order ?? 0) > (a.order ?? 0) ? b : a));
+    }
+    
+    const total = pool.reduce((s, e) => s + (e.groupWeight ?? 100), 0);
+    let r = this.rand() * total;
+    for (const e of pool) { 
+      r -= (e.groupWeight ?? 100); 
+      if (r <= 0) return e; 
+    }
+    return pool[0];
+  }
+
+  private minActivationScan(candidates: ActivatedEntry[], worldbook: WorldBook, context: EngineContext, settings: ActivationSettings): ActivatedEntry[] {
+    const minRequired = settings.minActivations ?? 1;
+    if (candidates.length >= minRequired) return candidates;
+    
+    const needed = minRequired - candidates.length;
+    const allEntries = worldbook.entries.filter(e => e.enabled && !candidates.some(c => c.id === e.id));
+    
+    // Select highest priority entries that weren't already activated
+    allEntries.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    
+    const additional: ActivatedEntry[] = [];
+    for (let i = 0; i < Math.min(needed, allEntries.length); i++) {
+      const entry = allEntries[i];
+      additional.push(this.createActivatedEntry(entry, [], 0, context));
+    }
+    
+    return [...candidates, ...additional];
   }
 
   private calculateTotalTokens(entries: ActivatedEntry[]): number {
@@ -421,14 +481,6 @@ export class WorldBookEngine {
     return Math.ceil(text.length / 4);
   }
 
-  private toHalfWidth(s: string): string {
-    return s.replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
-            .replace(/\u3000/g, ' ');
-  }
-
-  private hasCJK(s: string): boolean {
-    return /[\u3400-\u9FFF\uF900-\uFAFF]/.test(s || '');
-  }
 
   private escapeRegex(str: string): string {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

@@ -18,6 +18,10 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     let presenceTopic = '';
     let currentBrokerIndex = 0;
     
+    // 在线用户管理
+    let onlineUsers = new Set(); // 在线用户集合
+    let userJoinTimes = new Map(); // 用户加入时间记录
+    
     // 备选MQTT Broker列表
     const brokerUrls = [
         'wss://test.mosquitto.org:8081/mqtt',
@@ -26,6 +30,19 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     
     // UI 元素引用
     let elements = {};
+    
+    // HTML转义函数，防止XSS攻击
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // 显示用户友好的提示信息
+    function showAlert(message) {
+        // 使用浏览器原生alert，也可以改为自定义弹窗
+        alert(message);
+    }
     
     // 创建UI界面
     function createUI() {
@@ -50,6 +67,15 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         <div class="status-display status disconnected">📴 未连接</div>
                         <div class="broker-info">
                             <small>当前服务器：<span id="current-broker">test.mosquitto.org</span></small>
+                        </div>
+                        <div class="online-users-info">
+                            <div class="online-count">
+                                👥 在线人数：<span id="online-count">0</span>
+                            </div>
+                            <div class="online-list" id="online-list" style="display: none;">
+                                <div class="online-list-header">在线用户：</div>
+                                <div class="online-list-content" id="online-list-content"></div>
+                            </div>
                         </div>
                         <div class="warning">
                             ⚠️ 公共 Broker 不保证隐私与稳定，勿传敏感信息
@@ -233,6 +259,60 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     text-align: center;
                     margin-bottom: 8px;
                     color: #666;
+                }
+                
+                .online-users-info {
+                    text-align: center;
+                    margin-bottom: 8px;
+                }
+                
+                .online-count {
+                    font-size: 14px;
+                    color: #28a745;
+                    font-weight: 500;
+                    cursor: pointer;
+                    padding: 4px 8px;
+                    border-radius: 12px;
+                    background: #f8fff8;
+                    border: 1px solid #d4edda;
+                    margin-bottom: 8px;
+                    transition: all 0.3s;
+                }
+                
+                .online-count:hover {
+                    background: #d4edda;
+                }
+                
+                .online-list {
+                    background: #f8fff8;
+                    border: 1px solid #d4edda;
+                    border-radius: 8px;
+                    padding: 8px;
+                    margin-top: 8px;
+                    max-height: 120px;
+                    overflow-y: auto;
+                }
+                
+                .online-list-header {
+                    font-weight: bold;
+                    font-size: 12px;
+                    color: #28a745;
+                    margin-bottom: 6px;
+                }
+                
+                .online-list-content {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 4px;
+                }
+                
+                .online-user {
+                    background: #e3f2fd;
+                    color: #1976d2;
+                    padding: 2px 6px;
+                    border-radius: 12px;
+                    font-size: 11px;
+                    border: 1px solid #bbdefb;
                 }
                 
                 .warning {
@@ -421,7 +501,11 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             currentBroker: mountEl.querySelector('#current-broker'),
             messages: mountEl.querySelector('#messages-container'),
             messageInput: mountEl.querySelector('.message-input'),
-            sendBtn: mountEl.querySelector('.send-btn')
+            sendBtn: mountEl.querySelector('.send-btn'),
+            onlineCount: mountEl.querySelector('#online-count'),
+            onlineList: mountEl.querySelector('#online-list'),
+            onlineListContent: mountEl.querySelector('#online-list-content'),
+            onlineCountDisplay: mountEl.querySelector('.online-count')
         };
         
         // 验证关键元素是否存在
@@ -441,8 +525,6 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     }
     
     function bindEvents() {
-        // 注意：返回按钮的事件绑定已移到main.js中处理
-        
         // 连接按钮
         elements.connectBtn.addEventListener('click', () => connectRoom());
         
@@ -466,6 +548,12 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             if (e.key === 'Enter' && !isConnected) connectRoom();
         });
         
+        // 在线人数点击切换显示用户列表
+        elements.onlineCountDisplay.addEventListener('click', () => {
+            const isVisible = elements.onlineList.style.display !== 'none';
+            elements.onlineList.style.display = isVisible ? 'none' : 'block';
+        });
+        
         // 页面可见性变化处理
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && isConnected) {
@@ -481,8 +569,25 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         nickname = elements.nicknameInput.value.trim();
         
         if (!roomId || !nickname) {
-            alert('请输入房间号和昵称！');
+            showAlert('请输入房间号和昵称！');
             return;
+        }
+        
+        // 检查昵称长度
+        if (nickname.length > 20) {
+            showAlert('昵称不能超过20个字符！');
+            return;
+        }
+        
+        // 检查房间号格式
+        if (!/^[a-zA-Z0-9\-_]+$/.test(roomId)) {
+            showAlert('房间号只能包含字母、数字、横线和下划线！');
+            return;
+        }
+        
+        // 如果已经连接，先断开
+        if (client && isConnected) {
+            await leaveRoom();
         }
         
         messageTopic = `game/${roomId}/messages`;
@@ -521,6 +626,10 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 updateConnectionStatus('connected');
                 log('system', `已加入房间: ${roomId}`);
                 
+                // 清空之前的在线用户列表，然后添加自己
+                clearOnlineUsers();
+                addOnlineUser(nickname);
+                
                 client.subscribe([messageTopic, presenceTopic], (err) => {
                     if (!err) {
                         publishPresence('join');
@@ -547,6 +656,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     updateStatus('disconnected', '📴 已断开');
                     updateConnectionStatus('disconnected');
                     updateUI(false);
+                    clearOnlineUsers(); // 清空在线用户列表
                 }
             });
             
@@ -569,6 +679,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     updateStatus('disconnected', '❌ 连接失败');
                     updateConnectionStatus('disconnected');
                     updateUI(false);
+                    clearOnlineUsers(); // 清空在线用户列表
                     // 重置服务器索引为下次连接做准备
                     currentBrokerIndex = 0;
                     updateBrokerDisplay();
@@ -583,67 +694,116 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     }
     
     function leaveRoom() {
-        if (client) {
-            try {
-                if (isConnected) {
-                    // 发送离开消息
-                    publishPresence('leave');
-                    log('system', '正在离开房间...');
+        return new Promise((resolve) => {
+            if (client) {
+                try {
+                    if (isConnected) {
+                        // 发送离开消息
+                        publishPresence('leave');
+                        log('system', '正在离开房间...');
+                    }
+                    
+                    // 强制断开连接
+                    client.end(true); // 强制立即断开
+                    client = null;
+                    isConnected = false;
+                    
+                    // 更新界面状态
+                    updateStatus('disconnected', '📴 已离开');
+                    updateConnectionStatus('disconnected');
+                    updateUI(false);
+                    log('system', '已离开房间');
+                    
+                    // 清空在线用户列表
+                    clearOnlineUsers();
+                    
+                    // 重置服务器索引
+                    currentBrokerIndex = 0;
+                    updateBrokerDisplay();
+                    
+                    console.log('MQTT房间离开完成');
+                    resolve();
+                } catch (error) {
+                    console.error('离开房间时发生错误:', error);
+                    // 确保状态重置
+                    client = null;
+                    isConnected = false;
+                    updateStatus('disconnected', '❌ 离开异常');
+                    updateConnectionStatus('disconnected');
+                    updateUI(false);
+                    resolve();
                 }
-                
-                // 强制断开连接
-                client.end(true); // 强制立即断开
-                client = null;
-                isConnected = false;
-                
-                // 更新界面状态
-                updateStatus('disconnected', '📴 已离开');
-                updateConnectionStatus('disconnected');
-                updateUI(false);
-                log('system', '已离开房间');
-                
-                // 重置服务器索引
-                currentBrokerIndex = 0;
-                updateBrokerDisplay();
-                
-                console.log('MQTT房间离开完成');
-            } catch (error) {
-                console.error('离开房间时发生错误:', error);
-                // 确保状态重置
-                client = null;
-                isConnected = false;
-                updateUI(false);
+            } else {
+                resolve();
             }
-        }
+        });
     }
     
     function sendMessage() {
         const text = elements.messageInput.value.trim();
-        if (!text || !isConnected) return;
+        if (!text) return;
         
-        const message = {
-            type: 'chat',
-            name: nickname,
-            text: text,
-            timestamp: Date.now()
-        };
+        if (!isConnected || !client) {
+            showAlert('未连接到聊天室，无法发送消息');
+            return;
+        }
         
-        client.publish(messageTopic, JSON.stringify(message));
-        elements.messageInput.value = '';
+        // 检查消息长度
+        if (text.length > 500) {
+            showAlert('消息长度不能超过500个字符');
+            return;
+        }
+        
+        try {
+            const message = {
+                type: 'chat',
+                name: nickname,
+                text: text,
+                timestamp: Date.now()
+            };
+            
+            client.publish(messageTopic, JSON.stringify(message), (err) => {
+                if (err) {
+                    console.error('消息发送失败:', err);
+                    log('system', '❌ 消息发送失败');
+                }
+            });
+            
+            elements.messageInput.value = '';
+        } catch (error) {
+            console.error('发送消息时发生错误:', error);
+            log('system', '❌ 消息发送异常');
+        }
     }
     
     function sendTextMessage(text) {
-        if (!text || !isConnected) return false;
+        if (!text || !isConnected || !client) return false;
         
-        const message = {
-            type: 'chat',
-            name: nickname,
-            text: text,
-            timestamp: Date.now()
-        };
+        // 检查消息长度
+        if (text.length > 500) {
+            console.warn('API调用：消息长度超出限制');
+            return false;
+        }
         
-        client.publish(messageTopic, JSON.stringify(message));
-        return true;
+        try {
+            const message = {
+                type: 'chat',
+                name: nickname,
+                text: text,
+                timestamp: Date.now()
+            };
+            
+            client.publish(messageTopic, JSON.stringify(message), (err) => {
+                if (err) {
+                    console.error('API调用消息发送失败:', err);
+                }
+            });
+            
+            return true;
+        } catch (error) {
+            console.error('API调用发送消息异常:', error);
+            return false;
+        }
     }
     
     function publishPresence(type) {
@@ -665,9 +825,19 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             if (topic === messageTopic && data.type === 'chat') {
                 const isOwnMessage = data.name === nickname;
                 addChatMessage(data.name, data.text, data.timestamp, isOwnMessage);
-            } else if (topic === presenceTopic && data.name !== nickname) {
-                const action = data.type === 'join' ? '加入了房间' : '离开了房间';
-                log('presence', `${data.name} ${action}`, data.timestamp);
+            } else if (topic === presenceTopic) {
+                // 处理用户加入/离开的presence消息
+                if (data.type === 'join') {
+                    addOnlineUser(data.name);
+                    if (data.name !== nickname) {
+                        log('presence', `${data.name} 加入了房间`, data.timestamp);
+                    }
+                } else if (data.type === 'leave') {
+                    removeOnlineUser(data.name);
+                    if (data.name !== nickname) {
+                        log('presence', `${data.name} 离开了房间`, data.timestamp);
+                    }
+                }
             }
         } catch (error) {
             log('system', `消息解析错误: ${error.message}`);
@@ -675,57 +845,84 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     }
     
     function addChatMessage(user, text, timestamp, isOwnMessage = false) {
-        const messageEl = document.createElement('div');
-        messageEl.className = `message chat ${isOwnMessage ? 'own-message' : ''}`;
+        // 使用 requestAnimationFrame 优化DOM操作，避免界面卡顿
+        requestAnimationFrame(() => {
+            const messageEl = document.createElement('div');
+            messageEl.className = `message chat ${isOwnMessage ? 'own-message' : ''}`;
 
-        const time = new Date(timestamp).toLocaleTimeString('zh-CN', { 
-            hour12: false, 
-            hour: '2-digit', 
-            minute: '2-digit' 
+            const time = new Date(timestamp).toLocaleTimeString('zh-CN', { 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+
+            // 限制消息数量，避免DOM元素过多导致卡顿
+            if (elements.messages.children.length > 200) {
+                elements.messages.removeChild(elements.messages.firstChild);
+            }
+
+            if (isOwnMessage) {
+                messageEl.innerHTML = `
+                    <div class="message-header">
+                        <span class="message-time">${time}</span>
+                    </div>
+                    <div class="message-text">${escapeHtml(text)}</div>
+                `;
+            } else {
+                messageEl.innerHTML = `
+                    <div class="message-header">
+                        <span class="user-name">${escapeHtml(user)}</span>
+                        <span class="message-time">${time}</span>
+                    </div>
+                    <div class="message-text">${escapeHtml(text)}</div>
+                `;
+            }
+
+            elements.messages.appendChild(messageEl);
+            scrollToBottom();
         });
-
-        if (isOwnMessage) {
-            messageEl.innerHTML = `
-                <div class="message-header">
-                    <span class="message-time">${time}</span>
-                </div>
-                <div class="message-text">${text}</div>
-            `;
-        } else {
-            messageEl.innerHTML = `
-                <div class="message-header">
-                    <span class="user-name">${user}</span>
-                    <span class="message-time">${time}</span>
-                </div>
-                <div class="message-text">${text}</div>
-            `;
-        }
-
-        elements.messages.appendChild(messageEl);
-        scrollToBottom();
     }
     
     function log(type, message, timestamp = Date.now()) {
-        const messageEl = document.createElement('div');
-        messageEl.className = `message ${type}`;
-        
-        const time = new Date(timestamp).toLocaleTimeString('zh-CN', { 
-            hour12: false, 
-            hour: '2-digit', 
-            minute: '2-digit' 
+        // 使用 requestAnimationFrame 优化DOM操作
+        requestAnimationFrame(() => {
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${type}`;
+            
+            const time = new Date(timestamp).toLocaleTimeString('zh-CN', { 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            // 限制消息数量
+            if (elements.messages.children.length > 200) {
+                elements.messages.removeChild(elements.messages.firstChild);
+            }
+            
+            messageEl.innerHTML = `<span class="timestamp">[${time}]</span> ${escapeHtml(message)}`;
+            
+            elements.messages.appendChild(messageEl);
+            scrollToBottom();
         });
-        messageEl.innerHTML = `<span class="timestamp">[${time}]</span> ${message}`;
-        
-        elements.messages.appendChild(messageEl);
-        scrollToBottom();
     }
     
     function clearMessages() {
         elements.messages.innerHTML = '';
     }
     
+    // 防抖滚动函数，避免频繁滚动造成卡顿
+    let scrollTimeout = null;
     function scrollToBottom() {
-        elements.messages.scrollTop = elements.messages.scrollHeight;
+        if (scrollTimeout) {
+            clearTimeout(scrollTimeout);
+        }
+        scrollTimeout = setTimeout(() => {
+            if (elements.messages) {
+                elements.messages.scrollTop = elements.messages.scrollHeight;
+            }
+            scrollTimeout = null;
+        }, 50); // 50ms防抖延迟
     }
     
     function updateStatus(type, message) {
@@ -747,6 +944,67 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         const currentUrl = brokerUrls[currentBrokerIndex];
         const brokerName = currentUrl.includes('mosquitto') ? 'test.mosquitto.org' : 'broker.hivemq.com';
         elements.currentBroker.textContent = brokerName;
+    }
+    
+    // 更新在线用户显示
+    function updateOnlineUsersDisplay() {
+        const count = onlineUsers.size;
+        elements.onlineCount.textContent = count;
+        
+        // 清空当前用户列表
+        elements.onlineListContent.innerHTML = '';
+        
+        // 如果有在线用户，显示用户列表
+        if (count > 0) {
+            onlineUsers.forEach(user => {
+                const userEl = document.createElement('div');
+                userEl.className = 'online-user';
+                userEl.textContent = user;
+                
+                // 如果是当前用户，添加特殊样式
+                if (user === nickname) {
+                    userEl.style.background = '#e8f5e8';
+                    userEl.style.color = '#2e7d32';
+                    userEl.style.fontWeight = 'bold';
+                    userEl.textContent = user + ' (我)';
+                }
+                
+                elements.onlineListContent.appendChild(userEl);
+            });
+            
+            // 如果在线人数大于0且用户列表当前显示，保持显示状态
+            if (elements.onlineList.style.display === 'block') {
+                elements.onlineList.style.display = 'block';
+            }
+        } else {
+            // 如果没有在线用户，隐藏用户列表
+            elements.onlineList.style.display = 'none';
+        }
+    }
+    
+    // 添加在线用户
+    function addOnlineUser(username) {
+        if (username && username.trim()) {
+            onlineUsers.add(username);
+            userJoinTimes.set(username, Date.now());
+            updateOnlineUsersDisplay();
+        }
+    }
+    
+    // 移除在线用户
+    function removeOnlineUser(username) {
+        if (username && onlineUsers.has(username)) {
+            onlineUsers.delete(username);
+            userJoinTimes.delete(username);
+            updateOnlineUsersDisplay();
+        }
+    }
+    
+    // 清空在线用户列表
+    function clearOnlineUsers() {
+        onlineUsers.clear();
+        userJoinTimes.clear();
+        updateOnlineUsersDisplay();
     }
     
     function updateUI(connected) {
