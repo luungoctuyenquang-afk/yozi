@@ -112,7 +112,9 @@ export class WorldBookEngine {
     const text = context.scanText || '';
 
     for (const entry of entries) {
-      if (!entry.enabled) continue;
+      // Treat undefined as enabled
+      const isEnabled = entry.enabled !== false;
+      if (!isEnabled) continue;
 
       // Always activate constants
       if (entry.constant) {
