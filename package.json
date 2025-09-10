@@ -1,12 +1,24 @@
 {
   "name": "yoyo",
   "private": true,
+  "dependencies": {
+    "express": "^4.18.2"
+  },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
-    "http-server": "^14.1.1"
+    "http-server": "^14.1.1",
+    "typescript": "^5.0.0",
+    "tsup": "^8.0.0",
+    "vitest": "^1.0.0",
+    "@types/node": "^20.0.0"
   },
   "scripts": {
-  "test:e2e": "playwright test"
-}
-
+    "start": "node server.js",
+    "dev": "node server.js",
+    "quick-start": "echo 启动虚拟手机服务器... && node server.js",
+    "install-service": "node install-service.js",
+    "test:e2e": "playwright test",
+    "build": "tsup worldbook/*.ts --format=esm,iife --global-name=WorldBookKit --dts --minify --out-dir public/worldbook",
+    "test": "vitest run"
+  }
 }

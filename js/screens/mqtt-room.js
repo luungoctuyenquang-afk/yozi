@@ -424,6 +424,14 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             sendBtn: mountEl.querySelector('.send-btn')
         };
         
+        // 验证关键元素是否存在
+        if (!elements.backBtn) {
+            console.error('MQTT聊天室：返回按钮未找到');
+        }
+        if (!elements.messages) {
+            console.error('MQTT聊天室：消息容器未找到');
+        }
+        
         // 设置默认昵称
         elements.nicknameInput.value = getPlayerName() || '匿名用户';
         updateBrokerDisplay();
@@ -433,13 +441,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     }
     
     function bindEvents() {
-        // 返回按钮
-        elements.backBtn.addEventListener('click', () => {
-            leaveRoom();
-            if (window.Utils && window.Utils.showScreen) {
-                window.Utils.showScreen('home-screen');
-            }
-        });
+        // 注意：返回按钮的事件绑定已移到main.js中处理
         
         // 连接按钮
         elements.connectBtn.addEventListener('click', () => connectRoom());
@@ -581,19 +583,37 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     }
     
     function leaveRoom() {
-        if (client && isConnected) {
-            publishPresence('leave');
-            setTimeout(() => {
-                client.end();
+        if (client) {
+            try {
+                if (isConnected) {
+                    // 发送离开消息
+                    publishPresence('leave');
+                    log('system', '正在离开房间...');
+                }
+                
+                // 强制断开连接
+                client.end(true); // 强制立即断开
+                client = null;
                 isConnected = false;
+                
+                // 更新界面状态
                 updateStatus('disconnected', '📴 已离开');
                 updateConnectionStatus('disconnected');
                 updateUI(false);
                 log('system', '已离开房间');
+                
                 // 重置服务器索引
                 currentBrokerIndex = 0;
                 updateBrokerDisplay();
-            }, 100);
+                
+                console.log('MQTT房间离开完成');
+            } catch (error) {
+                console.error('离开房间时发生错误:', error);
+                // 确保状态重置
+                client = null;
+                isConnected = false;
+                updateUI(false);
+            }
         }
     }
     
@@ -746,7 +766,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     createUI();
     
     // 返回控制接口
-    return {
+    const appInstance = {
         /**
          * 连接到指定房间
          * @param {string} room 房间号（可选，不传则使用UI中的值）
@@ -774,6 +794,11 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             return sendTextMessage(text);
         }
     };
+    
+    // 将实例保存到全局，以便main.js可以访问
+    window.currentMqttRoomApp = appInstance;
+    
+    return appInstance;
 }
 
 // 导出模块（如果在模块环境中）

@@ -707,8 +707,25 @@
     <script src="js/main.js"></script>
 
     <!-- WorldBook 引擎集成 -->
-    <script src="/worldbook/index.iife.js"></script>
-    <script src="/js/worldbook-link.js"></script>
+    <script>
+        // 自动检测环境并选择正确的路径
+        (function() {
+            const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const worldbookPath = isLocalDev ? 'public/worldbook/index.iife.js' : '/worldbook/index.iife.js';
+            
+            const script = document.createElement('script');
+            script.src = worldbookPath;
+            script.onerror = function() {
+                console.warn('WorldBook文件加载失败，尝试备用路径...');
+                // 如果主路径失败，尝试备用路径
+                const fallbackScript = document.createElement('script');
+                fallbackScript.src = isLocalDev ? '/worldbook/index.iife.js' : 'public/worldbook/index.iife.js';
+                document.head.appendChild(fallbackScript);
+            };
+            document.head.appendChild(script);
+        })();
+    </script>
+    <script src="js/worldbook-link.js"></script>
     
     <script>
     // 注册Service Worker

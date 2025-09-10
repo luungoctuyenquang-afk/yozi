@@ -96,7 +96,7 @@ const Utils = {
         const screens = document.querySelectorAll('.screen');
         const flexScreens = ['lock-screen', 'chat-screen', 'wallet-screen', 'store-screen', 
                             'backpack-screen', 'world-book-screen', 'settings-screen', 
-                            'general-settings-screen'];
+                            'general-settings-screen', 'mqtt-room-screen'];
         
         screens.forEach(s => {
             s.style.display = s.id === screenId 

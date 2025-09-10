@@ -103,6 +103,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function bindEvents() {
         const state = StateManager.get();
         
+        // 全局MQTT应用实例
+        let mqttRoomApp = null;
+        
         // 锁屏解锁
         Utils.safeBind(document.getElementById('lock-screen'), 'click', async () => {
             Utils.showScreen('home-screen');
@@ -175,19 +178,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         // MQTT聊天室应用
-        let mqttRoomApp = null;
         Utils.safeBind(document.getElementById('open-mqtt-room-app'), 'click', () => {
             Utils.showScreen('mqtt-room-screen');
             const container = document.getElementById('mqtt-room-container');
-            if (container && !mqttRoomApp) {
-                mqttRoomApp = createMqttRoomApp({
-                    mountEl: container,
-                    getPlayerName: () => {
-                        const state = StateManager.get();
-                        return state.player?.name || '你';
-                    },
-                    brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
-                });
+            if (container) {
+                // 如果应用还没有初始化，则创建新实例
+                if (!mqttRoomApp) {
+                    mqttRoomApp = createMqttRoomApp({
+                        mountEl: container,
+                        getPlayerName: () => {
+                            const state = StateManager.get();
+                            return state.player?.name || '你';
+                        },
+                        brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+                    });
+                }
             }
         });
         
@@ -356,6 +361,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         Utils.safeBind(document.getElementById('general-settings-back-btn'), 'click', () => {
+            Utils.showScreen('home-screen');
+        });
+        
+        // MQTT聊天室返回按钮
+        Utils.safeBind(document.getElementById('mqtt-back-btn'), 'click', () => {
+            console.log('主应用中的MQTT返回按钮被点击');
+            // 如果MQTT应用存在且连接中，先断开连接
+            if (window.currentMqttRoomApp && typeof window.currentMqttRoomApp.leave === 'function') {
+                console.log('正在离开MQTT房间...');
+                window.currentMqttRoomApp.leave();
+            }
+            console.log('切换到主页面');
             Utils.showScreen('home-screen');
         });
         
