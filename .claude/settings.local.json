@@ -17,7 +17,8 @@
       "Bash(findstr:*)",
       "Bash(start http://localhost:3000)",
       "Bash(start test-mqtt-fixes.html)",
-      "Bash(start test-online-users.html)"
+      "Bash(start test-online-users.html)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

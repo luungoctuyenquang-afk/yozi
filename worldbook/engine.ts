@@ -67,15 +67,19 @@ export class WorldBookEngine {
     candidates = this.applyTimedEffects(candidates, ctx);
     candidates = this.applyProbability(candidates);
     
+    candidates = this.applyBudget(candidates, this.settings);
+    
+    // Check for top-level blockFurther before recursion
+    const topLevelBlocked = candidates.some(e => e.blockFurther);
+    
     // Handle recursion vs minActivations mutually exclusively
     const recursionOn = !!this.settings.recursiveScan && (this.settings.maxRecursionSteps ?? 0) !== 0;
-    if (recursionOn) {
+    if (!topLevelBlocked && recursionOn) {
       candidates = this.recursiveScan(candidates, worldbook, ctx, this.settings);
-    } else if ((this.settings.minActivations ?? 0) > 0) {
+    } else if (!recursionOn && (this.settings.minActivations ?? 0) > 0) {
       candidates = this.minActivationScan(candidates, worldbook, ctx, this.settings);
     }
     
-    candidates = this.applyBudget(candidates, this.settings);
     this.commitTimedEffects(candidates);
     
     const slots = this.distributeToSlots(candidates);
@@ -193,7 +197,13 @@ export class WorldBookEngine {
   }
 
   private applyProbability(cands: ActivatedEntry[]): ActivatedEntry[] {
-    return cands.filter(e => (e.stickyRemaining && e.stickyRemaining > 0) ? true : (this.rand() < ((e.probability ?? 100) / 100)));
+    return cands.filter(e => {
+      if (e.stickyRemaining && e.stickyRemaining > 0) return true;
+      let p = e.probability;
+      if (p == null || Number.isNaN(p as any)) p = 100;
+      p = Math.max(0, Math.min(100, Number(p)));
+      return (this.rand() * 100) <= p;
+    });
   }
 
   private recursiveScan(initial: ActivatedEntry[], book: WorldBook, context: EngineContext, settings: ActivationSettings): ActivatedEntry[] {
@@ -231,7 +241,7 @@ export class WorldBookEngine {
       result.push(...chosen);
       chosen.forEach(e => seen.add(e.id));
       
-      if (chosen.some(e => e.blockFurther)) stop = true;
+      if (chosen.some(e => e.blockFurther)) { stop = true; }
       level++;
     }
     
@@ -302,13 +312,21 @@ export class WorldBookEngine {
       }
     };
     
-    // 槽内排序
+    // 槽内：order 升序，tie→id 升序
     for (const slot of slots.values()) {
-      slot.entries.sort((a, b) => (a.order || 0) - (b.order || 0));
+      slot.entries.sort((a,b)=>{ const oa=a.order??0, ob=b.order??0; if(oa!==ob) return oa-ob; return (a.id??'').localeCompare(b.id??''); });
     }
     
-    // 槽之间排序
-    const ordered = Array.from(slots.values()).sort((a, b) => posRank(a) - posRank(b));
+    // 槽间：明确 rank + depth + roleRank + 生成序
+    const roleRank = (r?: string) => r==='system'?0: r==='user'?1:2;
+    const posOrder:Record<string,number>={before_an:0,before_char:1,before_example:2,at_depth:3,after_example:4,after_char:5,after_an:6};
+    let seq=0; const meta=new Map<InsertionSlot,number>(); for (const s of slots.values()) meta.set(s, seq++);
+    const ordered = Array.from(slots.values()).sort((a,b)=>{
+      const ra=posOrder[a.position as any]??5, rb=posOrder[b.position as any]??5; if(ra!==rb) return ra-rb;
+      const da=a.depth??0, db=b.depth??0; if(da!==db) return da-db;
+      const rr=roleRank(a.role)-roleRank(b.role); if(rr!==0) return rr;
+      return (meta.get(a)!-meta.get(b)!);
+    });
     return ordered;
   }
 
@@ -330,14 +348,13 @@ export class WorldBookEngine {
     const wholeWords = entry.matchWholeWords ?? this.settings.matchWholeWords ?? false;
 
     for (const key of entry.keys || []) {
-      // 在 matchKeys 的普通文本分支：
-      const T = caseSensitive ? text : text.toLowerCase();
-      const K = caseSensitive ? key : key.toLowerCase();
+      const TEXT = caseSensitive ? text : text.toLowerCase();
+      const KEY = caseSensitive ? key : key.toLowerCase();
       if (wholeWords) { 
-        const re = this.makeWholeWordRegex(K, caseSensitive); 
+        const re = this.makeWholeWordRegex(KEY, caseSensitive); 
         if (re.test(text)) matched.push(key); 
       } else { 
-        if (T.includes(K)) matched.push(key); 
+        if (TEXT.includes(KEY)) matched.push(key); 
       }
     }
 
@@ -350,7 +367,7 @@ export class WorldBookEngine {
   
   private makeWholeWordRegex(k: string, cs: boolean): RegExp {
     const flags = cs ? 'g' : 'gi';
-    if (this.containsCJK(k)) return new RegExp(this.escapeRegex(k), flags); // CJK 退化为子串
+    if (this.containsCJK(k)) return new RegExp(this.escapeRegex(k), flags); // CJK: 子串
     return new RegExp(`(^|\\W)${this.escapeRegex(k)}(\\W|$)`, flags);
   }
 
@@ -406,51 +423,27 @@ export class WorldBookEngine {
     return groupMembers.length * 10;
   }
 
-  private resolveInclusionGroups(entries: ActivatedEntry[]): ActivatedEntry[] {
-    const groups: Record<string, ActivatedEntry[]> = {};
-    const ungrouped: ActivatedEntry[] = [];
-
-    for (const entry of entries) {
-      if (entry.group) {
-        if (!groups[entry.group]) groups[entry.group] = [];
-        groups[entry.group].push(entry);
-      } else {
-        ungrouped.push(entry);
-      }
-    }
-
-    const result: ActivatedEntry[] = [...ungrouped];
-    
-    // 同一组只留一条
-    for (const [groupName, groupEntries] of Object.entries(groups)) {
-      const selected = this.selectFromGroup(groupEntries);
-      if (selected) result.push(selected);
-    }
-
-    return result;
+  private resolveInclusionGroups(cands: ActivatedEntry[]): ActivatedEntry[] {
+    const grouped = new Map<string, ActivatedEntry[]>(), solo: ActivatedEntry[] = [];
+    for (const e of cands) (e.inclusionGroup ? (grouped.get(e.inclusionGroup) ?? grouped.set(e.inclusionGroup, []).get(e.inclusionGroup)!).push(e) : solo.push(e));
+    const winners: ActivatedEntry[] = [];
+    for (const [, arr] of grouped) { const w = this.selectFromGroup(arr); if (w) winners.push(w); }
+    return [...winners, ...solo];
   }
 
   private selectFromGroup(entries: ActivatedEntry[]): ActivatedEntry | null {
-    if (entries.length <= 1) return entries[0] ?? null;
+    if (!entries.length) return null;
+    if (entries.length === 1) return entries[0];
     const useScore = entries.some(e => e.useGroupScoring);
     const usePrior = entries.some(e => e.prioritizeInclusion);
     let pool = entries;
-    
     if (useScore) {
-      const max = Math.max(...pool.map(e => e.activationScore ?? 0));
-      pool = pool.filter(e => (e.activationScore ?? 0) === max);
+      const m = Math.max(...pool.map(e => e.score ?? 0));
+      pool = pool.filter(e => (e.score ?? 0) === m);
     }
-    
-    if (usePrior) {
-      return pool.reduce((a, b) => ((b.order ?? 0) > (a.order ?? 0) ? b : a));
-    }
-    
-    const total = pool.reduce((s, e) => s + (e.groupWeight ?? 100), 0);
-    let r = this.rand() * total;
-    for (const e of pool) { 
-      r -= (e.groupWeight ?? 100); 
-      if (r <= 0) return e; 
-    }
+    if (usePrior) return pool.reduce((a,b)=>( (b.order??0)>(a.order??0)?b:a ));
+    const total = pool.reduce((s,e)=>s+(e.groupWeight??100),0);
+    let r = this.rand()*total; for (const e of pool){ r -= (e.groupWeight??100); if (r<=0) return e; }
     return pool[0];
   }
 

@@ -30,6 +30,7 @@ export interface Entry {
   
   // Group behavior
   group?: string;
+  inclusionGroup?: string;
   probability?: number;
   useGroupScoring?: boolean;
   prioritizeInclusion?: boolean;
@@ -94,6 +95,7 @@ export interface ActivatedEntry extends Entry {
   matchedKeys: string[];
   depth: number;
   activationScore: number;
+  score?: number;
   groupScore?: number;
   activationTime?: number;
   stickyUntil?: number;

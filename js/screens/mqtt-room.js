@@ -456,23 +456,96 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             </div>
             
             <style>
+                /* =================== MQTT聊天室美化样式 =================== */
+                /* CSS变量定义 - 支持深浅主题切换 */
                 .mqtt-room-screen {
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-                    background: #f5f5f5;
+                    /* 颜色变量定义 */
+                    --bg-primary: #0b0f15;
+                    --bg-secondary: #1a1f26;
+                    --card-bg: rgba(255,255,255,.08);
+                    --card-border: rgba(255,255,255,.15);
+                    --text-primary: #e9eef6;
+                    --text-secondary: #9fb1c7;
+                    --text-muted: #6b7280;
+                    
+                    /* 主题色彩 */
+                    --accent-gradient: linear-gradient(135deg, #7c6fff 0%, #49d1ff 100%);
+                    --success-color: #56d364;
+                    --error-color: #ff6b6b;
+                    --warning-color: #ffd166;
+                    --info-color: #70b7ff;
+                    
+                    /* 阴影和效果 */
+                    --shadow-sm: 0 2px 8px rgba(0,0,0,0.1);
+                    --shadow-md: 0 4px 12px rgba(0,0,0,0.15);
+                    --shadow-lg: 0 8px 24px rgba(0,0,0,0.2);
+                    --border-radius: 12px;
+                    --border-radius-sm: 8px;
+                    --border-radius-lg: 16px;
+                    
+                    /* 间距 */
+                    --spacing-xs: 4px;
+                    --spacing-sm: 8px;
+                    --spacing-md: 12px;
+                    --spacing-lg: 16px;
+                    --spacing-xl: 20px;
+                    --spacing-2xl: 24px;
+                }
+                
+                /* 浅色主题支持 */
+                @media (prefers-color-scheme: light) {
+                    .mqtt-room-screen {
+                        --bg-primary: #f6f8fb;
+                        --bg-secondary: #ffffff;
+                        --card-bg: rgba(255,255,255,0.9);
+                        --card-border: rgba(0,0,0,0.08);
+                        --text-primary: #0b1c36;
+                        --text-secondary: #5b6b80;
+                        --text-muted: #9ca3af;
+                    }
+                }
+                
+                .mqtt-room-screen {
+                    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                    background: var(--bg-primary);
+                    color: var(--text-primary);
                     height: 100vh;
                     display: flex;
                     flex-direction: column;
                     box-sizing: border-box;
                     overflow: hidden;
+                    position: relative;
+                }
+                
+                /* 背景渐变效果 */
+                .mqtt-room-screen::before {
+                    content: "";
+                    position: fixed;
+                    inset: -20%;
+                    background: 
+                        radial-gradient(60% 60% at 20% 20%, rgba(124, 111, 255, 0.15), transparent 60%),
+                        radial-gradient(60% 60% at 80% 30%, rgba(73, 209, 255, 0.12), transparent 60%),
+                        radial-gradient(60% 60% at 50% 80%, rgba(255, 154, 199, 0.15), transparent 60%);
+                    filter: blur(40px);
+                    z-index: -1;
+                    opacity: 0.6;
+                }
+                
+                @media (prefers-color-scheme: light) {
+                    .mqtt-room-screen::before {
+                        opacity: 0.3;
+                    }
                 }
                 
                 .mqtt-header {
-                    background: white;
-                    padding: 15px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    background: var(--card-bg);
+                    backdrop-filter: blur(20px);
+                    border-bottom: 1px solid var(--card-border);
+                    padding: var(--spacing-lg);
+                    box-shadow: var(--shadow-sm);
                     display: flex;
                     align-items: center;
-                    gap: 15px;
+                    gap: var(--spacing-lg);
                     position: sticky;
                     top: 0;
                     z-index: 100;
@@ -484,203 +557,270 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     font-size: 24px;
                     cursor: pointer;
                     padding: 0;
-                    width: 30px;
-                    height: 30px;
+                    width: 32px;
+                    height: 32px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     border-radius: 50%;
+                    color: var(--text-primary);
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
                 }
                 
                 .back-btn:hover {
-                    background: #f0f0f0;
+                    background: var(--card-border);
+                    transform: scale(1.05);
                 }
                 
                 .mqtt-header h2 {
                     margin: 0;
                     flex: 1;
                     font-size: 18px;
-                    color: #333;
+                    font-weight: 600;
+                    color: var(--text-primary);
                 }
                 
                 .connection-status {
                     font-size: 12px;
-                    padding: 4px 8px;
-                    border-radius: 12px;
-                    font-weight: bold;
+                    padding: var(--spacing-xs) var(--spacing-sm);
+                    border-radius: var(--border-radius-sm);
+                    font-weight: 600;
+                    backdrop-filter: blur(10px);
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
                 }
                 
                 .connection-status.connected {
-                    background: #d4edda;
-                    color: #155724;
+                    background: rgba(86, 211, 100, 0.15);
+                    color: var(--success-color);
+                    border: 1px solid rgba(86, 211, 100, 0.3);
                 }
                 
                 .connection-status.connecting {
-                    background: #fff3cd;
-                    color: #856404;
+                    background: rgba(255, 209, 102, 0.15);
+                    color: var(--warning-color);
+                    border: 1px solid rgba(255, 209, 102, 0.3);
                 }
                 
                 .connection-status.disconnected {
-                    background: #f8d7da;
-                    color: #721c24;
+                    background: rgba(255, 107, 107, 0.15);
+                    color: var(--error-color);
+                    border: 1px solid rgba(255, 107, 107, 0.3);
                 }
                 
                 .mqtt-content {
                     flex: 1;
                     display: flex;
                     flex-direction: column;
-                    padding: 15px;
-                    gap: 15px;
+                    padding: var(--spacing-lg);
+                    gap: var(--spacing-lg);
                     overflow: hidden;
                 }
                 
                 .room-section {
-                    background: white;
-                    padding: 15px;
-                    border-radius: 12px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    background: var(--card-bg);
+                    backdrop-filter: blur(20px);
+                    border: 1px solid var(--card-border);
+                    padding: var(--spacing-xl);
+                    border-radius: var(--border-radius-lg);
+                    box-shadow: var(--shadow-md);
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+                
+                .room-section:hover {
+                    transform: translateY(-2px);
+                    box-shadow: var(--shadow-lg);
                 }
                 
                 .room-controls {
                     display: flex;
-                    gap: 10px;
-                    margin-bottom: 10px;
+                    gap: var(--spacing-md);
+                    margin-bottom: var(--spacing-md);
                     flex-wrap: wrap;
                 }
                 
                 .room-controls input {
-                    padding: 10px;
-                    border: 2px solid #e1e5e9;
-                    border-radius: 8px;
+                    padding: var(--spacing-md) var(--spacing-lg);
+                    border: 2px solid var(--card-border);
+                    border-radius: var(--border-radius);
                     font-size: 16px;
                     flex: 1;
                     min-width: 120px;
-                    transition: border-color 0.3s;
+                    background: var(--bg-secondary);
+                    color: var(--text-primary);
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    backdrop-filter: blur(10px);
                 }
                 
                 .room-controls input:focus {
                     outline: none;
-                    border-color: #007bff;
+                    border-color: var(--info-color);
+                    box-shadow: 0 0 0 4px rgba(112, 183, 255, 0.1);
+                    transform: translateY(-1px);
+                }
+                
+                .room-controls input::placeholder {
+                    color: var(--text-muted);
                 }
                 
                 .control-buttons {
                     display: flex;
-                    gap: 8px;
-                    margin-bottom: 10px;
+                    gap: var(--spacing-sm);
+                    margin-bottom: var(--spacing-md);
                 }
                 
                 .control-buttons button {
-                    padding: 10px 16px;
+                    padding: var(--spacing-md) var(--spacing-lg);
                     border: none;
-                    border-radius: 8px;
+                    border-radius: var(--border-radius);
                     font-size: 14px;
-                    font-weight: 500;
+                    font-weight: 600;
                     cursor: pointer;
                     flex: 1;
-                    transition: all 0.3s;
-                }
-                
-                .btn-connect {
-                    background: #28a745;
-                    color: white;
-                }
-                
-                .btn-connect:hover:not(:disabled) {
-                    background: #218838;
-                }
-                
-                .btn-leave {
-                    background: #dc3545;
-                    color: white;
-                }
-                
-                .btn-leave:hover:not(:disabled) {
-                    background: #c82333;
+                    position: relative;
+                    overflow: hidden;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    backdrop-filter: blur(10px);
                 }
                 
                 .control-buttons button:disabled {
-                    background: #e9ecef;
-                    color: #6c757d;
+                    opacity: 0.5;
                     cursor: not-allowed;
+                    transform: none !important;
+                }
+                
+                .btn-connect {
+                    background: var(--accent-gradient);
+                    color: white;
+                    box-shadow: var(--shadow-sm);
+                }
+                
+                .btn-connect:hover:not(:disabled) {
+                    transform: translateY(-2px);
+                    box-shadow: var(--shadow-md);
+                }
+                
+                .btn-connect:active:not(:disabled) {
+                    transform: translateY(0px);
+                }
+                
+                .btn-leave {
+                    background: linear-gradient(135deg, var(--error-color) 0%, #e74c3c 100%);
+                    color: white;
+                    box-shadow: var(--shadow-sm);
+                }
+                
+                .btn-leave:hover:not(:disabled) {
+                    transform: translateY(-2px);
+                    box-shadow: var(--shadow-md);
+                }
+                
+                .btn-leave:active:not(:disabled) {
+                    transform: translateY(0px);
+                }
+                
+                .control-buttons button:disabled {
+                    background: var(--card-border) !important;
+                    color: var(--text-muted) !important;
+                    cursor: not-allowed;
+                    box-shadow: none !important;
                 }
                 
                 .status-display {
-                    padding: 8px;
-                    border-radius: 6px;
+                    padding: var(--spacing-sm);
+                    border-radius: var(--border-radius-sm);
                     font-size: 12px;
-                    font-weight: bold;
-                    margin-bottom: 8px;
+                    font-weight: 600;
+                    margin-bottom: var(--spacing-sm);
                     text-align: center;
+                    backdrop-filter: blur(10px);
                 }
                 
                 .broker-info {
                     text-align: center;
-                    margin-bottom: 8px;
-                    color: #666;
+                    margin-bottom: var(--spacing-sm);
+                    color: var(--text-secondary);
+                    font-size: 12px;
+                }
+                
+                .broker-info small {
+                    color: var(--text-muted);
                 }
                 
                 .online-users-info {
                     text-align: center;
-                    margin-bottom: 8px;
+                    margin-bottom: var(--spacing-sm);
                 }
                 
                 .online-count {
                     font-size: 14px;
-                    color: #28a745;
-                    font-weight: 500;
+                    color: var(--success-color);
+                    font-weight: 600;
                     cursor: pointer;
-                    padding: 4px 8px;
-                    border-radius: 12px;
-                    background: #f8fff8;
-                    border: 1px solid #d4edda;
-                    margin-bottom: 8px;
-                    transition: all 0.3s;
+                    padding: var(--spacing-xs) var(--spacing-sm);
+                    border-radius: var(--border-radius);
+                    background: rgba(86, 211, 100, 0.1);
+                    border: 1px solid rgba(86, 211, 100, 0.3);
+                    margin-bottom: var(--spacing-sm);
+                    backdrop-filter: blur(10px);
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 }
                 
                 .online-count:hover {
-                    background: #d4edda;
+                    background: rgba(86, 211, 100, 0.2);
+                    transform: translateY(-1px);
                 }
                 
                 .online-list {
-                    background: #f8fff8;
-                    border: 1px solid #d4edda;
-                    border-radius: 8px;
-                    padding: 8px;
-                    margin-top: 8px;
+                    background: rgba(86, 211, 100, 0.1);
+                    border: 1px solid rgba(86, 211, 100, 0.3);
+                    border-radius: var(--border-radius-sm);
+                    padding: var(--spacing-sm);
+                    margin-top: var(--spacing-sm);
                     max-height: 120px;
                     overflow-y: auto;
+                    backdrop-filter: blur(10px);
                 }
                 
                 .online-list-header {
-                    font-weight: bold;
+                    font-weight: 600;
                     font-size: 12px;
-                    color: #28a745;
-                    margin-bottom: 6px;
+                    color: var(--success-color);
+                    margin-bottom: var(--spacing-sm);
                 }
                 
                 .online-list-content {
                     display: flex;
                     flex-wrap: wrap;
-                    gap: 4px;
+                    gap: var(--spacing-xs);
                 }
                 
                 .online-user {
-                    background: #e3f2fd;
-                    color: #1976d2;
-                    padding: 2px 6px;
-                    border-radius: 12px;
+                    background: rgba(112, 183, 255, 0.15);
+                    color: var(--info-color);
+                    padding: var(--spacing-xs) var(--spacing-sm);
+                    border-radius: var(--border-radius);
                     font-size: 11px;
-                    border: 1px solid #bbdefb;
+                    font-weight: 500;
+                    border: 1px solid rgba(112, 183, 255, 0.3);
+                    backdrop-filter: blur(5px);
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+                
+                .online-user:hover {
+                    background: rgba(112, 183, 255, 0.25);
+                    transform: translateY(-1px);
                 }
                 
                 .warning {
-                    background: #fff3cd;
-                    border: 1px solid #ffeaa7;
-                    padding: 8px;
-                    border-radius: 6px;
-                    font-size: 12px;
-                    color: #856404;
+                    background: rgba(255, 209, 102, 0.15);
+                    border: 1px solid rgba(255, 209, 102, 0.3);
+                    color: var(--warning-color);
+                    padding: var(--spacing-sm);
+                    border-radius: var(--border-radius-sm);
+                    font-size: 11px;
                     text-align: center;
+                    margin-top: var(--spacing-sm);
+                    backdrop-filter: blur(10px);
                 }
                 
                 .room-history {
@@ -820,165 +960,306 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 }
                 
                 .chat-container {
-                    background: white;
-                    border-radius: 12px;
+                    background: var(--card-bg);
+                    backdrop-filter: blur(20px);
+                    border: 1px solid var(--card-border);
+                    border-radius: var(--border-radius-lg);
                     flex: 1;
                     display: flex;
                     flex-direction: column;
                     overflow: hidden;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    box-shadow: var(--shadow-md);
                     min-height: 300px;
                     max-height: calc(100vh - 200px);
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+                
+                .chat-container:hover {
+                    box-shadow: var(--shadow-lg);
                 }
                 
                 .messages {
                     flex: 1;
                     overflow-y: auto;
-                    padding: 15px;
-                    background: #fafafa;
+                    padding: var(--spacing-lg);
+                    background: transparent;
                 }
                 
                 .welcome-message {
                     text-align: center;
-                    color: #666;
+                    color: var(--text-secondary);
                     font-size: 14px;
-                    padding: 20px;
+                    padding: var(--spacing-xl);
+                    border-radius: var(--border-radius);
+                    background: rgba(255, 255, 255, 0.05);
+                    backdrop-filter: blur(10px);
+                    border: 1px solid var(--card-border);
                 }
                 
                 .welcome-message p {
-                    margin: 8px 0;
+                    margin: var(--spacing-sm) 0;
+                    color: var(--text-muted);
                 }
                 
                 .message {
-                    margin-bottom: 8px;
-                    padding: 8px 12px;
-                    border-radius: 8px;
+                    margin-bottom: var(--spacing-md);
+                    padding: var(--spacing-md) var(--spacing-lg);
+                    border-radius: var(--border-radius-lg);
                     font-size: 14px;
-                    line-height: 1.4;
+                    line-height: 1.5;
                     word-wrap: break-word;
+                    backdrop-filter: blur(10px);
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    position: relative;
+                }
+                
+                .message:hover {
+                    transform: translateY(-1px);
                 }
                 
                 .message.chat {
-                    background: #e3f2fd;
+                    background: rgba(112, 183, 255, 0.15);
+                    border-left: 4px solid var(--info-color);
+                    color: var(--text-primary);
                 }
                 
                 .message.own-message {
-                    background: #007bff;
+                    background: var(--accent-gradient);
                     color: white;
                     margin-left: 60px;
+                    border-radius: var(--border-radius-lg) var(--border-radius-lg) var(--border-radius-sm) var(--border-radius-lg);
+                    box-shadow: var(--shadow-sm);
                 }
                 
                 .message.presence {
-                    background: #f3e5f5;
+                    background: rgba(255, 154, 199, 0.15);
+                    border: 1px solid rgba(255, 154, 199, 0.3);
+                    color: var(--text-secondary);
                     font-style: italic;
                     font-size: 12px;
                     text-align: center;
                 }
                 
                 .message.system {
-                    background: #fff3e0;
-                    color: #ef6c00;
+                    background: rgba(255, 209, 102, 0.15);
+                    border: 1px solid rgba(255, 209, 102, 0.3);
+                    color: var(--warning-color);
                     font-size: 12px;
                     text-align: center;
+                    font-weight: 500;
                 }
                 
                 .message-header {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    margin-bottom: 4px;
+                    margin-bottom: var(--spacing-xs);
                 }
                 
                 .user-name {
-                    font-weight: bold;
+                    font-weight: 600;
                     font-size: 13px;
+                    color: var(--text-primary);
+                }
+                
+                .message.chat .user-name {
+                    color: var(--info-color);
                 }
                 
                 .message-time {
                     font-size: 11px;
-                    color: #666;
-                    opacity: 0.7;
+                    color: var(--text-muted);
+                    opacity: 0.8;
+                    font-weight: 500;
                 }
                 
                 .input-area {
-                    padding: 15px;
+                    padding: var(--spacing-lg);
                     display: flex;
-                    gap: 10px;
-                    border-top: 1px solid #e9ecef;
-                    background: white;
+                    gap: var(--spacing-md);
+                    border-top: 1px solid var(--card-border);
+                    background: var(--card-bg);
+                    backdrop-filter: blur(20px);
                 }
                 
                 .input-area input {
                     flex: 1;
-                    padding: 10px 15px;
-                    border: 2px solid #e1e5e9;
-                    border-radius: 20px;
+                    padding: var(--spacing-md) var(--spacing-lg);
+                    border: 2px solid var(--card-border);
+                    border-radius: 24px;
                     font-size: 16px;
-                    transition: border-color 0.3s;
+                    background: var(--bg-secondary);
+                    color: var(--text-primary);
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    backdrop-filter: blur(10px);
                 }
                 
                 .input-area input:focus {
                     outline: none;
-                    border-color: #007bff;
+                    border-color: var(--info-color);
+                    box-shadow: 0 0 0 4px rgba(112, 183, 255, 0.1);
+                    transform: translateY(-1px);
+                }
+                
+                .input-area input::placeholder {
+                    color: var(--text-muted);
                 }
                 
                 .input-area button {
                     width: 44px;
                     height: 44px;
-                    background: #007bff;
+                    background: var(--accent-gradient);
                     color: white;
                     border: none;
                     border-radius: 50%;
                     cursor: pointer;
                     font-size: 16px;
-                    transition: all 0.3s;
+                    box-shadow: var(--shadow-sm);
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
                 }
                 
                 .input-area button:hover:not(:disabled) {
-                    background: #0056b3;
-                    transform: scale(1.05);
+                    box-shadow: var(--shadow-md);
+                    transform: translateY(-2px) scale(1.05);
+                }
+                
+                .input-area button:active:not(:disabled) {
+                    transform: translateY(0) scale(0.98);
                 }
                 
                 .input-area button:disabled {
-                    background: #e9ecef;
-                    color: #6c757d;
+                    background: var(--card-border) !important;
+                    color: var(--text-muted) !important;
                     cursor: not-allowed;
-                    transform: none;
+                    transform: none !important;
+                    box-shadow: none !important;
                 }
                 
-                /* 手机屏幕适配 */
+                /* 手机屏幕适配 - 专门为375px×667px虚拟手机优化 */
                 @media (max-width: 480px) {
+                    :root {
+                        --spacing-xs: 3px;
+                        --spacing-sm: 6px;
+                        --spacing-md: 10px;
+                        --spacing-lg: 14px;
+                        --spacing-xl: 18px;
+                        --spacing-2xl: 22px;
+                        --border-radius: 10px;
+                        --border-radius-sm: 6px;
+                        --border-radius-lg: 14px;
+                    }
+                    
                     .mqtt-content {
-                        padding: 10px;
-                        gap: 10px;
+                        padding: var(--spacing-md);
+                        gap: var(--spacing-md);
                     }
                     
                     .room-section {
-                        padding: 12px;
+                        padding: var(--spacing-lg);
+                        border-radius: var(--border-radius-lg);
                     }
                     
                     .room-controls {
                         flex-direction: column;
+                        gap: var(--spacing-sm);
                     }
                     
                     .room-controls input {
                         min-width: unset;
+                        padding: var(--spacing-md) var(--spacing-lg);
+                        font-size: 15px;
                     }
                     
                     .mqtt-header {
-                        padding: 12px;
+                        padding: var(--spacing-lg);
                     }
                     
                     .mqtt-header h2 {
                         font-size: 16px;
+                        font-weight: 600;
                     }
                     
                     .messages {
-                        padding: 10px;
+                        padding: var(--spacing-md);
+                    }
+                    
+                    .message {
+                        padding: var(--spacing-sm) var(--spacing-md);
+                        margin-bottom: var(--spacing-sm);
+                    }
+                    
+                    .message.own-message {
+                        margin-left: 40px;
                     }
                     
                     .input-area {
-                        padding: 10px;
+                        padding: var(--spacing-md);
+                        gap: var(--spacing-sm);
+                    }
+                    
+                    .input-area input {
+                        padding: var(--spacing-sm) var(--spacing-md);
+                        font-size: 15px;
+                    }
+                    
+                    .input-area button {
+                        width: 40px;
+                        height: 40px;
+                        font-size: 14px;
+                    }
+                    
+                    .control-buttons button {
+                        padding: var(--spacing-sm) var(--spacing-md);
+                        font-size: 13px;
+                    }
+                    
+                    .connection-status {
+                        font-size: 11px;
+                        padding: var(--spacing-xs) var(--spacing-sm);
+                    }
+                    
+                    .chat-container {
+                        min-height: 250px;
+                        max-height: calc(100vh - 180px);
+                    }
+                    
+                    /* 优化小屏幕下的背景效果 */
+                    .mqtt-room-screen::before {
+                        filter: blur(30px);
+                        opacity: 0.4;
+                    }
+                    
+                    @media (prefers-color-scheme: light) {
+                        .mqtt-room-screen::before {
+                            opacity: 0.2;
+                        }
+                    }
+                    
+                    /* 优化房间历史记录在小屏幕的显示 */
+                    .history-list {
+                        max-height: 100px;
+                    }
+                    
+                    .history-item {
+                        padding: var(--spacing-xs) var(--spacing-sm);
+                        margin: 1px 0;
+                    }
+                    
+                    .history-room, .history-nickname {
+                        font-size: 12px;
+                    }
+                    
+                    .history-time {
+                        font-size: 10px;
+                    }
+                    
+                    /* 在线用户信息优化 */
+                    .online-count {
+                        font-size: 13px;
+                        padding: var(--spacing-xs) var(--spacing-sm);
                     }
                 }
             </style>

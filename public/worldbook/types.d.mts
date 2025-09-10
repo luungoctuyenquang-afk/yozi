@@ -18,6 +18,7 @@ interface Entry {
         logic: 'AND_ALL' | 'NOT_ANY' | 'NOT_ALL' | 'AND_ANY';
     };
     group?: string;
+    inclusionGroup?: string;
     probability?: number;
     useGroupScoring?: boolean;
     prioritizeInclusion?: boolean;
@@ -76,6 +77,7 @@ interface ActivatedEntry extends Entry {
     matchedKeys: string[];
     depth: number;
     activationScore: number;
+    score?: number;
     groupScore?: number;
     activationTime?: number;
     stickyUntil?: number;
