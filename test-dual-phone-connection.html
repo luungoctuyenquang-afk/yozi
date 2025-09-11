@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>双手机连接测试</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 30px;
+        }
+        
+        .phone-container {
+            width: 320px;
+            height: 600px;
+            background: white;
+            border-radius: 25px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+            border: 8px solid #333;
+        }
+        
+        .phone-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .phone-content {
+            width: 100%;
+            height: calc(100% - 44px);
+            overflow: hidden;
+        }
+        
+        .debug-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-width: 350px;
+            margin: 10px;
+        }
+        
+        .debug-panel h3 {
+            margin-top: 0;
+            color: #dc3545;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+        
+        .test-step {
+            margin: 15px 0;
+            padding: 12px;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 6px;
+        }
+        
+        .test-step-title {
+            font-weight: bold;
+            color: #856404;
+            margin-bottom: 8px;
+        }
+        
+        .test-step-desc {
+            font-size: 13px;
+            color: #555;
+        }
+        
+        .debug-controls {
+            margin: 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .debug-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .debug-btn:hover {
+            background: #c82333;
+        }
+        
+        .debug-btn.success {
+            background: #28a745;
+        }
+        
+        .debug-btn.success:hover {
+            background: #218838;
+        }
+        
+        .debug-output {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            max-height: 180px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        
+        .status-red { background: #dc3545; }
+        .status-green { background: #28a745; }
+        .status-yellow { background: #ffc107; }
+        
+        .connection-info {
+            background: #e7f3ff;
+            border: 1px solid #b3d7ff;
+            border-radius: 6px;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+        
+        .phone-label {
+            position: absolute;
+            top: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <!-- 手机A -->
+    <div class="phone-container">
+        <div class="phone-label">📱 手机A</div>
+        <div class="phone-header">MQTT聊天室 - 手机A</div>
+        <div class="phone-content">
+            <div id="mqtt-phone-a" style="width: 100%; height: 100%;"></div>
+        </div>
+    </div>
+    
+    <!-- 手机B -->
+    <div class="phone-container">
+        <div class="phone-label">📱 手机B</div>
+        <div class="phone-header">MQTT聊天室 - 手机B</div>
+        <div class="phone-content">
+            <div id="mqtt-phone-b" style="width: 100%; height: 100%;"></div>
+        </div>
+    </div>
+    
+    <!-- 调试面板 -->
+    <div class="debug-panel">
+        <h3>🔍 双手机连接测试</h3>
+        
+        <div class="test-step">
+            <div class="test-step-title">📋 测试目标</div>
+            <div class="test-step-desc">
+                1. 房间创建和连接测试<br>
+                2. 跨设备房间访问验证<br>
+                3. 房间链接功能检查
+            </div>
+        </div>
+        
+        <div class="connection-info">
+            <strong>测试房间:</strong> dual-test-room<br>
+            <strong>用户A:</strong> 测试用户A<br>
+            <strong>用户B:</strong> 测试用户B
+        </div>
+        
+        <div class="debug-controls">
+            <button class="debug-btn success" onclick="autoFillPhoneA()">自动填充A</button>
+            <button class="debug-btn success" onclick="autoFillPhoneB()">自动填充B</button>
+            <button class="debug-btn" onclick="testCrossDeviceAccess()">测试跨设备</button>
+            <button class="debug-btn" onclick="checkConnectionStatus()">检查连接</button>
+            <button class="debug-btn" onclick="testMessaging()">测试消息</button>
+            <button class="debug-btn" onclick="clearDebugLog()">清空日志</button>
+        </div>
+        
+        <div id="debug-status">
+            <div><span class="status-indicator status-red"></span>等待初始化...</div>
+        </div>
+        
+        <div class="debug-output" id="debug-console">
+            系统启动中...<br>
+        </div>
+    </div>
+
+    <script>
+        let mqttAppA = null;
+        let mqttAppB = null;
+        
+        // 调试输出函数
+        function debugLog(message, type = 'info') {
+            const console = document.getElementById('debug-console');
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
+            
+            console.innerHTML += `<div style="margin: 2px 0;">[${timestamp}] ${prefix} ${message}</div>`;
+            console.scrollTop = console.scrollHeight;
+        }
+        
+        // 更新状态指示器
+        function updateStatus(status, message) {
+            const statusEl = document.getElementById('debug-status');
+            const className = status === 'success' ? 'status-green' : 
+                             status === 'warning' ? 'status-yellow' : 'status-red';
+            statusEl.innerHTML = `<div><span class="status-indicator ${className}"></span>${message}</div>`;
+        }
+        
+        // 加载MQTT聊天室模块
+        function loadMqttRoomScript() {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'js/screens/mqtt-room.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        // 初始化双手机MQTT聊天室
+        async function initializeDualPhones() {
+            try {
+                debugLog('正在加载MQTT聊天室模块...');
+                await loadMqttRoomScript();
+                
+                debugLog('正在初始化手机A的MQTT聊天室...');
+                mqttAppA = createMqttRoomApp({
+                    mountEl: document.getElementById('mqtt-phone-a'),
+                    getPlayerName: () => '测试用户A',
+                    brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+                });
+
+                debugLog('正在初始化手机B的MQTT聊天室...');
+                mqttAppB = createMqttRoomApp({
+                    mountEl: document.getElementById('mqtt-phone-b'),
+                    getPlayerName: () => '测试用户B',
+                    brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+                });
+
+                debugLog('双手机MQTT聊天室初始化完成', 'success');
+                updateStatus('success', '双手机聊天室已就绪');
+                
+                // 等待DOM完全渲染
+                setTimeout(() => {
+                    checkConnectionStatus();
+                }, 1500);
+                
+            } catch (error) {
+                debugLog('初始化失败: ' + error.message, 'error');
+                updateStatus('error', '初始化失败');
+            }
+        }
+
+        // 自动填充手机A的测试数据
+        function autoFillPhoneA() {
+            const containerA = document.getElementById('mqtt-phone-a');
+            const roomInput = containerA.querySelector('.room-input');
+            const nicknameInput = containerA.querySelector('.nickname-input');
+            
+            if (roomInput) roomInput.value = 'dual-test-room';
+            if (nicknameInput) nicknameInput.value = '测试用户A';
+            
+            debugLog('手机A: 已自动填充测试数据', 'success');
+        }
+        
+        // 自动填充手机B的测试数据
+        function autoFillPhoneB() {
+            const containerB = document.getElementById('mqtt-phone-b');
+            const roomInput = containerB.querySelector('.room-input');
+            const nicknameInput = containerB.querySelector('.nickname-input');
+            
+            if (roomInput) roomInput.value = 'dual-test-room';
+            if (nicknameInput) nicknameInput.value = '测试用户B';
+            
+            debugLog('手机B: 已自动填充测试数据', 'success');
+        }
+        
+        // 测试跨设备访问
+        function testCrossDeviceAccess() {
+            debugLog('=== 跨设备访问测试 ===');
+            
+            // 自动填充两个手机的数据
+            autoFillPhoneA();
+            autoFillPhoneB();
+            
+            debugLog('请按以下步骤测试:');
+            debugLog('1. 在手机A上点击"创建房间"或"加入房间"');
+            debugLog('2. 等待连接成功后，在手机B上点击"加入房间"');
+            debugLog('3. 观察两个手机是否都能成功连接到同一房间');
+            debugLog('4. 尝试在两个手机间发送消息测试', 'warning');
+        }
+        
+        // 检查连接状态
+        function checkConnectionStatus() {
+            const containerA = document.getElementById('mqtt-phone-a');
+            const containerB = document.getElementById('mqtt-phone-b');
+            
+            debugLog('=== 连接状态检查 ===');
+            
+            // 检查手机A的状态
+            const messageInputA = containerA.querySelector('.message-input');
+            const leaveButtonA = containerA.querySelector('.leave-btn');
+            
+            if (messageInputA) {
+                const statusA = messageInputA.disabled ? '离线' : '在线';
+                debugLog(`手机A状态: ${statusA}`, messageInputA.disabled ? 'warning' : 'success');
+            } else {
+                debugLog('手机A: 消息输入框未找到', 'error');
+            }
+            
+            // 检查手机B的状态
+            const messageInputB = containerB.querySelector('.message-input');
+            const leaveButtonB = containerB.querySelector('.leave-btn');
+            
+            if (messageInputB) {
+                const statusB = messageInputB.disabled ? '离线' : '在线';
+                debugLog(`手机B状态: ${statusB}`, messageInputB.disabled ? 'warning' : 'success');
+            } else {
+                debugLog('手机B: 消息输入框未找到', 'error');
+            }
+            
+            // 检查房间信息
+            const roomDisplayA = containerA.querySelector('.room-info');
+            const roomDisplayB = containerB.querySelector('.room-info');
+            
+            if (roomDisplayA && roomDisplayA.textContent.includes('dual-test-room')) {
+                debugLog('手机A: 已连接到测试房间', 'success');
+            }
+            if (roomDisplayB && roomDisplayB.textContent.includes('dual-test-room')) {
+                debugLog('手机B: 已连接到测试房间', 'success');
+            }
+        }
+        
+        // 测试消息功能
+        function testMessaging() {
+            const containerA = document.getElementById('mqtt-phone-a');
+            const containerB = document.getElementById('mqtt-phone-b');
+            
+            debugLog('=== 消息发送测试 ===');
+            
+            // 测试从手机A发送消息
+            const messageInputA = containerA.querySelector('.message-input');
+            const sendBtnA = containerA.querySelector('.send-btn');
+            
+            if (messageInputA && sendBtnA && !messageInputA.disabled) {
+                messageInputA.value = '来自手机A的测试消息';
+                sendBtnA.click();
+                debugLog('手机A: 已发送测试消息', 'success');
+            } else {
+                debugLog('手机A: 无法发送消息 (未连接)', 'warning');
+            }
+            
+            // 延迟测试从手机B发送消息
+            setTimeout(() => {
+                const messageInputB = containerB.querySelector('.message-input');
+                const sendBtnB = containerB.querySelector('.send-btn');
+                
+                if (messageInputB && sendBtnB && !messageInputB.disabled) {
+                    messageInputB.value = '来自手机B的测试消息';
+                    sendBtnB.click();
+                    debugLog('手机B: 已发送测试消息', 'success');
+                } else {
+                    debugLog('手机B: 无法发送消息 (未连接)', 'warning');
+                }
+            }, 1000);
+        }
+        
+        // 清空调试日志
+        function clearDebugLog() {
+            document.getElementById('debug-console').innerHTML = '日志已清空<br>';
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('load', () => {
+            debugLog('页面加载完成，开始初始化双手机测试...', 'info');
+            updateStatus('warning', '正在初始化...');
+            initializeDualPhones();
+        });
+        
+        // 定期检查连接状态
+        setInterval(() => {
+            const containerA = document.getElementById('mqtt-phone-a');
+            const containerB = document.getElementById('mqtt-phone-b');
+            
+            if (containerA && containerB) {
+                const inputA = containerA.querySelector('.message-input');
+                const inputB = containerB.querySelector('.message-input');
+                
+                const connectedA = inputA && !inputA.disabled;
+                const connectedB = inputB && !inputB.disabled;
+                
+                if (connectedA && connectedB) {
+                    updateStatus('success', '双手机均已连接');
+                } else if (connectedA || connectedB) {
+                    updateStatus('warning', '部分手机已连接');
+                } else {
+                    updateStatus('red', '等待连接...');
+                }
+            }
+        }, 3000);
+    </script>
+</body>
+</html>

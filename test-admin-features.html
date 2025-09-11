@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员功能测试</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+        }
+        
+        .test-container {
+            width: 375px;
+            height: 667px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .test-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 140, 0, 0.9);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            z-index: 9999;
+            pointer-events: none;
+            backdrop-filter: blur(10px);
+            font-weight: bold;
+        }
+        
+        .admin-test-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            margin: 10px;
+        }
+        
+        .admin-test-panel h3 {
+            margin-top: 0;
+            color: #ff8c00;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .section-header {
+            background: #f8f9fa;
+            padding: 12px 15px;
+            font-weight: bold;
+            color: #495057;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .section-content {
+            padding: 15px;
+            display: none;
+        }
+        
+        .section-content.show {
+            display: block;
+        }
+        
+        .test-step {
+            margin: 10px 0;
+            padding: 10px;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .test-step.success {
+            background: #d1e7dd;
+            border-left-color: #198754;
+            color: #0f5132;
+        }
+        
+        .test-step.error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+        
+        .test-btn {
+            background: #ff8c00;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin: 5px 5px 5px 0;
+        }
+        
+        .test-btn:hover {
+            background: #e6a800;
+        }
+        
+        .test-btn.success {
+            background: #198754;
+        }
+        
+        .test-btn.success:hover {
+            background: #157347;
+        }
+        
+        .toggle-icon {
+            transition: transform 0.2s;
+        }
+        
+        .toggle-icon.rotated {
+            transform: rotate(90deg);
+        }
+        
+        .instruction {
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 10px 0;
+            font-size: 13px;
+        }
+        
+        .code-snippet {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- MQTT聊天室测试容器 -->
+    <div class="test-container">
+        <div class="test-info">👑 管理员功能测试</div>
+        <div id="mqtt-test-container" style="width: 100%; height: 100%;"></div>
+    </div>
+    
+    <!-- 管理员功能测试面板 -->
+    <div class="admin-test-panel">
+        <h3>👑 管理员功能验证</h3>
+        
+        <!-- 密码保存功能测试 -->
+        <div class="test-section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <span>🔐 密码保存功能</span>
+                <span class="toggle-icon">▶</span>
+            </div>
+            <div class="section-content">
+                <div class="instruction">
+                    <strong>测试步骤：</strong><br>
+                    1. 点击"⚙️ 房间设置"按钮<br>
+                    2. 勾选"密码保护房间"复选框<br>
+                    3. 输入密码并点击"保存"按钮<br>
+                    4. 检查是否显示"密码已保存"提示
+                </div>
+                
+                <div class="test-step" id="password-ui-check">
+                    <strong>UI检查：</strong>等待检查密码保存按钮...
+                </div>
+                
+                <button class="test-btn" onclick="checkPasswordUI()">检查密码UI</button>
+                <button class="test-btn" onclick="testPasswordSave()">模拟密码保存</button>
+            </div>
+        </div>
+        
+        <!-- 踢人功能测试 -->
+        <div class="test-section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <span>🚫 踢人功能UI</span>
+                <span class="toggle-icon">▶</span>
+            </div>
+            <div class="section-content">
+                <div class="instruction">
+                    <strong>测试步骤：</strong><br>
+                    1. 创建或加入房间（成为管理员）<br>
+                    2. 点击在线人数查看用户列表<br>
+                    3. 检查其他用户是否有踢人按钮（🚫）<br>
+                    4. 测试管理员权限设置
+                </div>
+                
+                <div class="test-step" id="admin-ui-check">
+                    <strong>管理员UI检查：</strong>等待检查踢人按钮...
+                </div>
+                
+                <div class="test-step" id="admin-status">
+                    <strong>管理员状态：</strong>等待连接房间...
+                </div>
+                
+                <button class="test-btn" onclick="checkAdminUI()">检查管理员UI</button>
+                <button class="test-btn" onclick="checkAdminStatus()">检查管理员状态</button>
+                <button class="test-btn success" onclick="createTestRoom()">创建测试房间</button>
+            </div>
+        </div>
+        
+        <!-- 在线用户列表测试 -->
+        <div class="test-section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <span>👥 在线用户管理</span>
+                <span class="toggle-icon">▶</span>
+            </div>
+            <div class="section-content">
+                <div class="instruction">
+                    <strong>管理员操作按钮：</strong><br>
+                    • 👑 设为管理员<br>
+                    • 🚫 踢出用户<br>
+                    • 👤 移除管理员权限<br>
+                    • 💬 私聊
+                </div>
+                
+                <div class="test-step" id="user-list-check">
+                    <strong>用户列表检查：</strong>等待连接房间...
+                </div>
+                
+                <button class="test-btn" onclick="checkUserList()">检查用户列表</button>
+                <button class="test-btn" onclick="simulateUsers()">模拟多用户</button>
+            </div>
+        </div>
+        
+        <!-- 调试信息 -->
+        <div class="test-section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <span>🐛 调试信息</span>
+                <span class="toggle-icon">▶</span>
+            </div>
+            <div class="section-content">
+                <div class="code-snippet" id="debug-info">
+                    等待初始化...
+                </div>
+                <button class="test-btn" onclick="showDebugInfo()">显示调试信息</button>
+                <button class="test-btn" onclick="clearDebugInfo()">清除信息</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let mqttApp = null;
+        
+        // 切换功能区块
+        function toggleSection(header) {
+            const content = header.nextElementSibling;
+            const icon = header.querySelector('.toggle-icon');
+            
+            if (content.classList.contains('show')) {
+                content.classList.remove('show');
+                icon.classList.remove('rotated');
+            } else {
+                content.classList.add('show');
+                icon.classList.add('rotated');
+            }
+        }
+        
+        // 更新测试步骤状态
+        function updateTestStep(elementId, message, status = 'normal') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<strong>${elementId.replace('-', ' ').toUpperCase()}：</strong>${message}`;
+            
+            element.classList.remove('success', 'error');
+            if (status === 'success') {
+                element.classList.add('success');
+            } else if (status === 'error') {
+                element.classList.add('error');
+            }
+        }
+        
+        // 加载MQTT聊天室模块
+        async function loadMqttRoomScript() {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'js/screens/mqtt-room.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        // 初始化MQTT聊天室
+        async function initializeMqttRoom() {
+            try {
+                await loadMqttRoomScript();
+                
+                mqttApp = createMqttRoomApp({
+                    mountEl: document.getElementById('mqtt-test-container'),
+                    getPlayerName: () => '管理员测试用户',
+                    brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+                });
+
+                updateDebugInfo('MQTT聊天室初始化完成');
+                
+            } catch (error) {
+                updateDebugInfo('初始化失败: ' + error.message);
+            }
+        }
+        
+        // 检查密码UI
+        function checkPasswordUI() {
+            const container = document.getElementById('mqtt-test-container');
+            
+            // 检查密码相关元素
+            const passwordCheckbox = container.querySelector('#private-room-checkbox');
+            const passwordInput = container.querySelector('.room-password-input');
+            const savePasswordBtn = container.querySelector('#save-password-btn');
+            const passwordInputGroup = container.querySelector('.password-input-group');
+            
+            let result = [];
+            
+            if (passwordCheckbox) {
+                result.push('✅ 密码复选框存在');
+            } else {
+                result.push('❌ 密码复选框缺失');
+            }
+            
+            if (passwordInput) {
+                result.push('✅ 密码输入框存在');
+            } else {
+                result.push('❌ 密码输入框缺失');
+            }
+            
+            if (savePasswordBtn) {
+                result.push('✅ 保存密码按钮存在');
+            } else {
+                result.push('❌ 保存密码按钮缺失');
+            }
+            
+            if (passwordInputGroup) {
+                result.push('✅ 密码输入组存在');
+            } else {
+                result.push('❌ 密码输入组缺失');
+            }
+            
+            const status = result.every(r => r.startsWith('✅')) ? 'success' : 'error';
+            updateTestStep('password-ui-check', result.join('<br>'), status);
+        }
+        
+        // 模拟密码保存
+        function testPasswordSave() {
+            const container = document.getElementById('mqtt-test-container');
+            const passwordCheckbox = container.querySelector('#private-room-checkbox');
+            const passwordInput = container.querySelector('.room-password-input');
+            const savePasswordBtn = container.querySelector('#save-password-btn');
+            
+            if (passwordCheckbox && passwordInput && savePasswordBtn) {
+                // 模拟勾选密码保护
+                passwordCheckbox.checked = true;
+                passwordCheckbox.dispatchEvent(new Event('change'));
+                
+                // 输入测试密码
+                passwordInput.value = 'test123';
+                
+                // 点击保存按钮
+                setTimeout(() => {
+                    savePasswordBtn.click();
+                    updateTestStep('password-ui-check', '✅ 密码保存测试完成，请查看是否有"密码已保存"提示', 'success');
+                }, 500);
+            } else {
+                updateTestStep('password-ui-check', '❌ 无法找到密码相关元素', 'error');
+            }
+        }
+        
+        // 检查管理员UI
+        function checkAdminUI() {
+            const container = document.getElementById('mqtt-test-container');
+            
+            // 检查在线用户列表相关元素
+            const onlineList = container.querySelector('#online-list');
+            const onlineCount = container.querySelector('#online-count');
+            const onlineListContent = container.querySelector('#online-list-content');
+            
+            let result = [];
+            
+            if (onlineList) {
+                result.push('✅ 在线用户列表容器存在');
+            } else {
+                result.push('❌ 在线用户列表容器缺失');
+            }
+            
+            if (onlineCount) {
+                result.push('✅ 在线人数显示存在');
+            } else {
+                result.push('❌ 在线人数显示缺失');
+            }
+            
+            if (onlineListContent) {
+                result.push('✅ 用户列表内容区域存在');
+                
+                // 检查是否有管理员按钮
+                const adminBtns = onlineListContent.querySelectorAll('.kick-btn, .admin-action-btn');
+                if (adminBtns.length > 0) {
+                    result.push(`✅ 找到 ${adminBtns.length} 个管理员操作按钮`);
+                } else {
+                    result.push('⚠️ 暂无管理员操作按钮（可能需要先连接房间）');
+                }
+            } else {
+                result.push('❌ 用户列表内容区域缺失');
+            }
+            
+            const status = result.filter(r => r.startsWith('❌')).length > 0 ? 'error' : 'success';
+            updateTestStep('admin-ui-check', result.join('<br>'), status);
+        }
+        
+        // 检查管理员状态
+        function checkAdminStatus() {
+            updateDebugInfo('检查管理员状态...');
+            
+            // 尝试访问全局变量（如果可用）
+            try {
+                const container = document.getElementById('mqtt-test-container');
+                const settingsBtn = container.querySelector('#settings-toggle-btn');
+                
+                if (settingsBtn) {
+                    updateTestStep('admin-status', '✅ 房间设置按钮可用，可能有管理员权限', 'success');
+                } else {
+                    updateTestStep('admin-status', '⚠️ 房间设置按钮不可用', 'error');
+                }
+            } catch (error) {
+                updateTestStep('admin-status', '❌ 无法检查管理员状态: ' + error.message, 'error');
+            }
+        }
+        
+        // 创建测试房间
+        function createTestRoom() {
+            const container = document.getElementById('mqtt-test-container');
+            const roomInput = container.querySelector('.room-input');
+            const nicknameInput = container.querySelector('.nickname-input');
+            const createBtn = container.querySelector('#btn-create-room');
+            
+            if (roomInput && nicknameInput && createBtn) {
+                // 自动填充测试数据
+                roomInput.value = 'admin-test-' + Math.random().toString(36).substr(2, 6);
+                nicknameInput.value = '管理员';
+                
+                // 点击创建房间
+                createBtn.click();
+                
+                updateTestStep('admin-status', '✅ 已尝试创建测试房间，请等待连接...', 'success');
+                
+                // 3秒后检查状态
+                setTimeout(() => {
+                    checkAdminStatus();
+                    checkUserList();
+                }, 3000);
+            } else {
+                updateTestStep('admin-status', '❌ 无法找到房间创建相关元素', 'error');
+            }
+        }
+        
+        // 检查用户列表
+        function checkUserList() {
+            const container = document.getElementById('mqtt-test-container');
+            const onlineListContent = container.querySelector('#online-list-content');
+            
+            if (onlineListContent) {
+                const users = onlineListContent.querySelectorAll('.online-user');
+                const kickBtns = onlineListContent.querySelectorAll('.kick-btn');
+                const adminBtns = onlineListContent.querySelectorAll('.admin-action-btn');
+                
+                let result = `用户数量: ${users.length}<br>`;
+                result += `踢人按钮: ${kickBtns.length}<br>`;
+                result += `管理员按钮: ${adminBtns.length}`;
+                
+                const status = users.length > 0 ? 'success' : 'error';
+                updateTestStep('user-list-check', result, status);
+            } else {
+                updateTestStep('user-list-check', '❌ 无法找到用户列表内容', 'error');
+            }
+        }
+        
+        // 模拟多用户
+        function simulateUsers() {
+            updateTestStep('user-list-check', '⚠️ 模拟多用户功能需要实际的MQTT连接和多个客户端', 'normal');
+            updateDebugInfo('提示：要测试踢人功能，需要在另一个浏览器窗口中加入相同房间');
+        }
+        
+        // 更新调试信息
+        function updateDebugInfo(message) {
+            const debugElement = document.getElementById('debug-info');
+            const timestamp = new Date().toLocaleTimeString();
+            debugElement.innerHTML += `[${timestamp}] ${message}<br>`;
+            debugElement.scrollTop = debugElement.scrollHeight;
+        }
+        
+        // 显示调试信息
+        function showDebugInfo() {
+            const container = document.getElementById('mqtt-test-container');
+            let info = '=== DOM元素检查 ===<br>';
+            
+            const elements = [
+                { name: '密码复选框', selector: '#private-room-checkbox' },
+                { name: '密码输入框', selector: '.room-password-input' },
+                { name: '保存密码按钮', selector: '#save-password-btn' },
+                { name: '在线用户列表', selector: '#online-list' },
+                { name: '用户列表内容', selector: '#online-list-content' },
+                { name: '房间设置按钮', selector: '#settings-toggle-btn' }
+            ];
+            
+            elements.forEach(el => {
+                const found = container.querySelector(el.selector);
+                info += `${el.name}: ${found ? '✅' : '❌'}<br>`;
+            });
+            
+            document.getElementById('debug-info').innerHTML = info;
+        }
+        
+        // 清除调试信息
+        function clearDebugInfo() {
+            document.getElementById('debug-info').innerHTML = '调试信息已清除...<br>';
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('load', () => {
+            initializeMqttRoom();
+            
+            // 自动展开第一个区块
+            setTimeout(() => {
+                const firstHeader = document.querySelector('.section-header');
+                if (firstHeader) toggleSection(firstHeader);
+            }, 500);
+            
+            // 定期检查管理员状态
+            setInterval(() => {
+                const container = document.getElementById('mqtt-test-container');
+                if (container) {
+                    const messageInput = container.querySelector('.message-input');
+                    if (messageInput && !messageInput.disabled) {
+                        // 已连接，检查管理员状态
+                        checkAdminStatus();
+                    }
+                }
+            }, 5000);
+        });
+    </script>
+</body>
+</html>

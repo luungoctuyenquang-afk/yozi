@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>虚拟手机</title>
-    <!-- 第三方库将在页面底部加载 -->
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -705,25 +706,17 @@
     <!-- 主入口（必须最后加载） -->
     <script src="js/main.js"></script>
 
-    <!-- 第三方库（CDN，可选） -->
-    <script defer src="https://unpkg.com/dexie/dist/dexie.min.js"></script>
-    <script defer src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-
-    <!-- 世界书引擎（必须先于集成脚本，使用相对路径） -->
+    <!-- WorldBook 引擎集成 -->
     <script defer src="./public/worldbook/index.iife.js"></script>
-
-    <!-- 集成脚本 -->
     <script defer src="./js/worldbook.integration.js"></script>
-
-    <!-- SW 保护：file:// 下跳过 -->
+    
     <script>
-    (function(){
-      if (location.protocol.startsWith('http')) {
-        if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
-      } else {
+    // 注册Service Worker (仅 http/https)
+    if (location.protocol.startsWith('http')) {
+        navigator.serviceWorker && navigator.serviceWorker.register('./sw.js');
+    } else {
         console.log('[SW] skip on file://');
-      }
-    })();
+    }
     </script>
 </body>
 </html>

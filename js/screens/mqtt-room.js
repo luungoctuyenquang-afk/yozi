@@ -714,8 +714,8 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         elements.messages.innerHTML = '';
         
         // 重新加载群聊消息
-        const roomHistory = chatHistory.get(roomId) || [];
-        roomHistory.forEach(msg => {
+        const roomChatHistory = chatHistory.get(roomId) || [];
+        roomChatHistory.forEach(msg => {
             addChatMessage(msg.user, msg.text, msg.timestamp, msg.isOwnMessage);
         });
         
@@ -744,6 +744,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         // 绑定密码保护复选框
         const privateRoomCheckbox = mountEl.querySelector('#private-room-checkbox');
         const passwordInput = mountEl.querySelector('.room-password-input');
+        const savePasswordBtn = mountEl.querySelector('#save-password-btn');
         
         if (privateRoomCheckbox && passwordInput) {
             const passwordInputGroup = mountEl.querySelector('.password-input-group');
@@ -765,6 +766,28 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     roomConfig.hasPassword = true;
                 }
             });
+            
+            // 绑定保存密码按钮
+            if (savePasswordBtn) {
+                savePasswordBtn.addEventListener('click', () => {
+                    const password = passwordInput.value.trim();
+                    if (password.length < 3) {
+                        showAlert('密码长度至少3个字符！');
+                        return;
+                    }
+                    if (password.length > 50) {
+                        showAlert('密码长度不能超过50个字符！');
+                        return;
+                    }
+                    
+                    roomConfig.password = password;
+                    roomConfig.hasPassword = true;
+                    saveRoomConfig();
+                    
+                    showAlert('密码已保存！');
+                    log('system', '✅ 房间密码已设置');
+                });
+            }
         }
         
         
@@ -843,9 +866,33 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             console.warn('加载房间配置失败:', error);
         }
         
-        // 如果房间不存在，返回默认配置但不保存，等待真正创建时机
-        roomConfig = { ...defaultRoomConfig };
-        return roomConfig;
+        // 如果房间不存在本地配置，返回null
+        return null;
+    }
+    
+    // 为外部房间保存基础配置
+    function saveBasicRoomConfig(targetRoomId, joinerNickname) {
+        try {
+            const roomConfigs = JSON.parse(localStorage.getItem('mqtt_room_configs') || '{}');
+            
+            // 如果本地还没有这个房间的配置，创建一个基础配置
+            if (!roomConfigs[targetRoomId]) {
+                roomConfigs[targetRoomId] = {
+                    ...defaultRoomConfig,
+                    roomId: targetRoomId,
+                    createdBy: 'unknown', // 标记为未知创建者
+                    joinedBy: joinerNickname, // 记录谁加入了这个房间
+                    joinedAt: Date.now(),
+                    isLocallyCreated: false, // 标记为外部房间
+                    isExternalRoom: true // 额外标记
+                };
+                
+                localStorage.setItem('mqtt_room_configs', JSON.stringify(roomConfigs));
+                log('system', `已保存外部房间 ${targetRoomId} 的基础配置`);
+            }
+        } catch (error) {
+            console.warn('保存外部房间配置失败:', error);
+        }
     }
     
     // 检查房间是否已存在
@@ -1085,6 +1132,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                             <input type="text" class="nickname-input" placeholder="昵称" value="">
                             <div class="password-input-group" style="display: none;">
                                 <input type="password" class="room-password-input" placeholder="房间密码" maxlength="50">
+                                <button class="save-password-btn" id="save-password-btn">保存</button>
                             </div>
                         </div>
                         
@@ -2620,6 +2668,8 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             themeToggleBtn: mountEl.querySelector('#theme-toggle-btn'),
             roomInput: mountEl.querySelector('.room-input'),
             nicknameInput: mountEl.querySelector('.nickname-input'),
+            createRoomBtn: mountEl.querySelector('#btn-create-room'),
+            joinRoomBtn: mountEl.querySelector('#btn-join-room'),
             leaveBtn: mountEl.querySelector('.leave-btn'),
             statusDisplay: mountEl.querySelector('.status-display'),
             connectionStatus: mountEl.querySelector('#mqtt-status'),
@@ -2692,56 +2742,68 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         });
         
         // 创建房间按钮
-        const createRoomBtn = mountEl.querySelector('#btn-create-room');
-        if (createRoomBtn) {
-            createRoomBtn.addEventListener('click', () => createRoom());
+        if (elements.createRoomBtn) {
+            elements.createRoomBtn.addEventListener('click', () => createRoom());
         }
         
         // 加入房间按钮
-        const joinRoomBtn = mountEl.querySelector('#btn-join-room');
-        if (joinRoomBtn) {
-            joinRoomBtn.addEventListener('click', () => joinRoom());
+        if (elements.joinRoomBtn) {
+            elements.joinRoomBtn.addEventListener('click', () => joinRoom());
         }
         
         // 离开按钮
-        elements.leaveBtn.addEventListener('click', () => leaveRoom());
+        if (elements.leaveBtn) {
+            elements.leaveBtn.addEventListener('click', () => leaveRoom());
+        }
         
         // 发送按钮
-        elements.sendBtn.addEventListener('click', () => sendMessage());
+        if (elements.sendBtn) {
+            elements.sendBtn.addEventListener('click', () => sendMessage());
+        }
         
         // 回车发送消息
-        elements.messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
-        
-        // 输入时检测表情快捷码
-        elements.messageInput.addEventListener('input', (e) => {
-            // 检测空格或特定字符触发快捷码替换
-            const lastChar = e.data;
-            if (lastChar === ' ' || lastChar === null) {
-                checkAndReplaceShortcuts();
-            }
-        });
+        if (elements.messageInput) {
+            elements.messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+            
+            // 输入时检测表情快捷码
+            elements.messageInput.addEventListener('input', (e) => {
+                // 检测空格或特定字符触发快捷码替换
+                const lastChar = e.data;
+                if (lastChar === ' ' || lastChar === null) {
+                    checkAndReplaceShortcuts();
+                }
+            });
+        }
         
         // 失去焦点时也检查一次
-        elements.messageInput.addEventListener('blur', () => {
-            checkAndReplaceShortcuts();
-        });
+        if (elements.messageInput) {
+            elements.messageInput.addEventListener('blur', () => {
+                checkAndReplaceShortcuts();
+            });
+        }
         
         // 回车快速加入房间
-        elements.roomInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !isConnected) joinRoom();
-        });
+        if (elements.roomInput) {
+            elements.roomInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !isConnected) joinRoom();
+            });
+        }
         
-        elements.nicknameInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !isConnected) joinRoom();
-        });
+        if (elements.nicknameInput) {
+            elements.nicknameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !isConnected) joinRoom();
+            });
+        }
         
         // 在线人数点击切换显示用户列表
-        elements.onlineCountDisplay.addEventListener('click', () => {
-            const isVisible = elements.onlineList.style.display !== 'none';
-            elements.onlineList.style.display = isVisible ? 'none' : 'block';
-        });
+        if (elements.onlineCountDisplay) {
+            elements.onlineCountDisplay.addEventListener('click', () => {
+                const isVisible = elements.onlineList.style.display !== 'none';
+                elements.onlineList.style.display = isVisible ? 'none' : 'block';
+            });
+        }
         
         // 清空历史记录按钮
         const clearHistoryBtn = mountEl.querySelector('.history-clear-btn');
@@ -2936,32 +2998,36 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             return;
         }
         
-        // 检查房间是否存在
-        if (!roomExists(roomId)) {
-            showAlert('房间不存在！请先创建房间或检查房间号是否正确。');
-            return;
-        }
-        
-        // 加载房间配置以检查是否需要密码
-        const config = loadRoomConfig(roomId);
-        if (config.hasPassword && config.password) {
+        // 尝试加载房间配置（如果本地存在）
+        const localConfig = loadRoomConfig(roomId);
+        if (localConfig && localConfig.isPrivate && localConfig.password) {
             // 显示密码输入框
             const passwordInputGroup = mountEl.querySelector('.password-input-group');
             if (passwordInputGroup) {
                 passwordInputGroup.style.display = 'flex';
             }
-        }
-        
-        // 房间访问验证
-        const accessResult = await validateRoomAccess(roomId);
-        if (!accessResult.allowed) {
-            showAlert(accessResult.message);
-            return;
+            
+            // 获取用户输入的密码
+            const passwordInput = mountEl.querySelector('.room-password-input');
+            const inputPassword = passwordInput ? passwordInput.value.trim() : '';
+            
+            // 如果有本地配置且需要密码，进行验证
+            const accessResult = validateRoomAccess(roomId, inputPassword);
+            if (!accessResult) {
+                return;
+            }
         }
         
         try {
-            // 加载房间配置
-            loadRoomConfig(roomId);
+            // 尝试加载房间配置（如果本地不存在，使用默认配置）
+            if (!loadRoomConfig(roomId)) {
+                // 如果本地没有配置，创建基础配置以便连接
+                roomConfig = { ...defaultRoomConfig };
+                roomConfig.roomId = roomId;
+                roomConfig.isLocallyCreated = false; // 标记为外部房间
+                // 对于外部房间，作为普通用户加入，真实权限需要从服务器获取
+                log('system', `正在连接到外部房间: ${roomId}`);
+            }
             
             // 连接到房间
             await connectToMqttRoom();
@@ -3030,8 +3096,18 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         // 加载历史聊天记录
                         loadChatHistoryToUI(roomId);
                         
+                        // 如果是外部房间，保存基础配置到本地
+                        if (roomConfig && roomConfig.isLocallyCreated === false) {
+                            saveBasicRoomConfig(roomId, nickname);
+                        }
+                        
                         // 检查管理员权限
                         checkAdminPrivileges();
+                        
+                        // 强制更新在线用户显示，确保管理员UI正确显示
+                        setTimeout(() => {
+                            updateOnlineUsersDisplay();
+                        }, 500);
                         
                         // 启动心跳定时器，每30秒更新一次在线状态
                         heartbeatInterval = setInterval(() => {
@@ -3550,15 +3626,21 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     }
     
     function updateUI(connected) {
-        elements.connectBtn.disabled = connected;
-        elements.leaveBtn.disabled = !connected;
-        elements.messageInput.disabled = !connected;
-        elements.sendBtn.disabled = !connected;
-        elements.emojiBtn.disabled = !connected;
-        elements.roomInput.disabled = connected;
-        elements.nicknameInput.disabled = connected;
+        // 禁用/启用房间连接按钮
+        if (elements.createRoomBtn) elements.createRoomBtn.disabled = connected;
+        if (elements.joinRoomBtn) elements.joinRoomBtn.disabled = connected;
         
-        if (connected) {
+        // 禁用/启用聊天相关按钮
+        if (elements.leaveBtn) elements.leaveBtn.disabled = !connected;
+        if (elements.messageInput) elements.messageInput.disabled = !connected;
+        if (elements.sendBtn) elements.sendBtn.disabled = !connected;
+        if (elements.emojiBtn) elements.emojiBtn.disabled = !connected;
+        
+        // 禁用/启用房间输入框
+        if (elements.roomInput) elements.roomInput.disabled = connected;
+        if (elements.nicknameInput) elements.nicknameInput.disabled = connected;
+        
+        if (connected && elements.messageInput) {
             elements.messageInput.focus();
         }
     }

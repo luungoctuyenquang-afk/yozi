@@ -20,7 +20,12 @@
       "Bash(start test-online-users.html)",
       "Bash(dir:*)",
       "Bash(node:*)",
-      "Bash(start test-phase2-room-management.html)"
+      "Bash(start test-phase2-room-management.html)",
+      "Bash(cat:*)",
+      "Bash(sed:*)",
+      "Bash(cp:*)",
+      "Bash(npx live-server:*)",
+      "Bash(start index.html)"
     ],
     "deny": [],
     "ask": []

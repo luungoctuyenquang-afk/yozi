@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT聊天室Bug修复验证</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+        }
+        
+        .test-container {
+            width: 375px;
+            height: 667px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .test-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            z-index: 9999;
+            pointer-events: none;
+            backdrop-filter: blur(10px);
+        }
+        
+        .test-checklist {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-width: 350px;
+            margin: 10px;
+        }
+        
+        .test-checklist h3 {
+            margin-top: 0;
+            color: #764ba2;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+        
+        .fix-item {
+            margin: 15px 0;
+            padding: 12px;
+            background: #f8f9fa;
+            border-left: 4px solid #28a745;
+            border-radius: 6px;
+        }
+        
+        .fix-title {
+            font-weight: bold;
+            color: #28a745;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .fix-description {
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 8px;
+        }
+        
+        .test-steps {
+            font-size: 12px;
+            color: #666;
+            background: white;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px dashed #ccc;
+        }
+        
+        .test-result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            border-radius: 6px;
+        }
+        
+        .console-panel {
+            background: #1e1e1e;
+            color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        
+        .test-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin: 5px 5px 5px 0;
+        }
+        
+        .test-btn:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <!-- 聊天室测试容器 -->
+    <div class="test-container">
+        <div class="test-info">修复验证</div>
+        <div id="mqtt-test-container" style="width: 100%; height: 100%;"></div>
+    </div>
+    
+    <!-- 测试清单 -->
+    <div class="test-checklist">
+        <h3>🔧 Bug修复验证清单</h3>
+        
+        <div class="fix-item">
+            <div class="fix-title">✅ 1. 输入框失效修复</div>
+            <div class="fix-description">添加了DOM元素存在性检查，防止事件绑定失败</div>
+            <div class="test-steps">
+                <strong>测试:</strong> 连接房间后输入消息，按回车发送
+            </div>
+        </div>
+        
+        <div class="fix-item">
+            <div class="fix-title">✅ 2. 离开按钮失效修复</div>
+            <div class="fix-description">修复了事件绑定的空指针异常</div>
+            <div class="test-steps">
+                <strong>测试:</strong> 连接房间后点击离开按钮
+            </div>
+        </div>
+        
+        <div class="fix-item">
+            <div class="fix-title">✅ 3. 跨设备房间访问修复</div>
+            <div class="fix-description">移除严格的本地房间存在性检查，支持外部房间</div>
+            <div class="test-steps">
+                <strong>测试:</strong> 输入任意房间号如"external-room-123"直接加入
+            </div>
+        </div>
+        
+        <div class="fix-item">
+            <div class="fix-title">✅ 4. 房间历史记录修复</div>
+            <div class="fix-description">确保所有成功连接的房间都会保存到历史记录</div>
+            <div class="test-steps">
+                <strong>测试:</strong> 连接房间后检查历史记录是否显示
+            </div>
+        </div>
+        
+        <div class="fix-item">
+            <div class="fix-title">✅ 5. 私聊历史记录异常修复</div>
+            <div class="fix-description">修复了私聊返回时变量名冲突导致的异常</div>
+            <div class="test-steps">
+                <strong>测试:</strong> 发起私聊 → 返回群聊，检查消息是否正常
+            </div>
+        </div>
+        
+        <div class="test-result">
+            <strong>📊 测试控制台</strong>
+            <div>
+                <button class="test-btn" onclick="checkRoomHistory()">检查房间历史</button>
+                <button class="test-btn" onclick="checkLocalStorage()">检查本地存储</button>
+                <button class="test-btn" onclick="simulateExternalRoom()">模拟外部房间</button>
+                <button class="test-btn" onclick="clearTestData()">清除测试数据</button>
+            </div>
+            <div class="console-panel" id="console-output">
+                等待测试...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let mqttApp = null;
+        
+        // 控制台输出函数
+        function logToConsole(message, type = 'info') {
+            const console = document.getElementById('console-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff6b6b' : type === 'success' ? '#51cf66' : '#74c0fc';
+            
+            console.innerHTML += `<div style="color: ${color};">[${timestamp}] ${message}</div>`;
+            console.scrollTop = console.scrollHeight;
+        }
+        
+        // 重写console.log以显示在我们的面板中
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            logToConsole(args.join(' '), 'info');
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            logToConsole(args.join(' '), 'error');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            logToConsole(args.join(' '), 'error');
+        };
+        
+        // 加载MQTT聊天室模块
+        function loadMqttRoomScript() {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'js/screens/mqtt-room.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        // 初始化MQTT聊天室
+        async function initializeMqttRoom() {
+            try {
+                await loadMqttRoomScript();
+                
+                mqttApp = createMqttRoomApp({
+                    mountEl: document.getElementById('mqtt-test-container'),
+                    getPlayerName: () => 'Bug修复测试用户',
+                    brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+                });
+
+                logToConsole('✅ MQTT聊天室已初始化', 'success');
+                logToConsole('📝 开始进行bug修复验证...', 'info');
+                
+            } catch (error) {
+                logToConsole('❌ 初始化失败: ' + error.message, 'error');
+            }
+        }
+
+        // 测试函数
+        function checkRoomHistory() {
+            try {
+                const history = JSON.parse(localStorage.getItem('mqtt_room_history') || '[]');
+                logToConsole(`📚 房间历史记录: ${history.length} 条`, 'info');
+                history.forEach(item => {
+                    logToConsole(`  - ${item.roomId} (${item.nickname})`, 'info');
+                });
+            } catch (error) {
+                logToConsole('❌ 检查房间历史失败: ' + error.message, 'error');
+            }
+        }
+        
+        function checkLocalStorage() {
+            try {
+                const configs = JSON.parse(localStorage.getItem('mqtt_room_configs') || '{}');
+                const configCount = Object.keys(configs).length;
+                logToConsole(`⚙️ 房间配置: ${configCount} 个`, 'info');
+                
+                Object.keys(configs).forEach(roomId => {
+                    const config = configs[roomId];
+                    logToConsole(`  - ${roomId}: ${config.isExternalRoom ? '外部' : '本地'}房间`, 'info');
+                });
+            } catch (error) {
+                logToConsole('❌ 检查本地存储失败: ' + error.message, 'error');
+            }
+        }
+        
+        function simulateExternalRoom() {
+            const roomId = 'external-test-' + Math.random().toString(36).substr(2, 6);
+            logToConsole(`🎯 模拟外部房间: ${roomId}`, 'info');
+            logToConsole('请在聊天室中输入此房间号进行测试', 'info');
+            
+            // 自动填充到输入框
+            setTimeout(() => {
+                const roomInput = document.querySelector('.room-input');
+                if (roomInput) {
+                    roomInput.value = roomId;
+                    logToConsole('✅ 已自动填充房间号到输入框', 'success');
+                }
+            }, 1000);
+        }
+        
+        function clearTestData() {
+            localStorage.removeItem('mqtt_room_configs');
+            localStorage.removeItem('mqtt_room_history');
+            localStorage.removeItem('mqtt_chat_history');
+            logToConsole('🗑️ 测试数据已清除', 'success');
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('load', () => {
+            logToConsole('🚀 开始初始化Bug修复验证环境...', 'info');
+            initializeMqttRoom();
+        });
+        
+        // 添加测试提示
+        setTimeout(() => {
+            if (mqttApp) {
+                logToConsole('💡 测试建议:', 'info');
+                logToConsole('1. 尝试输入外部房间号 "fix-test-room"', 'info');
+                logToConsole('2. 测试消息发送和接收功能', 'info');
+                logToConsole('3. 测试私聊功能和返回群聊', 'info');
+                logToConsole('4. 检查房间历史记录是否正常保存', 'info');
+            }
+        }, 3000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聊天和离开功能修复测试</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+        }
+        
+        .test-container {
+            width: 375px;
+            height: 667px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .test-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            z-index: 9999;
+            pointer-events: none;
+            backdrop-filter: blur(10px);
+            font-weight: bold;
+        }
+        
+        .debug-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            margin: 10px;
+        }
+        
+        .debug-panel h3 {
+            margin-top: 0;
+            color: #dc3545;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+        
+        .test-step {
+            margin: 15px 0;
+            padding: 12px;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 6px;
+        }
+        
+        .test-step-title {
+            font-weight: bold;
+            color: #856404;
+            margin-bottom: 8px;
+        }
+        
+        .test-step-desc {
+            font-size: 13px;
+            color: #555;
+        }
+        
+        .debug-controls {
+            margin: 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .debug-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .debug-btn:hover {
+            background: #c82333;
+        }
+        
+        .debug-btn.success {
+            background: #28a745;
+        }
+        
+        .debug-btn.success:hover {
+            background: #218838;
+        }
+        
+        .debug-output {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-red { background: #dc3545; }
+        .status-green { background: #28a745; }
+        .status-yellow { background: #ffc107; }
+    </style>
+</head>
+<body>
+    <!-- MQTT聊天室测试容器 -->
+    <div class="test-container">
+        <div class="test-info">🐛 聊天&离开修复测试</div>
+        <div id="mqtt-test-container" style="width: 100%; height: 100%;"></div>
+    </div>
+    
+    <!-- 调试面板 -->
+    <div class="debug-panel">
+        <h3>🔍 聊天和离开功能调试</h3>
+        
+        <div class="test-step">
+            <div class="test-step-title">❌ 问题描述</div>
+            <div class="test-step-desc">
+                1. 聊天输入框和发送按钮无法使用<br>
+                2. 离开房间按钮点击无效<br>
+                3. 可能的原因：DOM元素选择器错误或事件绑定失败
+            </div>
+        </div>
+        
+        <div class="test-step">
+            <div class="test-step-title">🔧 修复内容</div>
+            <div class="test-step-desc">
+                1. 修复了updateUI函数中缺失的connectBtn元素<br>
+                2. 添加了createRoomBtn和joinRoomBtn到elements对象<br>
+                3. 为所有按钮添加了存在性检查
+            </div>
+        </div>
+        
+        <div class="debug-controls">
+            <button class="debug-btn" onclick="checkElements()">检查DOM元素</button>
+            <button class="debug-btn" onclick="checkEventListeners()">检查事件绑定</button>
+            <button class="debug-btn" onclick="testButtonStates()">测试按钮状态</button>
+            <button class="debug-btn success" onclick="simulateConnection()">模拟连接</button>
+            <button class="debug-btn" onclick="testSendMessage()">测试发送消息</button>
+            <button class="debug-btn" onclick="testLeaveRoom()">测试离开房间</button>
+        </div>
+        
+        <div id="debug-status">
+            <div><span class="status-indicator status-red"></span>等待初始化...</div>
+        </div>
+        
+        <div class="debug-output" id="debug-console">
+            系统启动中...<br>
+        </div>
+    </div>
+
+    <script>
+        let mqttApp = null;
+        let elements = null;
+        
+        // 调试输出函数
+        function debugLog(message, type = 'info') {
+            const console = document.getElementById('debug-console');
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
+            
+            console.innerHTML += `<div style="margin: 2px 0;">[${timestamp}] ${prefix} ${message}</div>`;
+            console.scrollTop = console.scrollHeight;
+        }
+        
+        // 更新状态指示器
+        function updateStatus(status, message) {
+            const statusEl = document.getElementById('debug-status');
+            const className = status === 'success' ? 'status-green' : 
+                             status === 'warning' ? 'status-yellow' : 'status-red';
+            statusEl.innerHTML = `<div><span class="status-indicator ${className}"></span>${message}</div>`;
+        }
+        
+        // 加载MQTT聊天室模块
+        function loadMqttRoomScript() {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'js/screens/mqtt-room.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        // 初始化MQTT聊天室
+        async function initializeMqttRoom() {
+            try {
+                debugLog('正在加载MQTT聊天室模块...');
+                await loadMqttRoomScript();
+                
+                debugLog('正在初始化MQTT聊天室...');
+                mqttApp = createMqttRoomApp({
+                    mountEl: document.getElementById('mqtt-test-container'),
+                    getPlayerName: () => '调试用户',
+                    brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+                });
+
+                debugLog('MQTT聊天室初始化完成', 'success');
+                updateStatus('success', 'MQTT聊天室已就绪');
+                
+                // 等待DOM完全渲染
+                setTimeout(() => {
+                    checkElements();
+                }, 1000);
+                
+            } catch (error) {
+                debugLog('初始化失败: ' + error.message, 'error');
+                updateStatus('error', '初始化失败');
+            }
+        }
+
+        // 检查DOM元素
+        function checkElements() {
+            const container = document.getElementById('mqtt-test-container');
+            
+            const checks = [
+                { name: '消息输入框', selector: '.message-input' },
+                { name: '发送按钮', selector: '.send-btn' },
+                { name: '离开按钮', selector: '.leave-btn' },
+                { name: '创建房间按钮', selector: '#btn-create-room' },
+                { name: '加入房间按钮', selector: '#btn-join-room' },
+                { name: '房间输入框', selector: '.room-input' },
+                { name: '昵称输入框', selector: '.nickname-input' }
+            ];
+            
+            debugLog('=== DOM元素检查 ===');
+            let allFound = true;
+            
+            checks.forEach(check => {
+                const element = container.querySelector(check.selector);
+                if (element) {
+                    debugLog(`✓ ${check.name}: 找到 (disabled: ${element.disabled})`, 'success');
+                } else {
+                    debugLog(`✗ ${check.name}: 未找到`, 'error');
+                    allFound = false;
+                }
+            });
+            
+            if (allFound) {
+                updateStatus('success', '所有DOM元素检查通过');
+            } else {
+                updateStatus('error', '部分DOM元素缺失');
+            }
+        }
+        
+        // 检查事件绑定
+        function checkEventListeners() {
+            const container = document.getElementById('mqtt-test-container');
+            
+            debugLog('=== 事件监听器检查 ===');
+            
+            // 检查关键元素的事件监听器
+            const messageInput = container.querySelector('.message-input');
+            const sendBtn = container.querySelector('.send-btn');
+            const leaveBtn = container.querySelector('.leave-btn');
+            
+            if (messageInput) {
+                debugLog(`消息输入框事件: ${getEventListeners(messageInput).length} 个`, 'info');
+            }
+            if (sendBtn) {
+                debugLog(`发送按钮事件: ${getEventListeners(sendBtn).length} 个`, 'info');
+            }
+            if (leaveBtn) {
+                debugLog(`离开按钮事件: ${getEventListeners(leaveBtn).length} 个`, 'info');
+            }
+        }
+        
+        // 获取元素的事件监听器数量（简化版）
+        function getEventListeners(element) {
+            // 这是一个简化的检查，实际的事件监听器检查比较复杂
+            return ['click', 'keypress', 'input'].filter(type => {
+                try {
+                    // 尝试触发事件来检测是否有监听器
+                    const event = new Event(type, { bubbles: true, cancelable: true });
+                    return element.dispatchEvent(event);
+                } catch (e) {
+                    return false;
+                }
+            });
+        }
+        
+        // 测试按钮状态
+        function testButtonStates() {
+            const container = document.getElementById('mqtt-test-container');
+            
+            debugLog('=== 按钮状态测试 ===');
+            
+            const buttons = [
+                { name: '创建房间', selector: '#btn-create-room' },
+                { name: '加入房间', selector: '#btn-join-room' },
+                { name: '发送消息', selector: '.send-btn' },
+                { name: '离开房间', selector: '.leave-btn' },
+                { name: '表情按钮', selector: '.emoji-btn' }
+            ];
+            
+            buttons.forEach(btn => {
+                const element = container.querySelector(btn.selector);
+                if (element) {
+                    const state = element.disabled ? '禁用' : '启用';
+                    debugLog(`${btn.name}: ${state}`, element.disabled ? 'warning' : 'success');
+                }
+            });
+        }
+        
+        // 模拟连接状态
+        function simulateConnection() {
+            debugLog('=== 模拟连接测试 ===');
+            debugLog('请手动尝试连接房间 "debug-test-room"', 'info');
+            debugLog('昵称可以使用 "测试用户"', 'info');
+            
+            // 自动填充测试数据
+            const container = document.getElementById('mqtt-test-container');
+            const roomInput = container.querySelector('.room-input');
+            const nicknameInput = container.querySelector('.nickname-input');
+            
+            if (roomInput) roomInput.value = 'debug-test-room';
+            if (nicknameInput) nicknameInput.value = '测试用户';
+            
+            debugLog('已自动填充测试房间信息', 'success');
+        }
+        
+        // 测试发送消息
+        function testSendMessage() {
+            const container = document.getElementById('mqtt-test-container');
+            const messageInput = container.querySelector('.message-input');
+            const sendBtn = container.querySelector('.send-btn');
+            
+            debugLog('=== 发送消息测试 ===');
+            
+            if (!messageInput || !sendBtn) {
+                debugLog('消息输入框或发送按钮未找到', 'error');
+                return;
+            }
+            
+            if (messageInput.disabled) {
+                debugLog('消息输入框处于禁用状态，请先连接房间', 'warning');
+                return;
+            }
+            
+            // 模拟输入消息
+            messageInput.value = '这是一条测试消息';
+            debugLog('已输入测试消息', 'info');
+            
+            // 模拟点击发送按钮
+            sendBtn.click();
+            debugLog('已模拟点击发送按钮', 'info');
+        }
+        
+        // 测试离开房间
+        function testLeaveRoom() {
+            const container = document.getElementById('mqtt-test-container');
+            const leaveBtn = container.querySelector('.leave-btn');
+            
+            debugLog('=== 离开房间测试 ===');
+            
+            if (!leaveBtn) {
+                debugLog('离开按钮未找到', 'error');
+                return;
+            }
+            
+            if (leaveBtn.disabled) {
+                debugLog('离开按钮处于禁用状态，请先连接房间', 'warning');
+                return;
+            }
+            
+            // 模拟点击离开按钮
+            leaveBtn.click();
+            debugLog('已模拟点击离开按钮', 'info');
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('load', () => {
+            debugLog('页面加载完成，开始初始化...', 'info');
+            updateStatus('warning', '正在初始化...');
+            initializeMqttRoom();
+        });
+        
+        // 定期检查状态
+        setInterval(() => {
+            const container = document.getElementById('mqtt-test-container');
+            if (container) {
+                const messageInput = container.querySelector('.message-input');
+                if (messageInput && !messageInput.disabled) {
+                    updateStatus('success', '聊天功能已启用');
+                }
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

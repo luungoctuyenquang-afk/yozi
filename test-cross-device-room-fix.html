@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>跨设备房间访问修复测试</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .test-wrapper {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .test-container {
+            width: 375px;
+            height: 667px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #mqtt-test-container-1, #mqtt-test-container-2 {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .test-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            z-index: 9999;
+            pointer-events: none;
+            backdrop-filter: blur(10px);
+        }
+        
+        .test-instructions {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-width: 350px;
+            margin: 10px;
+        }
+        
+        .test-instructions h3 {
+            margin-top: 0;
+            color: #764ba2;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+        
+        .test-step {
+            margin: 15px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .test-step strong {
+            color: #667eea;
+        }
+        
+        .expected-result {
+            background: #e8f5e8;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+        
+        .test-scenarios {
+            margin-top: 20px;
+        }
+        
+        .scenario {
+            margin: 10px 0;
+            padding: 8px 12px;
+            background: #fff3cd;
+            border-left: 3px solid #ffc107;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-wrapper">
+        <!-- 第一个虚拟设备 -->
+        <div class="test-container">
+            <div class="test-info">设备A - 房间创建者</div>
+            <div id="mqtt-test-container-1"></div>
+        </div>
+        
+        <!-- 第二个虚拟设备 -->
+        <div class="test-container">
+            <div class="test-info">设备B - 房间加入者</div>
+            <div id="mqtt-test-container-2"></div>
+        </div>
+        
+        <!-- 测试说明 -->
+        <div class="test-instructions">
+            <h3>🔧 跨设备房间访问修复测试</h3>
+            
+            <div class="test-step">
+                <strong>修复内容:</strong><br>
+                移除了严格的本地房间存在性检查，现在允许加入任何格式正确的房间ID
+            </div>
+            
+            <div class="test-scenarios">
+                <h4>📝 测试场景</h4>
+                
+                <div class="scenario">
+                    <strong>场景1:</strong> 设备A创建房间 "test-room-001"
+                </div>
+                
+                <div class="scenario">
+                    <strong>场景2:</strong> 设备B直接输入相同房间号加入
+                </div>
+                
+                <div class="scenario">
+                    <strong>场景3:</strong> 验证两设备可以正常聊天
+                </div>
+            </div>
+            
+            <div class="test-step expected-result">
+                <strong>期望结果:</strong><br>
+                • 设备B能成功加入设备A创建的房间<br>
+                • 不再出现"房间不存在"错误<br>
+                • 两设备可以正常收发消息<br>
+                • 外部房间会自动保存基础配置
+            </div>
+            
+            <div class="test-step">
+                <strong>测试步骤:</strong><br>
+                1. 在设备A创建房间"test-fix-001"<br>
+                2. 在设备B加入相同房间号<br>
+                3. 两边发送测试消息<br>
+                4. 检查localStorage中的房间配置
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 加载MQTT聊天室模块
+        function loadMqttRoomScript() {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'js/screens/mqtt-room.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        // 初始化两个虚拟设备
+        async function initializeDevices() {
+            try {
+                await loadMqttRoomScript();
+                
+                // 设备A - 房间创建者
+                const deviceA = createMqttRoomApp({
+                    mountEl: document.getElementById('mqtt-test-container-1'),
+                    getPlayerName: () => '设备A用户',
+                    brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+                });
+                
+                // 设备B - 房间加入者  
+                const deviceB = createMqttRoomApp({
+                    mountEl: document.getElementById('mqtt-test-container-2'),
+                    getPlayerName: () => '设备B用户',
+                    brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+                });
+
+                console.log('✅ 两个虚拟设备已初始化');
+                console.log('📝 请按照测试说明进行跨设备房间访问测试');
+                
+                // 添加测试提示
+                setTimeout(() => {
+                    alert('测试准备完成！\n\n请按照右侧说明进行测试：\n1. 在设备A创建房间\n2. 在设备B加入相同房间\n3. 验证跨设备聊天功能');
+                }, 1000);
+                
+            } catch (error) {
+                console.error('初始化失败:', error);
+                alert('初始化失败: ' + error.message);
+            }
+        }
+
+        // 页面加载完成后初始化
+        window.addEventListener('load', initializeDevices);
+        
+        // 测试工具函数
+        window.testFunctions = {
+            // 检查localStorage中的房间配置
+            checkRoomConfigs: () => {
+                const configs = JSON.parse(localStorage.getItem('mqtt_room_configs') || '{}');
+                console.log('当前房间配置:', configs);
+                return configs;
+            },
+            
+            // 清除测试数据
+            clearTestData: () => {
+                localStorage.removeItem('mqtt_room_configs');
+                localStorage.removeItem('mqtt_room_history');
+                console.log('测试数据已清除');
+            },
+            
+            // 模拟外部房间
+            simulateExternalRoom: (roomId) => {
+                console.log(`模拟外部房间: ${roomId}`);
+                alert(`请在设备B中输入房间号: ${roomId}`);
+            }
+        };
+    </script>
+</body>
+</html>

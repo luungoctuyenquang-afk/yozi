@@ -1,103 +1,78 @@
 (function () {
-  // 检查 WorldBookKit 是否加载
+  if (window.__WB_HIDE_UI === true) return; // 全局强制隐藏
+  const IS_HTTP = location.protocol.startsWith('http');
+  const IS_DEV  = ['localhost','127.0.0.1'].includes(location.hostname);
+  const WB_DEBUG = IS_DEV || localStorage.getItem('WB_DEBUG') === '1';
   if (!window.WorldBookKit) {
-    console.error('[WorldBook] WorldBookKit not found! Ensure ./public/worldbook/index.iife.js is loaded correctly');
+    console.error('[WorldBook] 引擎未加载：检查 <script src="./public/worldbook/index.iife.js"> 路径与顺序');
     return;
   }
-  
   const { WorldBookEngine, WorldBookImporter } = window.WorldBookKit;
-  console.log('[WorldBook] loaded engine');
 
-  const WB = {
+  const WB = window.WorldBook || (window.WorldBook = {
     engine: new WorldBookEngine({ seed: 42 }),
     book: null,
-    loadedInfo: '未加载',
-    
-    async load(url = './public/worldbook/samples/travel.worldbook.json') {
-      try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        this.book = WorldBookImporter?.import ? WorldBookImporter.import(data) : data;
-        const n = this.book?.entries?.length ?? 0;
-        this.loadedInfo = `${this.book?.name || 'WorldBook'}（${n} 条目）`;
-        console.log('[WorldBook] loaded:', this.loadedInfo);
-        this.updateUIBadge();
-      } catch (e) {
-        console.warn('[WorldBook] fetch failed, creating local load button:', e);
-        this.createLocalLoadButton();
-        this.loadedInfo = '点击加载本地文件';
-        this.updateUIBadge();
-      }
-    },
-    
-    createLocalLoadButton() {
-      const btn = document.createElement('button');
-      btn.textContent = '加载世界书（本地）';
-      btn.style.cssText = `
-        position: fixed; top: 50px; right: 10px; z-index: 1001;
-        padding: 8px 12px; background: #4CAF50; color: white;
-        border: none; border-radius: 4px; cursor: pointer; font-size: 12px;
-      `;
-      btn.onclick = () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        input.onchange = (e) => {
-          const file = e.target.files[0];
-          if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              try {
-                const data = JSON.parse(event.target.result);
-                this.book = WorldBookImporter?.import ? WorldBookImporter.import(data) : data;
-                const n = this.book?.entries?.length ?? 0;
-                this.loadedInfo = `${this.book?.name || 'WorldBook'}（${n} 条目）`;
-                this.updateUIBadge();
-                btn.remove();
-                console.log('[WorldBook] loaded from local file:', this.loadedInfo);
-              } catch (err) {
-                console.error('[WorldBook] JSON parse error:', err);
-              }
-            };
-            reader.readAsText(file);
-          }
-        };
-        input.click();
-      };
-      document.body.appendChild(btn);
-    },
-    
-    updateUIBadge() {
-      let badge = document.querySelector('#worldbook-status-badge');
-      if (!badge) {
-        badge = document.createElement('div');
-        badge.id = 'worldbook-status-badge';
-        badge.style.cssText = `
-          position: fixed; top: 10px; right: 10px; z-index: 1000;
-          background: rgba(0,0,0,0.7); color: white; padding: 5px 10px;
-          border-radius: 15px; font-size: 12px; pointer-events: none;
-        `;
-        document.body.appendChild(badge);
-      }
-      badge.textContent = `WorldBook: ${this.loadedInfo}`;
-    },
-    
-    async build(scanText, chatHistory = []) {
-      if (!this.book) return { slots: [], loreText: '' };
-      const result = this.engine.process(this.book, scanText);
-      return { slots: result.slots, loreText: result.finalPrompt || '' };
-    }
-  };
-
-  window.WorldBook = WB;
-
-  // 启动加载
-  window.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => WB.load(), 100);
+    loadedInfo: '未加载'
   });
 
-  // 接入发送流程
+  function updateBadge() {
+    if (!WB_DEBUG) return;
+    let el = document.querySelector('[data-wb-badge]');
+    if (!el) {
+      el = document.createElement('div');
+      el.setAttribute('data-wb-badge','1');
+      el.style.cssText = 'position:fixed;top:8px;right:160px;z-index:9998;background:rgba(0,0,0,.6);color:#fff;padding:4px 8px;border-radius:8px;padding:4px 8px;font-size:12px;';
+      document.body.appendChild(el);
+    }
+    el.textContent = 'WorldBook: ' + (WB.loadedInfo || '未加载');
+  }
+
+  async function loadDefaultBook() {
+    if (!IS_HTTP) { injectLocalLoadButton(); return; }
+    try {
+      const res = await fetch('./public/worldbook/samples/travel.worldbook.json');
+      const json = await res.json();
+      WB.book = WorldBookImporter?.import ? WorldBookImporter.import(json) : json;
+      const n = WB.book?.entries?.length ?? 0;
+      WB.loadedInfo = `${WB.book?.name || 'WorldBook'}（${n} 条目）`;
+      console.log('[WorldBook] loaded:', WB.loadedInfo);
+      updateBadge();
+    } catch (e) {
+      console.warn('[WorldBook] fetch failed, fallback to local button', e);
+      injectLocalLoadButton();
+    }
+  }
+
+  function injectLocalLoadButton() {
+    if (!WB_DEBUG) return; // 仅调试时出现
+    if (document.querySelector('[data-wb-local]')) return;
+    const btn = document.createElement('button');
+    btn.textContent = '加载世界书（本地）';
+    btn.setAttribute('data-wb-local','1');
+    btn.style.cssText = 'position:fixed;top:8px;right:12px;z-index:9999';
+    btn.onclick = async () => {
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = '.json,application/json';
+      input.onchange = async () => {
+        const f = input.files?.[0]; if (!f) return;
+        try {
+          const json = JSON.parse(await f.text());
+          WB.book = WorldBookImporter?.import ? WorldBookImporter.import(json) : json;
+          const n = WB.book?.entries?.length ?? 0;
+          WB.loadedInfo = `${WB.book?.name || 'WorldBook'}（${n} 条目）`;
+          console.log('[WorldBook] loaded(local):', WB.loadedInfo);
+          updateBadge();
+          btn.remove(); // 加载成功后隐藏按钮
+        } catch (err) { console.error('[WorldBook] local json parse error', err); }
+      };
+      input.click();
+    };
+    document.body.appendChild(btn);
+  }
+
+  window.addEventListener('load', () => { if (WB_DEBUG) updateBadge(); loadDefaultBook(); });
+
+  // 保持原有的 hook 发送流程
   function hookSendPipeline() {
     setTimeout(() => {
       // 监听聊天表单提交
@@ -112,12 +87,13 @@
           try {
             const messages = document.querySelectorAll('.message');
             const history = Array.from(messages).map(m => m.textContent || '');
-            const { loreText } = await WB.build(text, history);
+            const result = WB.engine ? WB.engine.process(WB.book, text) : { finalPrompt: '' };
+            const loreText = result.finalPrompt || '';
             
             if (loreText && window.AIModule) {
               const originalSystem = window.AIModule.systemPrompt || '';
               window.AIModule.systemPrompt = `[World Info]\n${loreText}\n\n${originalSystem}`;
-              console.log('[WorldBook] hooked: injected lore into system prompt');
+              console.log('[WorldBook] hooked: 已注入世界书信息到系统提示');
               
               setTimeout(() => {
                 window.AIModule.systemPrompt = originalSystem;
@@ -128,7 +104,7 @@
           }
         }, { capture: true });
         
-        console.log('[WorldBook] hooked chat form');
+        console.log('[WorldBook] hooked: 聊天表单已接入');
       }
     }, 1000);
   }
