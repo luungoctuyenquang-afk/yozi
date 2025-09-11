@@ -19,7 +19,8 @@
       "Bash(start test-mqtt-fixes.html)",
       "Bash(start test-online-users.html)",
       "Bash(dir:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(start test-phase2-room-management.html)"
     ],
     "deny": [],
     "ask": []

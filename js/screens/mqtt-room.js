@@ -866,12 +866,19 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             console.warn('加载房间配置失败:', error);
         }
         
-        // 使用默认配置 - 只有当房间不存在时才创建新配置
+        // 如果房间不存在，返回默认配置但不保存，等待真正创建时机
+        roomConfig = { ...defaultRoomConfig };
+        return roomConfig;
+    }
+    
+    // 真正创建房间配置（只有第一个用户才能创建）
+    function createRoomConfig(targetRoomId) {
         roomConfig = { ...defaultRoomConfig };
         roomConfig.createdBy = nickname;
         roomConfig.adminUsers = [nickname];
+        roomConfig.createdAt = Date.now();
         
-        // 立即保存新房间配置
+        // 保存新房间配置
         saveRoomConfig();
         log('system', `🏠 您创建了新房间 "${targetRoomId}"`);
         
@@ -2731,6 +2738,11 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     async function validateRoomAccess(roomId) {
         const config = loadRoomConfig(roomId);
         
+        // 如果房间没有创建者，说明是新房间，允许第一个用户进入
+        if (!config.createdBy) {
+            return { allowed: true };
+        }
+        
         // 如果是房间创建者，跳过密码验证
         const isCreator = config.createdBy === nickname;
         
@@ -2848,8 +2860,16 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         // 加载历史聊天记录
                         loadChatHistoryToUI(roomId);
                         
-                        // 加载房间配置并检查管理员权限
-                        loadRoomConfig(roomId);
+                        // 加载房间配置
+                        const config = loadRoomConfig(roomId);
+                        
+                        // 检查是否为新房间（没有创建者）
+                        if (!config.createdBy) {
+                            // 这是新房间，当前用户成为创建者
+                            createRoomConfig(roomId);
+                        }
+                        
+                        // 检查管理员权限
                         checkAdminPrivileges();
                         
                         // 启动心跳定时器，每30秒更新一次在线状态
