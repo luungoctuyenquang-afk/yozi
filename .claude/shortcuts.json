@@ -1,0 +1,5 @@
+{
+    "doc-check": "执行 docs/DOC_UPDATE_PROMPTS.md 第6节的文档质量检查",
+    "doc-update": "更新 CHANGELOG.md 和相关文档",
+    "doc-weekly": "执行周五文档审查流程"
+  }

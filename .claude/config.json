@@ -1,0 +1,14 @@
+{
+    "project_type": "web",
+    "language": "javascript",
+    "framework": "vanilla",
+    "formatting": {
+      "indent": 2,
+      "quotes": "single"
+    },
+    "context_files": [
+      "docs/ARCHITECTURE.md",
+      "docs/MODULE_MAP.md",
+      "js/config.js"
+    ]
+  }
