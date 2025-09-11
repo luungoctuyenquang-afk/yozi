@@ -707,16 +707,15 @@
     <script src="js/main.js"></script>
 
     <!-- WorldBook 引擎集成 -->
-    <script src="public/worldbook/index.global.js"></script>
-    <script src="js/worldbook.integration.js"></script>
-    <script src="js/worldbook-link.js"></script>
+    <script defer src="./public/worldbook/index.iife.js"></script>
+    <script defer src="./js/worldbook.integration.js"></script>
     
     <script>
-    // 注册Service Worker
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js').then(reg => {
-            console.log('Service Worker registered');
-        });
+    // 注册Service Worker (仅 http/https)
+    if (location.protocol.startsWith('http')) {
+        navigator.serviceWorker && navigator.serviceWorker.register('./sw.js');
+    } else {
+        console.log('[SW] skip on file://');
     }
     </script>
 </body>

@@ -1,5 +1,14 @@
 (function() {
     'use strict';
+    
+    // 通用资源路径解析器
+    function asset(rel) { return new URL(rel, document.baseURI).href; }
+    const DEFAULT_BOOK_URL = asset('public/worldbook/samples/travel.worldbook.json');
+    
+    // 自检日志
+    console.log('[WB] href=', location.href, 'base=', document.baseURI);
+    fetch(asset('public/worldbook/index.iife.js')).then(r => console.log('[WB] engine', r.status)).catch(e => console.log('[WB] engine error', e));
+    fetch(DEFAULT_BOOK_URL).then(r => console.log('[WB] book', r.status)).catch(e => console.log('[WB] book error', e));
 
     // 内联示例数据，支持 file:// 场景
     const SAMPLE_BOOK = {
@@ -216,6 +225,34 @@
         return [];
     }
 
+    // file:// 兼容的文件选择器
+    function promptForLocalFile() {
+        return new Promise((resolve) => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const data = JSON.parse(event.target.result);
+                            resolve(data);
+                        } catch (err) {
+                            console.error('[WB] JSON parse error:', err);
+                            resolve(SAMPLE_BOOK);
+                        }
+                    };
+                    reader.readAsText(file);
+                } else {
+                    resolve(SAMPLE_BOOK);
+                }
+            };
+            input.click();
+        });
+    }
+
     // 加载世界书数据
     async function loadWorldBook() {
         try {
@@ -231,31 +268,34 @@
                 return book;
             }
 
-            // 根据协议选择加载方式
-            if (location.protocol === 'file:') {
-                // file:// 协议，使用内联数据
-                console.debug('[WorldBook] Using inline SAMPLE_BOOK for file:// protocol');
-                const book = WorldBookImporter.import(SAMPLE_BOOK);
+            // 尝试从服务器加载
+            try {
+                const response = await fetch(DEFAULT_BOOK_URL);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const raw = await response.json();
+                const book = WorldBookImporter.import(raw);
                 if (typeof setCurrentBook === 'function') {
                     setCurrentBook(book);
                 }
+                console.debug('[WorldBook] Loaded from server and normalized');
                 return book;
-            } else {
-                // http(s) 协议，尝试 fetch
-                try {
-                    const response = await fetch('/worldbook/samples/travel.worldbook.json');
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-                    const raw = await response.json();
+            } catch (fetchError) {
+                console.warn('[WorldBook] Fetch failed:', fetchError);
+                
+                // file:// 协议兼容：弹出文件选择器
+                if (location.protocol === 'file:') {
+                    console.log('[WorldBook] file:// detected, prompting for local file');
+                    const raw = await promptForLocalFile();
                     const book = WorldBookImporter.import(raw);
                     if (typeof setCurrentBook === 'function') {
                         setCurrentBook(book);
                     }
-                    console.debug('[WorldBook] Loaded from server and normalized');
                     return book;
-                } catch (fetchError) {
-                    console.warn('[WorldBook] Fetch failed, falling back to inline data:', fetchError);
+                } else {
+                    // 其他情况使用内联数据
+                    console.warn('[WorldBook] Using fallback inline data');
                     const book = WorldBookImporter.import(SAMPLE_BOOK);
                     if (typeof setCurrentBook === 'function') {
                         setCurrentBook(book);
