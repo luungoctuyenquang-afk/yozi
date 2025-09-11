@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>MQTT房间管理测试</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .test-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .test-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .app-container {
+            min-height: 600px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        
+        .test-controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #fafafa;
+            border-radius: 8px;
+        }
+        
+        .test-button {
+            margin: 5px;
+            padding: 8px 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .test-button:hover {
+            background: #5567d8;
+        }
+        
+        .status-info {
+            padding: 10px;
+            background: #e8f4fd;
+            border-left: 4px solid #2196F3;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        
+        .log-container {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .log-entry {
+            margin: 2px 0;
+            padding: 3px 5px;
+        }
+        
+        .log-success { color: green; }
+        .log-error { color: red; }
+        .log-info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center; color: #667eea;">🔧 MQTT房间管理功能测试</h1>
+    
+    <div class="test-controls">
+        <button class="test-button" onclick="createTestRoom()">📝 创建测试房间</button>
+        <button class="test-button" onclick="testRoomList()">📋 测试房间列表</button>
+        <button class="test-button" onclick="testMultiUser()">👥 测试多用户</button>
+        <button class="test-button" onclick="clearAllData()">🗑️ 清除所有数据</button>
+        <button class="test-button" onclick="location.reload()">🔄 刷新页面</button>
+    </div>
+    
+    <div class="status-info" id="test-status">
+        ℹ️ 准备就绪，请选择测试项目
+    </div>
+    
+    <div class="test-container">
+        <!-- 用户1面板 -->
+        <div class="test-panel">
+            <div class="test-title">👤 用户1 - 房主</div>
+            <div id="mqtt-app-1" class="app-container"></div>
+            <div class="log-container" id="log-1"></div>
+        </div>
+        
+        <!-- 用户2面板 -->
+        <div class="test-panel">
+            <div class="test-title">👥 用户2 - 访客</div>
+            <div id="mqtt-app-2" class="app-container"></div>
+            <div class="log-container" id="log-2"></div>
+        </div>
+    </div>
+    
+    <!-- 引入MQTT库 -->
+    <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
+    
+    <!-- 引入MQTT聊天室模块 -->
+    <script src="js/screens/mqtt-room.js"></script>
+    
+    <script>
+        // 创建两个应用实例
+        let app1, app2;
+        let testRoomId = 'test-room-' + Date.now();
+        
+        // 初始化应用
+        function initApps() {
+            // 用户1 - 房主
+            app1 = createMqttRoomApp({
+                mountEl: document.getElementById('mqtt-app-1'),
+                getPlayerName: () => '测试用户1',
+                brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+            });
+            
+            // 用户2 - 访客
+            app2 = createMqttRoomApp({
+                mountEl: document.getElementById('mqtt-app-2'),
+                getPlayerName: () => '测试用户2',
+                brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+            });
+            
+            addLog('1', '✅ 用户1应用已初始化', 'success');
+            addLog('2', '✅ 用户2应用已初始化', 'success');
+        }
+        
+        // 添加日志
+        function addLog(userId, message, type = 'info') {
+            const logContainer = document.getElementById(`log-${userId}`);
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        // 更新状态
+        function updateStatus(message) {
+            document.getElementById('test-status').innerHTML = message;
+        }
+        
+        // 创建测试房间
+        async function createTestRoom() {
+            updateStatus('🔄 正在创建测试房间...');
+            
+            // 设置房间ID和昵称
+            const roomInput1 = document.querySelector('#mqtt-app-1 .room-input');
+            const nicknameInput1 = document.querySelector('#mqtt-app-1 .nickname-input');
+            
+            if (roomInput1 && nicknameInput1) {
+                roomInput1.value = testRoomId;
+                nicknameInput1.value = '房主Alice';
+                
+                // 点击创建房间按钮
+                const createBtn = document.querySelector('#mqtt-app-1 #btn-create-room');
+                if (createBtn) {
+                    createBtn.click();
+                    addLog('1', `🏠 创建房间: ${testRoomId}`, 'success');
+                    updateStatus(`✅ 房间 ${testRoomId} 创建成功！`);
+                }
+            }
+        }
+        
+        // 测试房间列表
+        async function testRoomList() {
+            updateStatus('🔄 正在测试房间列表功能...');
+            
+            // 刷新房间列表
+            const refreshBtn1 = document.querySelector('#mqtt-app-1 #refresh-room-list');
+            const refreshBtn2 = document.querySelector('#mqtt-app-2 #refresh-room-list');
+            
+            if (refreshBtn1) {
+                refreshBtn1.click();
+                addLog('1', '🔄 刷新房间列表', 'info');
+            }
+            
+            setTimeout(() => {
+                if (refreshBtn2) {
+                    refreshBtn2.click();
+                    addLog('2', '🔄 刷新房间列表', 'info');
+                }
+                updateStatus('✅ 房间列表已刷新，请查看活跃房间列表');
+            }, 1000);
+        }
+        
+        // 测试多用户
+        async function testMultiUser() {
+            updateStatus('🔄 正在测试多用户加入...');
+            
+            // 用户2加入房间
+            const roomInput2 = document.querySelector('#mqtt-app-2 .room-input');
+            const nicknameInput2 = document.querySelector('#mqtt-app-2 .nickname-input');
+            
+            if (roomInput2 && nicknameInput2) {
+                roomInput2.value = testRoomId;
+                nicknameInput2.value = '访客Bob';
+                
+                // 点击加入房间按钮
+                const joinBtn = document.querySelector('#mqtt-app-2 #btn-join-room');
+                if (joinBtn) {
+                    joinBtn.click();
+                    addLog('2', `🚪 加入房间: ${testRoomId}`, 'success');
+                    updateStatus('✅ 用户2已加入房间！');
+                }
+            }
+        }
+        
+        // 清除所有数据
+        function clearAllData() {
+            if (confirm('确定要清除所有测试数据吗？')) {
+                localStorage.removeItem('mqtt_room_configs');
+                localStorage.removeItem('mqtt_room_history');
+                localStorage.removeItem('mqtt_chat_history');
+                
+                // 清除房间统计
+                const keys = Object.keys(localStorage);
+                keys.forEach(key => {
+                    if (key.startsWith('room_stats_')) {
+                        localStorage.removeItem(key);
+                    }
+                });
+                
+                updateStatus('✅ 所有测试数据已清除');
+                addLog('1', '🗑️ 数据已清除', 'info');
+                addLog('2', '🗑️ 数据已清除', 'info');
+            }
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            initApps();
+            updateStatus('✅ 测试环境已准备就绪');
+        });
+    </script>
+</body>
+</html>

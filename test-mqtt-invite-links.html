@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT邀请链接测试</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .test-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+        }
+        
+        .feature-card {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .feature-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+            padding-left: 10px;
+        }
+        
+        .test-section {
+            margin: 15px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .test-button {
+            margin: 5px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .test-button:hover {
+            background: #5567d8;
+            transform: translateY(-2px);
+        }
+        
+        .test-output {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .link-display {
+            margin: 10px 0;
+            padding: 10px;
+            background: #e8f4fd;
+            border-left: 4px solid #2196F3;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+        
+        .success-msg {
+            color: green;
+            font-weight: bold;
+        }
+        
+        .error-msg {
+            color: red;
+            font-weight: bold;
+        }
+        
+        .info-msg {
+            color: #2196F3;
+        }
+        
+        .app-container {
+            min-height: 500px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-wrapper">
+        <h1>🔗 MQTT邀请链接功能测试</h1>
+        
+        <!-- 新功能展示 -->
+        <div class="feature-card">
+            <div class="feature-title">✨ 新功能列表</div>
+            <ul>
+                <li>✅ <strong>链接直达</strong>：通过URL参数预填房间信息</li>
+                <li>✅ <strong>随机房间ID生成</strong>：点击骰子按钮生成唯一房间号</li>
+                <li>✅ <strong>房间密钥（UID）</strong>：每个房间有唯一密钥</li>
+                <li>✅ <strong>邀请链接</strong>：一键复制分享给好友</li>
+                <li>✅ <strong>自动加入</strong>：支持auto参数自动连接</li>
+            </ul>
+        </div>
+        
+        <!-- 测试区域 -->
+        <div class="feature-card">
+            <div class="feature-title">🧪 功能测试</div>
+            
+            <div class="test-section">
+                <h3>1. 生成测试链接</h3>
+                <button class="test-button" onclick="generateTestLink()">生成普通邀请链接</button>
+                <button class="test-button" onclick="generateAutoJoinLink()">生成自动加入链接</button>
+                <button class="test-button" onclick="generateUidLink()">生成带密钥的链接</button>
+                <div id="link-output" class="link-display" style="display:none;"></div>
+            </div>
+            
+            <div class="test-section">
+                <h3>2. 解析当前URL</h3>
+                <button class="test-button" onclick="parseCurrentURL()">解析URL参数</button>
+                <div id="parse-output" class="test-output"></div>
+            </div>
+            
+            <div class="test-section">
+                <h3>3. 测试房间ID生成</h3>
+                <button class="test-button" onclick="testRoomIdGeneration()">生成10个随机房间ID</button>
+                <div id="roomid-output" class="test-output"></div>
+            </div>
+            
+            <div class="test-section">
+                <h3>4. 测试房间密钥生成</h3>
+                <button class="test-button" onclick="testRoomKeyGeneration()">生成房间密钥</button>
+                <div id="key-output" class="test-output"></div>
+            </div>
+        </div>
+        
+        <!-- MQTT应用容器 -->
+        <div class="feature-card">
+            <div class="feature-title">📱 MQTT聊天室应用</div>
+            <div id="mqtt-app" class="app-container"></div>
+        </div>
+    </div>
+    
+    <!-- 引入MQTT库 -->
+    <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
+    
+    <!-- 引入MQTT聊天室模块 -->
+    <script src="js/screens/mqtt-room.js"></script>
+    
+    <script>
+        // 初始化MQTT应用
+        let app;
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            app = createMqttRoomApp({
+                mountEl: document.getElementById('mqtt-app'),
+                getPlayerName: () => '测试用户',
+                brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+            });
+            
+            // 如果URL中有参数，显示解析结果
+            if (window.location.search || window.location.hash.includes('?')) {
+                parseCurrentURL();
+            }
+        });
+        
+        // 生成普通邀请链接
+        function generateTestLink() {
+            const roomId = 'rm_' + Math.random().toString(36).substr(2, 8);
+            const nick = '访客' + Math.floor(Math.random() * 1000);
+            const link = `${window.location.origin}${window.location.pathname}?room=${roomId}&nick=${encodeURIComponent(nick)}`;
+            
+            showLink(link, '普通邀请链接');
+        }
+        
+        // 生成自动加入链接
+        function generateAutoJoinLink() {
+            const roomId = 'rm_' + Math.random().toString(36).substr(2, 8);
+            const nick = '自动访客' + Math.floor(Math.random() * 1000);
+            const link = `${window.location.origin}${window.location.pathname}?room=${roomId}&nick=${encodeURIComponent(nick)}&auto=true`;
+            
+            showLink(link, '自动加入链接（打开后自动连接）');
+        }
+        
+        // 生成带密钥的链接
+        function generateUidLink() {
+            const roomId = 'rm_' + Math.random().toString(36).substr(2, 8);
+            const nick = '授权访客' + Math.floor(Math.random() * 1000);
+            const uid = btoa(Math.random().toString()).replace(/=/g, '');
+            const link = `${window.location.origin}${window.location.pathname}?room=${roomId}&nick=${encodeURIComponent(nick)}&uid=${uid}`;
+            
+            showLink(link, '带密钥的安全链接');
+        }
+        
+        // 显示链接
+        function showLink(link, title) {
+            const output = document.getElementById('link-output');
+            output.style.display = 'block';
+            output.innerHTML = `
+                <strong>${title}:</strong><br>
+                <a href="${link}" target="_blank">${link}</a><br>
+                <button class="test-button" style="margin-top:10px;" onclick="navigator.clipboard.writeText('${link}').then(()=>alert('已复制到剪贴板'))">📋 复制链接</button>
+            `;
+        }
+        
+        // 解析当前URL
+        function parseCurrentURL() {
+            const output = document.getElementById('parse-output');
+            const urlParams = new URLSearchParams(window.location.search);
+            const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+            
+            let result = '<strong>URL参数解析结果:</strong><br><br>';
+            
+            // Search参数
+            if (urlParams.toString()) {
+                result += '<span class="info-msg">Search参数:</span><br>';
+                for (const [key, value] of urlParams) {
+                    result += `  ${key}: ${decodeURIComponent(value)}<br>`;
+                }
+            }
+            
+            // Hash参数
+            if (hashParams.toString()) {
+                result += '<br><span class="info-msg">Hash参数:</span><br>';
+                for (const [key, value] of hashParams) {
+                    result += `  ${key}: ${decodeURIComponent(value)}<br>`;
+                }
+            }
+            
+            if (!urlParams.toString() && !hashParams.toString()) {
+                result += '<span class="error-msg">没有检测到URL参数</span>';
+            }
+            
+            output.innerHTML = result;
+        }
+        
+        // 测试房间ID生成
+        function testRoomIdGeneration() {
+            const output = document.getElementById('roomid-output');
+            let result = '<strong>随机房间ID:</strong><br>';
+            
+            for (let i = 0; i < 10; i++) {
+                const roomId = 'rm_' + Math.random().toString(36).substr(2, 8);
+                result += `${i + 1}. ${roomId}<br>`;
+            }
+            
+            output.innerHTML = result;
+        }
+        
+        // 测试房间密钥生成
+        function testRoomKeyGeneration() {
+            const output = document.getElementById('key-output');
+            const array = new Uint8Array(32);
+            crypto.getRandomValues(array);
+            const key = btoa(String.fromCharCode.apply(null, array))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=/g, '');
+            
+            output.innerHTML = `
+                <strong>生成的房间密钥:</strong><br>
+                <span class="success-msg">${key}</span><br>
+                <span class="info-msg">长度: ${key.length} 字符</span><br>
+                <span class="info-msg">类型: Base64 URL-safe</span>
+            `;
+        }
+    </script>
+</body>
+</html>

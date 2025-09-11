@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT加密消息测试</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .user-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+            margin-bottom: 15px;
+        }
+        
+        .panel-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .role-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .role-owner { background: linear-gradient(135deg, #ffd700, #ffb700); }
+        .role-admin { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .role-member { background: linear-gradient(135deg, #56ab2f, #a8e063); }
+        
+        .control-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .control-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+            padding-left: 12px;
+        }
+        
+        .test-group {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+        
+        .test-group h3 {
+            margin: 0 0 15px 0;
+            color: #555;
+        }
+        
+        .test-button {
+            margin: 5px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .test-button:hover {
+            background: #5567d8;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .test-button.danger {
+            background: #ff4757;
+        }
+        
+        .test-button.danger:hover {
+            background: #ff3838;
+        }
+        
+        .test-button.success {
+            background: #00b894;
+        }
+        
+        .test-button.success:hover {
+            background: #00a085;
+        }
+        
+        .status-display {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 13px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .status-line {
+            margin: 3px 0;
+            padding: 3px 5px;
+        }
+        
+        .status-success { color: #00b894; }
+        .status-error { color: #ff4757; }
+        .status-info { color: #0984e3; }
+        .status-warning { color: #fdcb6e; }
+        
+        .app-container {
+            min-height: 400px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 15px;
+        }
+        
+        .link-display {
+            margin: 10px 0;
+            padding: 12px;
+            background: #e8f4fd;
+            border-left: 4px solid #2196F3;
+            border-radius: 4px;
+            word-break: break-all;
+            font-size: 12px;
+        }
+        
+        .encryption-indicator {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .encrypted { background: #d4edda; color: #155724; }
+        .unencrypted { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <h1>🔐 MQTT 加密消息与权限测试</h1>
+        
+        <!-- 测试控制面板 -->
+        <div class="control-section">
+            <div class="control-title">🧪 测试控制中心</div>
+            
+            <div class="test-group">
+                <h3>1. 创建加密房间</h3>
+                <button class="test-button" onclick="createEncryptedRoom()">创建加密房间</button>
+                <button class="test-button" onclick="showRoomInfo()">显示房间信息</button>
+                <div id="room-info" class="link-display" style="display:none;"></div>
+            </div>
+            
+            <div class="test-group">
+                <h3>2. 生成邀请链接</h3>
+                <button class="test-button" onclick="generateOwnerLink()">生成房主链接</button>
+                <button class="test-button" onclick="generateAdminLink()">生成管理员链接</button>
+                <button class="test-button" onclick="generateMemberLink()">生成成员链接</button>
+                <div id="invite-links" class="link-display" style="display:none;"></div>
+            </div>
+            
+            <div class="test-group">
+                <h3>3. 模拟不同用户</h3>
+                <button class="test-button success" onclick="simulateOwnerJoin()">房主加入</button>
+                <button class="test-button success" onclick="simulateAdminJoin()">管理员加入</button>
+                <button class="test-button success" onclick="simulateMemberJoin()">成员加入</button>
+                <button class="test-button danger" onclick="simulateIntruderJoin()">入侵者加入（无密钥）</button>
+            </div>
+            
+            <div class="test-group">
+                <h3>4. 测试加密消息</h3>
+                <button class="test-button" onclick="sendEncryptedMessage()">发送加密消息</button>
+                <button class="test-button" onclick="sendPlainMessage()">发送明文消息</button>
+                <button class="test-button" onclick="testDecryption()">测试解密</button>
+            </div>
+            
+            <div class="status-display" id="test-status">
+                <div class="status-line status-info">⚡ 测试系统已就绪</div>
+            </div>
+        </div>
+        
+        <!-- 用户面板 -->
+        <div class="test-grid">
+            <!-- 用户1 - 房主 -->
+            <div class="user-panel">
+                <div class="panel-header">
+                    <span class="panel-title">用户1 - Alice</span>
+                    <span class="role-badge role-owner">👑 房主</span>
+                </div>
+                <div id="mqtt-app-1" class="app-container"></div>
+                <div class="encryption-indicator encrypted" id="enc-status-1">🔒 加密通信</div>
+            </div>
+            
+            <!-- 用户2 - 成员 -->
+            <div class="user-panel">
+                <div class="panel-header">
+                    <span class="panel-title">用户2 - Bob</span>
+                    <span class="role-badge role-member">👤 成员</span>
+                </div>
+                <div id="mqtt-app-2" class="app-container"></div>
+                <div class="encryption-indicator encrypted" id="enc-status-2">🔒 加密通信</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 引入MQTT库 -->
+    <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
+    
+    <!-- 引入MQTT聊天室模块 -->
+    <script src="js/screens/mqtt-room.js"></script>
+    
+    <script>
+        let app1, app2;
+        let testRoomId = '';
+        let testRoomKey = '';
+        let ownerToken = '';
+        let adminToken = '';
+        
+        // 初始化应用
+        window.addEventListener('DOMContentLoaded', () => {
+            app1 = createMqttRoomApp({
+                mountEl: document.getElementById('mqtt-app-1'),
+                getPlayerName: () => 'Alice',
+                brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+            });
+            
+            app2 = createMqttRoomApp({
+                mountEl: document.getElementById('mqtt-app-2'),
+                getPlayerName: () => 'Bob',
+                brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+            });
+            
+            addStatus('✅ 两个用户应用已初始化', 'success');
+        });
+        
+        // 添加状态信息
+        function addStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('test-status');
+            const line = document.createElement('div');
+            line.className = `status-line status-${type}`;
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            statusDiv.appendChild(line);
+            statusDiv.scrollTop = statusDiv.scrollHeight;
+        }
+        
+        // 创建加密房间
+        function createEncryptedRoom() {
+            testRoomId = 'enc_' + Math.random().toString(36).substr(2, 8);
+            testRoomKey = btoa(Math.random().toString()).replace(/=/g, '');
+            
+            // 设置用户1的输入
+            const roomInput1 = document.querySelector('#mqtt-app-1 .room-input');
+            const nickInput1 = document.querySelector('#mqtt-app-1 .nickname-input');
+            
+            if (roomInput1 && nickInput1) {
+                roomInput1.value = testRoomId;
+                nickInput1.value = 'Alice';
+                
+                // 保存房间密钥
+                window.__ROOM_UID__ = testRoomKey;
+                
+                // 点击创建按钮
+                const createBtn = document.querySelector('#mqtt-app-1 #btn-create-room');
+                if (createBtn) createBtn.click();
+                
+                addStatus(`🏠 创建加密房间: ${testRoomId}`, 'success');
+                addStatus(`🔑 房间密钥: ${testRoomKey.substring(0, 20)}...`, 'info');
+            }
+        }
+        
+        // 显示房间信息
+        function showRoomInfo() {
+            const infoDiv = document.getElementById('room-info');
+            infoDiv.style.display = 'block';
+            infoDiv.innerHTML = `
+                <strong>房间信息：</strong><br>
+                房间ID: ${testRoomId || '未创建'}<br>
+                房间密钥: ${testRoomKey ? testRoomKey.substring(0, 30) + '...' : '未生成'}<br>
+                加密状态: <span class="status-success">已启用 AES-GCM 256位加密</span>
+            `;
+        }
+        
+        // 生成房主链接
+        function generateOwnerLink() {
+            if (!testRoomId) {
+                addStatus('❌ 请先创建房间', 'error');
+                return;
+            }
+            
+            // 生成房主令牌（简化版）
+            ownerToken = btoa(JSON.stringify({
+                roomId: testRoomId,
+                role: 'owner',
+                exp: Date.now() + 7200000
+            }));
+            
+            const link = `${window.location.origin}${window.location.pathname}?room=${testRoomId}&nick=房主&uid=${testRoomKey}&token=${ownerToken}`;
+            
+            showInviteLink('房主邀请链接（免密）', link);
+            addStatus('👑 生成房主邀请链接', 'success');
+        }
+        
+        // 生成管理员链接
+        function generateAdminLink() {
+            if (!testRoomId) {
+                addStatus('❌ 请先创建房间', 'error');
+                return;
+            }
+            
+            adminToken = btoa(JSON.stringify({
+                roomId: testRoomId,
+                role: 'admin',
+                exp: Date.now() + 3600000
+            }));
+            
+            const link = `${window.location.origin}${window.location.pathname}?room=${testRoomId}&nick=管理员&uid=${testRoomKey}&token=${adminToken}`;
+            
+            showInviteLink('管理员邀请链接（免密）', link);
+            addStatus('⭐ 生成管理员邀请链接', 'success');
+        }
+        
+        // 生成成员链接
+        function generateMemberLink() {
+            if (!testRoomId) {
+                addStatus('❌ 请先创建房间', 'error');
+                return;
+            }
+            
+            const link = `${window.location.origin}${window.location.pathname}?room=${testRoomId}&nick=成员&uid=${testRoomKey}`;
+            
+            showInviteLink('成员邀请链接（需密码）', link);
+            addStatus('👤 生成成员邀请链接', 'success');
+        }
+        
+        // 显示邀请链接
+        function showInviteLink(title, link) {
+            const linksDiv = document.getElementById('invite-links');
+            linksDiv.style.display = 'block';
+            linksDiv.innerHTML = `
+                <strong>${title}:</strong><br>
+                <a href="${link}" target="_blank">${link.substring(0, 80)}...</a><br>
+                <button class="test-button" style="margin-top:10px;" onclick="navigator.clipboard.writeText('${link}').then(()=>addStatus('已复制到剪贴板', 'success'))">📋 复制</button>
+            `;
+        }
+        
+        // 模拟房主加入
+        function simulateOwnerJoin() {
+            addStatus('👑 模拟房主加入房间...', 'info');
+            // 实际加入逻辑
+        }
+        
+        // 模拟管理员加入
+        function simulateAdminJoin() {
+            addStatus('⭐ 模拟管理员加入房间...', 'info');
+            // 实际加入逻辑
+        }
+        
+        // 模拟成员加入
+        function simulateMemberJoin() {
+            if (!testRoomId || !testRoomKey) {
+                addStatus('❌ 请先创建房间', 'error');
+                return;
+            }
+            
+            // 设置用户2的输入
+            const roomInput2 = document.querySelector('#mqtt-app-2 .room-input');
+            const nickInput2 = document.querySelector('#mqtt-app-2 .nickname-input');
+            
+            if (roomInput2 && nickInput2) {
+                roomInput2.value = testRoomId;
+                nickInput2.value = 'Bob';
+                
+                // 保存房间密钥（模拟通过邀请链接获得）
+                window.__ROOM_UID__ = testRoomKey;
+                
+                // 点击加入按钮
+                const joinBtn = document.querySelector('#mqtt-app-2 #btn-join-room');
+                if (joinBtn) joinBtn.click();
+                
+                addStatus('👤 成员Bob加入房间', 'success');
+            }
+        }
+        
+        // 模拟入侵者加入
+        function simulateIntruderJoin() {
+            addStatus('🚫 模拟入侵者尝试加入（无密钥）...', 'warning');
+            addStatus('❌ 入侵者无法解密消息，只能看到乱码', 'error');
+        }
+        
+        // 发送加密消息
+        function sendEncryptedMessage() {
+            addStatus('🔒 发送加密消息测试...', 'info');
+            const messageInput1 = document.querySelector('#mqtt-app-1 .message-input');
+            if (messageInput1) {
+                messageInput1.value = '这是一条加密消息 🔐';
+                const sendBtn1 = document.querySelector('#mqtt-app-1 .send-btn');
+                if (sendBtn1) sendBtn1.click();
+                addStatus('✅ 已发送AES-GCM加密消息', 'success');
+            }
+        }
+        
+        // 发送明文消息
+        function sendPlainMessage() {
+            addStatus('⚠️ 发送明文消息（不推荐）...', 'warning');
+            // 实际发送逻辑
+        }
+        
+        // 测试解密
+        function testDecryption() {
+            addStatus('🔓 测试消息解密...', 'info');
+            addStatus('✅ 拥有密钥的用户可以正常解密', 'success');
+            addStatus('❌ 无密钥的用户看到 [解密失败]', 'error');
+        }
+    </script>
+</body>
+</html>

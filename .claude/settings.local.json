@@ -25,7 +25,9 @@
       "Bash(sed:*)",
       "Bash(cp:*)",
       "Bash(npx live-server:*)",
-      "Bash(start index.html)"
+      "Bash(start index.html)",
+      "Bash(start test-mqtt-room-management.html)",
+      "Bash(start test-mqtt-invite-links.html)"
     ],
     "deny": [],
     "ask": []

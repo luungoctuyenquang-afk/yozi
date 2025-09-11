@@ -1111,3 +1111,223 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
     cursor: pointer;
     font-size: 13px;
 }
+
+/* MQTT房间列表样式 */
+.room-list-section {
+    margin: 15px 0;
+    padding: 10px;
+    background: #f9f9f9;
+    border-radius: 8px;
+}
+
+.room-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.room-list-title {
+    font-weight: bold;
+    font-size: 14px;
+    color: #333;
+}
+
+.refresh-room-list {
+    background: transparent;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.refresh-room-list:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.room-list-container {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.room-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    margin: 5px 0;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+    transition: all 0.3s;
+}
+
+.room-item:hover {
+    border-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+.room-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.room-name {
+    font-weight: bold;
+    color: #333;
+    font-size: 14px;
+}
+
+.room-creator {
+    font-size: 12px;
+    color: #666;
+}
+
+.room-users {
+    font-size: 12px;
+    color: #999;
+}
+
+.btn-quick-join {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background-color 0.3s;
+}
+
+.btn-quick-join:hover {
+    background: #5567d8;
+}
+
+.no-rooms {
+    text-align: center;
+    padding: 20px;
+    color: #999;
+    font-size: 14px;
+}
+
+/* MQTT房间列表夜间模式适配 */
+.mqtt-room-screen[data-theme="dark"] .room-list-section,
+.mqtt-room-screen.theme-dark .room-list-section {
+    background: #1a1a1a;
+    border: 1px solid #333;
+}
+
+.mqtt-room-screen[data-theme="dark"] .room-list-header,
+.mqtt-room-screen.theme-dark .room-list-header {
+    border-bottom-color: #444;
+}
+
+.mqtt-room-screen[data-theme="dark"] .room-list-title,
+.mqtt-room-screen.theme-dark .room-list-title {
+    color: #e0e0e0;
+}
+
+.mqtt-room-screen[data-theme="dark"] .room-item,
+.mqtt-room-screen.theme-dark .room-item {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #e0e0e0;
+}
+
+.mqtt-room-screen[data-theme="dark"] .room-item:hover,
+.mqtt-room-screen.theme-dark .room-item:hover {
+    background: #333;
+    border-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
+}
+
+.mqtt-room-screen[data-theme="dark"] .room-name,
+.mqtt-room-screen.theme-dark .room-name {
+    color: #fff;
+}
+
+.mqtt-room-screen[data-theme="dark"] .room-creator,
+.mqtt-room-screen.theme-dark .room-creator {
+    color: #aaa;
+}
+
+.mqtt-room-screen[data-theme="dark"] .room-users,
+.mqtt-room-screen.theme-dark .room-users {
+    color: #888;
+}
+
+.mqtt-room-screen[data-theme="dark"] .no-rooms,
+.mqtt-room-screen.theme-dark .no-rooms {
+    color: #666;
+}
+
+.mqtt-room-screen[data-theme="dark"] .refresh-room-list:hover,
+.mqtt-room-screen.theme-dark .refresh-room-list:hover {
+    background: rgba(102, 126, 234, 0.2);
+}
+
+.mqtt-room-screen[data-theme="dark"] .btn-quick-join,
+.mqtt-room-screen.theme-dark .btn-quick-join {
+    background: #5567d8;
+}
+
+.mqtt-room-screen[data-theme="dark"] .btn-quick-join:hover,
+.mqtt-room-screen.theme-dark .btn-quick-join:hover {
+    background: #667eea;
+}
+
+/* 新增按钮样式 */
+.btn-generate-room {
+    padding: 8px 12px;
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s;
+}
+
+.btn-generate-room:hover {
+    background: #e0e0e0;
+    transform: rotate(180deg);
+}
+
+.btn-copy-invite {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.btn-copy-invite:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.room-input-group {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+/* 夜间模式适配 */
+.mqtt-room-screen[data-theme="dark"] .btn-generate-room,
+.mqtt-room-screen.theme-dark .btn-generate-room {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #e0e0e0;
+}
+
+.mqtt-room-screen[data-theme="dark"] .btn-generate-room:hover,
+.mqtt-room-screen.theme-dark .btn-generate-room:hover {
+    background: #333;
+}

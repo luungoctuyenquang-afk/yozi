@@ -30,6 +30,11 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     let onlineUsers = new Set(); // 在线用户集合
     let userJoinTimes = new Map(); // 用户加入时间记录
     
+    // 全局房间列表管理
+    let globalRoomList = new Map(); // 全局房间列表 Map<roomId, roomInfo>
+    let globalRoomsTopic = 'game/global/rooms'; // 全局房间列表主题
+    let roomListClient = null; // 用于订阅全局房间列表的客户端
+    
     // 房间历史记录管理
     let roomHistory = []; // 房间历史记录数组
     const MAX_HISTORY_SIZE = 10; // 最大历史记录数量
@@ -895,8 +900,183 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         }
     }
     
-    // 检查房间是否已存在
+    // 初始化全局房间列表监听
+    function initGlobalRoomList() {
+        if (roomListClient) return; // 已经初始化
+        
+        try {
+            const currentBrokerUrl = brokerUrls[currentBrokerIndex];
+            roomListClient = mqtt.connect(currentBrokerUrl, {
+                clientId: `roomlist_${Math.random().toString(16).substr(2, 8)}`,
+                clean: true,
+                connectTimeout: 5000
+            });
+            
+            roomListClient.on('connect', () => {
+                console.log('全局房间列表客户端已连接');
+                roomListClient.subscribe(globalRoomsTopic, (err) => {
+                    if (!err) {
+                        console.log('已订阅全局房间列表主题');
+                        // 请求当前房间列表
+                        requestRoomList();
+                    }
+                });
+            });
+            
+            roomListClient.on('message', (topic, message) => {
+                if (topic === globalRoomsTopic) {
+                    handleGlobalRoomMessage(message.toString());
+                }
+            });
+            
+            roomListClient.on('error', (error) => {
+                console.warn('全局房间列表客户端错误:', error);
+            });
+        } catch (error) {
+            console.error('初始化全局房间列表失败:', error);
+        }
+    }
+    
+    // 处理全局房间消息
+    function handleGlobalRoomMessage(message) {
+        try {
+            const data = JSON.parse(message);
+            
+            switch(data.type) {
+                case 'room_created':
+                    globalRoomList.set(data.roomId, {
+                        roomId: data.roomId,
+                        createdBy: data.createdBy,
+                        createdAt: data.createdAt,
+                        userCount: data.userCount || 1,
+                        maxUsers: data.maxUsers || 20,
+                        category: data.category || 'chat',
+                        isPrivate: data.isPrivate || false
+                    });
+                    console.log(`房间 ${data.roomId} 已创建`);
+                    updateRoomListUI();
+                    break;
+                    
+                case 'room_closed':
+                    globalRoomList.delete(data.roomId);
+                    console.log(`房间 ${data.roomId} 已关闭`);
+                    updateRoomListUI();
+                    break;
+                    
+                case 'room_update':
+                    if (globalRoomList.has(data.roomId)) {
+                        const room = globalRoomList.get(data.roomId);
+                        Object.assign(room, data.update);
+                        updateRoomListUI();
+                    }
+                    break;
+                    
+                case 'room_list':
+                    // 完整房间列表
+                    globalRoomList.clear();
+                    if (data.rooms && Array.isArray(data.rooms)) {
+                        data.rooms.forEach(room => {
+                            globalRoomList.set(room.roomId, room);
+                        });
+                    }
+                    updateRoomListUI();
+                    break;
+            }
+        } catch (error) {
+            console.warn('处理全局房间消息失败:', error);
+        }
+    }
+    
+    // 请求房间列表
+    function requestRoomList() {
+        if (roomListClient && roomListClient.connected) {
+            roomListClient.publish(globalRoomsTopic, JSON.stringify({
+                type: 'request_list',
+                timestamp: Date.now()
+            }));
+        }
+    }
+    
+    // 发布房间创建消息
+    function publishRoomCreated(roomId, roomInfo) {
+        if (roomListClient && roomListClient.connected) {
+            roomListClient.publish(globalRoomsTopic, JSON.stringify({
+                type: 'room_created',
+                roomId: roomId,
+                createdBy: nickname,
+                createdAt: Date.now(),
+                ...roomInfo
+            }));
+        }
+    }
+    
+    // 发布房间关闭消息
+    function publishRoomClosed(roomId) {
+        if (roomListClient && roomListClient.connected) {
+            roomListClient.publish(globalRoomsTopic, JSON.stringify({
+                type: 'room_closed',
+                roomId: roomId,
+                closedBy: nickname,
+                timestamp: Date.now()
+            }));
+        }
+    }
+    
+    // 更新房间列表UI
+    function updateRoomListUI() {
+        const roomListContainer = mountEl.querySelector('.room-list-container');
+        if (!roomListContainer) return;
+        
+        const roomsArray = Array.from(globalRoomList.values());
+        
+        if (roomsArray.length === 0) {
+            roomListContainer.innerHTML = '<div class="no-rooms">暂无活跃房间</div>';
+            return;
+        }
+        
+        const roomListHTML = roomsArray.map(room => `
+            <div class="room-item" data-room-id="${room.roomId}">
+                <div class="room-info">
+                    <span class="room-name">${room.roomId}</span>
+                    <span class="room-creator">创建者: ${room.createdBy}</span>
+                    <span class="room-users">${room.userCount || 0}/${room.maxUsers || 20}人</span>
+                </div>
+                <button class="btn-quick-join" data-room-id="${room.roomId}">
+                    ${room.isPrivate ? '🔒' : '🚪'} 加入
+                </button>
+            </div>
+        `).join('');
+        
+        roomListContainer.innerHTML = roomListHTML;
+        
+        // 绑定快速加入按钮事件
+        roomListContainer.querySelectorAll('.btn-quick-join').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const targetRoomId = e.target.dataset.roomId;
+                elements.roomInput.value = targetRoomId;
+                joinRoom();
+            });
+        });
+    }
+    
+    // 检查房间是否已存在（改进版）
     function roomExists(targetRoomId) {
+        // 先检查全局房间列表
+        if (globalRoomList.has(targetRoomId)) {
+            return true;
+        }
+        
+        // 再检查本地存储（兼容旧版本）
+        try {
+            const roomConfigs = JSON.parse(localStorage.getItem('mqtt_room_configs') || '{}');
+            return roomConfigs.hasOwnProperty(targetRoomId) && roomConfigs[targetRoomId].createdBy;
+        } catch (error) {
+            return false;
+        }
+    }
+    
+    // 原来的 roomExists 函数改名为 localRoomExists
+    function localRoomExists(targetRoomId) {
         try {
             const roomConfigs = JSON.parse(localStorage.getItem('mqtt_room_configs') || '{}');
             return roomConfigs.hasOwnProperty(targetRoomId) && roomConfigs[targetRoomId].createdBy;
@@ -918,9 +1098,35 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         roomConfig.createdAt = Date.now();
         roomConfig.roomId = targetRoomId;
         
+        // 生成房间唯一密钥（UID）
+        if (!roomConfig.roomKey) {
+            roomConfig.roomKey = generateRoomKey();
+            window.__ROOM_UID__ = roomConfig.roomKey; // 保存到全局变量
+        }
+        
         // 保存新房间配置
         saveRoomConfig();
+        
+        // 发布房间创建消息到全局主题
+        publishRoomCreated(targetRoomId, {
+            maxUsers: roomConfig.maxUsers,
+            category: roomConfig.category,
+            isPrivate: roomConfig.isPrivate,
+            userCount: 1
+        });
+        
         log('system', `🏠 您成功创建了房间 "${targetRoomId}"`);
+        
+        // 生成不同类型的邀请链接
+        const ownerToken = generateInviteToken(targetRoomId, 'owner', 7200); // 房主令牌，2小时有效
+        const adminToken = generateInviteToken(targetRoomId, 'admin', 3600); // 管理员令牌，1小时有效
+        const memberLink = generateInviteLink(targetRoomId, '访客', true); // 普通成员链接（带密钥）
+        
+        // 显示邀请链接
+        log('system', `🔗 普通邀请链接: ${memberLink}`);
+        log('system', `👑 房主邀请链接: ${generateInviteLink(targetRoomId, '房主', true)}&token=${ownerToken}`);
+        log('system', `⭐ 管理员邀请链接: ${generateInviteLink(targetRoomId, '管理员', true)}&token=${adminToken}`);
+        log('system', '💡 提示: 房主和管理员链接可免密进入房间');
         
         return roomConfig;
     }
@@ -1128,7 +1334,10 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 <div class="mqtt-content">
                     <div class="room-section">
                         <div class="room-controls">
-                            <input type="text" class="room-input" placeholder="房间号" value="demo-room-001">
+                            <div class="room-input-group" style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                <input type="text" class="room-input" placeholder="房间号" value="demo-room-001" style="flex: 1;">
+                                <button class="btn-generate-room" id="btn-generate-room" title="生成随机房间号">🎲</button>
+                            </div>
                             <input type="text" class="nickname-input" placeholder="昵称" value="">
                             <div class="password-input-group" style="display: none;">
                                 <input type="password" class="room-password-input" placeholder="房间密码" maxlength="50">
@@ -1139,6 +1348,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         <div class="room-actions">
                             <button class="btn-create-room" id="btn-create-room">🏠 创建房间</button>
                             <button class="btn-join-room" id="btn-join-room">🚪 加入房间</button>
+                            <button class="btn-copy-invite" id="btn-copy-invite" title="复制邀请链接">🔗 复制邀请</button>
                         </div>
                         
                         <div class="room-settings">
@@ -1185,6 +1395,17 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                                 </div>
                             </div>
                             <div class="history-list" id="room-history-list"></div>
+                        </div>
+                        
+                        <!-- 全局房间列表 -->
+                        <div class="room-list-section">
+                            <div class="room-list-header">
+                                <span class="room-list-title">🌐 活跃房间列表</span>
+                                <button class="refresh-room-list" id="refresh-room-list" title="刷新房间列表">🔄</button>
+                            </div>
+                            <div class="room-list-container" id="room-list-container">
+                                <div class="no-rooms">正在加载房间列表...</div>
+                            </div>
                         </div>
                         
                         <div class="control-buttons">
@@ -2721,6 +2942,277 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         
         // 绑定事件
         bindEvents();
+        
+        // 解析URL参数并预填表单
+        parseURLParams();
+    }
+    
+    // 解析URL参数预填表单
+    function parseURLParams() {
+        try {
+            // 支持 hash 和 search 两种方式的参数
+            const urlParams = new URLSearchParams(window.location.search);
+            const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+            
+            // 优先使用 search 参数，其次使用 hash 参数
+            const room = urlParams.get('room') || hashParams.get('room');
+            const nick = urlParams.get('nick') || hashParams.get('nick');
+            const uid = urlParams.get('uid') || hashParams.get('uid');
+            const token = urlParams.get('token') || hashParams.get('token');
+            const autoJoin = urlParams.get('auto') || hashParams.get('auto');
+            
+            // 预填房间号
+            if (room && elements.roomInput) {
+                elements.roomInput.value = decodeURIComponent(room);
+                log('system', `📎 从链接预填房间号: ${room}`);
+            }
+            
+            // 预填昵称
+            if (nick && elements.nicknameInput) {
+                elements.nicknameInput.value = decodeURIComponent(nick);
+                log('system', `📎 从链接预填昵称: ${decodeURIComponent(nick)}`);
+            }
+            
+            // 预填房间密钥/密码（如果有）
+            if (uid) {
+                // 保存到临时变量，用于后续的加密通信
+                window.__ROOM_UID__ = uid;
+                log('system', '🔑 检测到房间密钥');
+            }
+            
+            // 处理邀请令牌（房主/管理员免密）
+            if (token) {
+                const tokenData = verifyInviteToken(token);
+                if (tokenData) {
+                    window.__INVITE_TOKEN__ = tokenData;
+                    if (tokenData.role === 'owner') {
+                        log('system', '👑 检测到房主邀请令牌');
+                    } else if (tokenData.role === 'admin') {
+                        log('system', '⭐ 检测到管理员邀请令牌');
+                    }
+                } else {
+                    log('system', '⚠️ 邀请令牌已过期或无效');
+                }
+            }
+            
+            // 自动加入房间（可选）
+            if (autoJoin === 'true' && room) {
+                setTimeout(() => {
+                    log('system', '⚡ 自动加入房间...');
+                    joinRoom();
+                }, 1000);
+            }
+        } catch (error) {
+            console.warn('解析URL参数失败:', error);
+        }
+    }
+    
+    // 生成随机房间ID
+    function generateRandomRoomId(length = 8) {
+        const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let result = 'rm_';
+        for (let i = 0; i < length; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    }
+    
+    // 生成房间密钥（UID）
+    function generateRoomKey(length = 32) {
+        const array = new Uint8Array(length);
+        crypto.getRandomValues(array);
+        return btoa(String.fromCharCode.apply(null, array))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
+    }
+    
+    // 生成邀请链接
+    function generateInviteLink(roomId, nickname, includeUid = false) {
+        const url = new URL(window.location.href);
+        url.search = ''; // 清除原有参数
+        url.hash = '';
+        
+        const params = new URLSearchParams();
+        params.set('room', roomId);
+        if (nickname) params.set('nick', nickname);
+        if (includeUid && window.__ROOM_UID__) {
+            params.set('uid', window.__ROOM_UID__);
+        }
+        
+        return `${url.origin}${url.pathname}?${params.toString()}`;
+    }
+    
+    // ============= 消息加密功能 =============
+    
+    // 将Base64转换为Uint8Array
+    function base64ToUint8Array(base64) {
+        const binaryString = atob(base64.replace(/-/g, '+').replace(/_/g, '/'));
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes;
+    }
+    
+    // 将Uint8Array转换为Base64
+    function uint8ArrayToBase64(bytes) {
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
+    
+    // 导入密钥用于加密/解密
+    async function deriveKey(roomKey) {
+        try {
+            // 将房间密钥转换为原始密钥材料
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw',
+                base64ToUint8Array(roomKey).slice(0, 32), // 使用前32字节
+                { name: 'PBKDF2' },
+                false,
+                ['deriveKey']
+            );
+            
+            // 使用PBKDF2派生AES-GCM密钥
+            const key = await crypto.subtle.deriveKey(
+                {
+                    name: 'PBKDF2',
+                    salt: new TextEncoder().encode('mqtt-room-salt'),
+                    iterations: 1000,
+                    hash: 'SHA-256'
+                },
+                keyMaterial,
+                { name: 'AES-GCM', length: 256 },
+                false,
+                ['encrypt', 'decrypt']
+            );
+            
+            return key;
+        } catch (error) {
+            console.error('密钥派生失败:', error);
+            return null;
+        }
+    }
+    
+    // 加密消息
+    async function encryptMessage(text, roomKey) {
+        if (!roomKey) return text; // 如果没有密钥，返回原文
+        
+        try {
+            const key = await deriveKey(roomKey);
+            if (!key) return text;
+            
+            const encoder = new TextEncoder();
+            const data = encoder.encode(text);
+            
+            // 生成随机IV
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            
+            // 加密
+            const encrypted = await crypto.subtle.encrypt(
+                { name: 'AES-GCM', iv: iv },
+                key,
+                data
+            );
+            
+            // 组合IV和加密数据
+            const combined = new Uint8Array(iv.length + encrypted.byteLength);
+            combined.set(iv);
+            combined.set(new Uint8Array(encrypted), iv.length);
+            
+            // 返回Base64编码的加密数据
+            return 'ENC:' + uint8ArrayToBase64(combined);
+        } catch (error) {
+            console.error('消息加密失败:', error);
+            return text;
+        }
+    }
+    
+    // 解密消息
+    async function decryptMessage(encryptedText, roomKey) {
+        if (!roomKey || !encryptedText.startsWith('ENC:')) {
+            return encryptedText; // 如果没有密钥或不是加密消息，返回原文
+        }
+        
+        try {
+            const key = await deriveKey(roomKey);
+            if (!key) return encryptedText;
+            
+            // 移除前缀并解码Base64
+            const combined = base64ToUint8Array(encryptedText.slice(4));
+            
+            // 分离IV和加密数据
+            const iv = combined.slice(0, 12);
+            const encrypted = combined.slice(12);
+            
+            // 解密
+            const decrypted = await crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv: iv },
+                key,
+                encrypted
+            );
+            
+            // 返回解密后的文本
+            const decoder = new TextDecoder();
+            return decoder.decode(decrypted);
+        } catch (error) {
+            console.error('消息解密失败:', error);
+            return '[解密失败]'; // 返回错误提示而不是原文
+        }
+    }
+    
+    // 生成房主/管理员令牌
+    function generateInviteToken(roomId, role = 'member', expiresIn = 3600) {
+        const payload = {
+            roomId: roomId,
+            role: role, // owner, admin, member
+            exp: Date.now() + (expiresIn * 1000),
+            nonce: Math.random().toString(36).substr(2)
+        };
+        
+        // 简单的Base64编码（实际应用中应使用JWT）
+        return uint8ArrayToBase64(new TextEncoder().encode(JSON.stringify(payload)));
+    }
+    
+    // 验证邀请令牌
+    function verifyInviteToken(token) {
+        try {
+            const payload = JSON.parse(new TextDecoder().decode(base64ToUint8Array(token)));
+            
+            // 检查是否过期
+            if (payload.exp && payload.exp < Date.now()) {
+                return null;
+            }
+            
+            return payload;
+        } catch (error) {
+            console.error('令牌验证失败:', error);
+            return null;
+        }
+    }
+    
+    // 复制邀请链接到剪贴板
+    async function copyInviteLink() {
+        const roomId = elements.roomInput?.value?.trim();
+        const nickname = elements.nicknameInput?.value?.trim();
+        
+        if (!roomId) {
+            showAlert('请先输入或生成房间号');
+            return;
+        }
+        
+        const inviteLink = generateInviteLink(roomId, '访客', true);
+        
+        try {
+            await navigator.clipboard.writeText(inviteLink);
+            log('system', '✅ 邀请链接已复制到剪贴板');
+            showAlert('邀请链接已复制！\n' + inviteLink);
+        } catch (error) {
+            showAlert('复制失败，请手动复制：\n' + inviteLink);
+        }
     }
     
     function bindEvents() {
@@ -2740,6 +3232,22 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 toggleEmojiPicker(false);
             }
         });
+        
+        // 生成随机房间号按钮
+        const generateRoomBtn = mountEl.querySelector('#btn-generate-room');
+        if (generateRoomBtn) {
+            generateRoomBtn.addEventListener('click', () => {
+                const randomId = generateRandomRoomId();
+                elements.roomInput.value = randomId;
+                log('system', `🎲 生成随机房间号: ${randomId}`);
+            });
+        }
+        
+        // 复制邀请链接按钮
+        const copyInviteBtn = mountEl.querySelector('#btn-copy-invite');
+        if (copyInviteBtn) {
+            copyInviteBtn.addEventListener('click', () => copyInviteLink());
+        }
         
         // 创建房间按钮
         if (elements.createRoomBtn) {
@@ -2802,6 +3310,15 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             elements.onlineCountDisplay.addEventListener('click', () => {
                 const isVisible = elements.onlineList.style.display !== 'none';
                 elements.onlineList.style.display = isVisible ? 'none' : 'block';
+            });
+        }
+        
+        // 刷新房间列表按钮
+        const refreshRoomListBtn = mountEl.querySelector('#refresh-room-list');
+        if (refreshRoomListBtn) {
+            refreshRoomListBtn.addEventListener('click', () => {
+                requestRoomList();
+                log('system', '🔄 正在刷新房间列表...');
             });
         }
         
@@ -2900,6 +3417,18 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         
         roomStats.lastUpdate = now;
         localStorage.setItem(`room_stats_${roomId}`, JSON.stringify(roomStats));
+        
+        // 发布房间用户数更新到全局房间列表
+        if (roomListClient && roomListClient.connected) {
+            roomListClient.publish(globalRoomsTopic, JSON.stringify({
+                type: 'room_update',
+                roomId: roomId,
+                update: {
+                    userCount: roomStats.users.length
+                },
+                timestamp: now
+            }));
+        }
         
         return roomStats.users.length;
     }
@@ -3000,7 +3529,34 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         
         // 尝试加载房间配置（如果本地存在）
         const localConfig = loadRoomConfig(roomId);
-        if (localConfig && localConfig.isPrivate && localConfig.password) {
+        
+        // 如果有从URL传入的UID，使用它作为房间密钥
+        if (window.__ROOM_UID__ && localConfig) {
+            localConfig.roomKey = window.__ROOM_UID__;
+            log('system', '🔑 使用邀请链接中的房间密钥');
+        }
+        
+        // 检查是否有邀请令牌（房主/管理员免密）
+        let skipPasswordCheck = false;
+        if (window.__INVITE_TOKEN__) {
+            const tokenData = window.__INVITE_TOKEN__;
+            if (tokenData.roomId === roomId) {
+                skipPasswordCheck = true;
+                log('system', `✅ 使用${tokenData.role === 'owner' ? '房主' : '管理员'}令牌免密进入`);
+                
+                // 如果是房主或管理员令牌，更新本地权限
+                if (localConfig) {
+                    if (tokenData.role === 'owner' && !localConfig.createdBy) {
+                        localConfig.createdBy = nickname;
+                    }
+                    if (!localConfig.adminUsers.includes(nickname)) {
+                        localConfig.adminUsers.push(nickname);
+                    }
+                }
+            }
+        }
+        
+        if (!skipPasswordCheck && localConfig && localConfig.isPrivate && localConfig.password) {
             // 显示密码输入框
             const passwordInputGroup = mountEl.querySelector('.password-input-group');
             if (passwordInputGroup) {
@@ -3183,6 +3739,13 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         publishPresence('leave');
                         // 更新用户计数
                         updateRoomUserCount(roomId, nickname, 'leave');
+                        
+                        // 如果是房主离开，发布房间关闭消息
+                        if (roomConfig && roomConfig.createdBy === nickname) {
+                            publishRoomClosed(roomId);
+                            log('system', '房主离开，房间将关闭...');
+                        }
+                        
                         log('system', '正在离开房间...');
                     }
                     
@@ -3259,12 +3822,29 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 timestamp: Date.now()
             };
             
-            client.publish(messageTopic, JSON.stringify(message), (err) => {
-                if (err) {
-                    console.error('消息发送失败:', err);
-                    log('system', '❌ 消息发送失败');
-                }
-            });
+            // 如果有房间密钥，加密消息
+            const roomKey = window.__ROOM_UID__ || (roomConfig && roomConfig.roomKey);
+            if (roomKey) {
+                // 加密消息内容
+                encryptMessage(JSON.stringify(message), roomKey).then(encrypted => {
+                    client.publish(messageTopic, encrypted, (err) => {
+                        if (err) {
+                            console.error('消息发送失败:', err);
+                            log('system', '❌ 消息发送失败');
+                        } else {
+                            log('system', '🔒 已发送加密消息');
+                        }
+                    });
+                });
+            } else {
+                // 无密钥时发送明文（向后兼容）
+                client.publish(messageTopic, JSON.stringify(message), (err) => {
+                    if (err) {
+                        console.error('消息发送失败:', err);
+                        log('system', '❌ 消息发送失败');
+                    }
+                });
+            }
             
             elements.messageInput.value = '';
         } catch (error) {
@@ -3315,9 +3895,32 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         client.publish(presenceTopic, JSON.stringify(presence));
     }
     
-    function handleMessage(topic, message) {
+    async function handleMessage(topic, message) {
         try {
-            const data = JSON.parse(message);
+            let data;
+            const roomKey = window.__ROOM_UID__ || (roomConfig && roomConfig.roomKey);
+            
+            // 尝试解密消息
+            if (roomKey && message.startsWith('ENC:')) {
+                const decrypted = await decryptMessage(message, roomKey);
+                if (decrypted === '[解密失败]') {
+                    log('system', '⚠️ 收到加密消息但解密失败，可能密钥不匹配');
+                    return;
+                }
+                data = JSON.parse(decrypted);
+            } else {
+                // 尝试解析为JSON（向后兼容明文消息）
+                try {
+                    data = JSON.parse(message);
+                } catch (e) {
+                    // 如果不是JSON，可能是加密消息但我们没有密钥
+                    if (message.startsWith('ENC:')) {
+                        log('system', '🔒 收到加密消息，但缺少房间密钥');
+                        return;
+                    }
+                    throw e;
+                }
+            }
             
             if (topic === messageTopic && data.type === 'chat') {
                 const isOwnMessage = data.name === nickname;
@@ -3647,6 +4250,9 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     
     // 初始化UI
     createUI();
+    
+    // 初始化全局房间列表
+    initGlobalRoomList();
     
     // 返回控制接口
     const appInstance = {
