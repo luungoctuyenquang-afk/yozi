@@ -15,6 +15,19 @@
     loadedInfo: '未加载'
   });
 
+  WB.setBook = function (data, {isST=true}={}) {
+    const { WorldBookImporter } = window.WorldBookKit;
+    WB.book = (isST && WorldBookImporter?.import) ? WorldBookImporter.import(data) : data;
+    const n = WB.book?.entries?.length ?? 0;
+    WB.loadedInfo = `${WB.book?.name || 'WorldBook'}（${n} 条目）`;
+    console.log('[WorldBook] setBook:', WB.loadedInfo);
+  };
+  WB.reset = function () {
+    const { WorldBookEngine } = window.WorldBookKit;
+    WB.engine = new WorldBookEngine({ seed: 42 });
+  };
+  window.addEventListener('worldbook:updated', e => WB.setBook(e.detail));
+
   function updateBadge() {
     if (!WB_DEBUG) return;
     let el = document.querySelector('[data-wb-badge]');

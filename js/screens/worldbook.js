@@ -747,6 +747,11 @@ const WorldBookV2 = {
         this.renderEntries();
         this.closePanel();
         
+        // 通知集成脚本更新世界书
+        window.dispatchEvent(new CustomEvent('worldbook:updated', { 
+            detail: this.exportCurrentBook() 
+        }));
+        
         alert('条目已保存！');
     },
 
@@ -1160,6 +1165,11 @@ const WorldBookV2 = {
 
         this.saveData();
         this.render();
+        
+        // 通知集成脚本更新世界书
+        window.dispatchEvent(new CustomEvent('worldbook:updated', { 
+            detail: this.exportCurrentBook() 
+        }));
         this.closeBookSettings();
 
         alert('设置已保存！');
@@ -1313,17 +1323,25 @@ const WorldBookV2 = {
         input.click();
     },
 
-    // 导出世界书
-    exportBook() {
-        if (!this.currentBook) return;
+    // 获取当前世界书数据（用于集成脚本）
+    exportCurrentBook() {
+        if (!this.currentBook) return null;
 
         const bookEntries = this.entries.filter(e => e.bookId === this.currentBook.id);
-        const exportData = {
+        return {
             book: this.currentBook,
             entries: bookEntries,
             version: '2.0',
             exportDate: new Date().toISOString()
         };
+    },
+
+    // 导出世界书
+    exportBook() {
+        if (!this.currentBook) return;
+
+        const exportData = this.exportCurrentBook();
+        if (!exportData) return;
 
         const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
