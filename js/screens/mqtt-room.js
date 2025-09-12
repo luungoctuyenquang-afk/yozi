@@ -3845,11 +3845,12 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             }
         }
         
-        // 检查房间是否为正式注册房间
-        log('system', '🔍 检查房间类型...');
+        // 检查房间状态优先级：正式房间 > 临时房间 > 搜索房间
+        log('system', '🔍 检查房间状态...');
         const registrationData = await checkRoomRegistration(roomId);
         
         if (registrationData && registrationData.registered) {
+            // 优先级最高：正式房间
             // 这是一个正式房间
             log('system', '🔐 检测到正式房间');
             
@@ -3892,22 +3893,25 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             roomConfig = localConfig;
             
         } else {
-            // 临时房间或普通房间
-            log('system', '🔓 这是一个临时房间');
+            // 优先级：临时房间 > 搜索房间
             
-            // 创建基础配置
-            if (!localConfig) {
-                log('system', '🔄 创建新的临时房间配置');
-                localConfig = {
-                    roomId: roomId,
-                    roomType: ROOM_TYPES.CASUAL,
-                    isLocallyCreated: false,
-                    adminUsers: [],
-                    hasPassword: false,
-                    createdBy: null  // 没有房主，所有人都是访客
-                };
+            if (localConfig && localConfig.createdBy) {
+                // 优先级中等：临时房间（已有房主）
+                log('system', `🔓 检测到临时房间（房主：${localConfig.createdBy}）`);
             } else {
-                log('system', '✅ 使用现有的本地配置');
+                // 优先级最低：搜索房间（无房主）
+                log('system', '🔍 这是一个搜索房间');
+                
+                if (!localConfig) {
+                    localConfig = {
+                        roomId: roomId,
+                        roomType: ROOM_TYPES.CASUAL,
+                        isLocallyCreated: false,
+                        adminUsers: [],
+                        hasPassword: false,
+                        createdBy: null  // 搜索房间：所有人都是访客
+                    };
+                }
             }
             
             // 如果有URL密钥，使用它
@@ -3916,16 +3920,18 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 log('system', '🔑 使用邀请链接中的房间密钥');
             }
             
-            // 判断用户身份（临时房间只有创建者才是房主）
+            // 判断用户身份
             if (localConfig.createdBy && localConfig.createdBy === nickname) {
+                // 这是房间的创建者（房主）
                 log('system', '👑 欢迎回来，房主！');
                 // 恢复房主的房间密钥权限
                 if (localConfig.roomKey && !window.__ROOM_UID__) {
                     window.__ROOM_UID__ = localConfig.roomKey;
                     log('system', `🔑 恢复房主密钥权限`);
                 }
-            } else {
-                log('system', '👤 您以访客身份加入临时房间');
+            } else if (localConfig.createdBy) {
+                // 房间有房主，但不是当前用户 - 访客身份
+                log('system', `👤 您以访客身份加入临时房间（房主：${localConfig.createdBy}）`);
                 // 确保访客没有管理权限
                 if (localConfig.adminUsers && localConfig.adminUsers.includes(nickname)) {
                     const index = localConfig.adminUsers.indexOf(nickname);
@@ -3933,6 +3939,9 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         localConfig.adminUsers.splice(index, 1);
                     }
                 }
+            } else {
+                // 搜索房间 - 所有人都是访客
+                log('system', '👤 您以访客身份加入搜索房间（无房主）');
             }
             
             roomConfig = localConfig;
@@ -4022,15 +4031,25 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         
         // 确保有房间配置
         if (!roomConfig) {
-            roomConfig = loadRoomConfig(roomId) || {
-                roomId: roomId,
-                roomType: ROOM_TYPES.CASUAL,  // 默认为临时房间
-                isLocallyCreated: false,
-                roomKey: window.__ROOM_UID__ || null,
-                adminUsers: [],
-                hasPassword: false,
-                createdBy: null  // 没有房主
-            };
+            // 检查是否有现有房间配置
+            const existingConfig = loadRoomConfig(roomId);
+            if (existingConfig) {
+                // 使用现有配置（保持房主身份）
+                roomConfig = existingConfig;
+                log('system', '✅ 使用现有房间配置');
+            } else {
+                // 新的搜索房间（无房主）
+                roomConfig = {
+                    roomId: roomId,
+                    roomType: ROOM_TYPES.CASUAL,
+                    isLocallyCreated: false,
+                    roomKey: window.__ROOM_UID__ || null,
+                    adminUsers: [],
+                    hasPassword: false,
+                    createdBy: null  // 搜索房间：无房主
+                };
+                log('system', '🔍 创建搜索房间配置（无房主）');
+            }
         }
         
         messageTopic = `game/${roomId}/messages`;
