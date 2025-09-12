@@ -3528,11 +3528,24 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         }
         
         // 尝试加载房间配置（如果本地存在）
-        const localConfig = loadRoomConfig(roomId);
+        let localConfig = loadRoomConfig(roomId);
         
         // 如果有从URL传入的UID，使用它作为房间密钥
-        if (window.__ROOM_UID__ && localConfig) {
-            localConfig.roomKey = window.__ROOM_UID__;
+        if (window.__ROOM_UID__) {
+            if (!localConfig) {
+                // 如果没有本地配置，创建一个基础配置
+                localConfig = {
+                    roomId: roomId,
+                    roomKey: window.__ROOM_UID__,
+                    isLocallyCreated: false,
+                    adminUsers: [],
+                    hasPassword: false
+                };
+            } else {
+                localConfig.roomKey = window.__ROOM_UID__;
+            }
+            // 保存到全局变量以便后续使用
+            roomConfig = localConfig;
             log('system', '🔑 使用邀请链接中的房间密钥');
         }
         
@@ -3575,14 +3588,14 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         }
         
         try {
-            // 尝试加载房间配置（如果本地不存在，使用默认配置）
-            if (!loadRoomConfig(roomId)) {
-                // 如果本地没有配置，创建基础配置以便连接
-                roomConfig = { ...defaultRoomConfig };
+            // 设置房间配置
+            if (!roomConfig) {
+                roomConfig = localConfig || { ...defaultRoomConfig };
                 roomConfig.roomId = roomId;
-                roomConfig.isLocallyCreated = false; // 标记为外部房间
-                // 对于外部房间，作为普通用户加入，真实权限需要从服务器获取
-                log('system', `正在连接到外部房间: ${roomId}`);
+                if (!localConfig) {
+                    roomConfig.isLocallyCreated = false; // 标记为外部房间
+                    log('system', `正在连接到外部房间: ${roomId}`);
+                }
             }
             
             // 连接到房间
@@ -3598,6 +3611,17 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         // 如果已经连接，先断开
         if (client && isConnected) {
             await leaveRoom();
+        }
+        
+        // 确保有房间配置
+        if (!roomConfig) {
+            roomConfig = loadRoomConfig(roomId) || {
+                roomId: roomId,
+                isLocallyCreated: false,
+                roomKey: window.__ROOM_UID__ || null,
+                adminUsers: [],
+                hasPassword: false
+            };
         }
         
         messageTopic = `game/${roomId}/messages`;
@@ -3710,7 +3734,8 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         if (client) {
                             client.end();
                         }
-                        connectRoom();
+                        // 重新尝试连接
+                        connectToMqttRoom();
                     }, 2000);
                 } else {
                     updateStatus('disconnected', '❌ 连接失败');

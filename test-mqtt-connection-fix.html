@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT连接测试 - 修复验证</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .test-button {
+            margin: 5px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .test-button:hover {
+            background: #5567d8;
+        }
+        
+        .status-box {
+            margin: 10px 0;
+            padding: 15px;
+            background: #e8f4fd;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+        
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        
+        .link-box {
+            margin: 10px 0;
+            padding: 10px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+        
+        .app-container {
+            min-height: 400px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔧 MQTT连接问题修复测试</h1>
+        
+        <div class="test-section">
+            <h2>📝 测试步骤</h2>
+            <ol>
+                <li>点击"生成测试链接"创建各种类型的邀请链接</li>
+                <li>复制链接到新标签页打开，测试是否能正常连接</li>
+                <li>或点击"模拟链接访问"直接测试</li>
+            </ol>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔗 链接生成器</h2>
+            <button class="test-button" onclick="generateBasicLink()">生成基础链接</button>
+            <button class="test-button" onclick="generateUidLink()">生成带密钥链接</button>
+            <button class="test-button" onclick="generateAutoLink()">生成自动加入链接</button>
+            <div id="link-display" class="link-box" style="display:none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🧪 连接测试</h2>
+            <button class="test-button" onclick="testDirectConnection()">测试直接连接</button>
+            <button class="test-button" onclick="simulateLinkVisit()">模拟链接访问</button>
+            <button class="test-button" onclick="clearAndReload()">清除并重载</button>
+            <div id="test-status" class="status-box">等待测试...</div>
+        </div>
+        
+        <div class="test-section">
+            <h2>💬 MQTT聊天室</h2>
+            <div id="mqtt-app" class="app-container"></div>
+        </div>
+    </div>
+    
+    <!-- 引入MQTT库 -->
+    <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
+    
+    <!-- 引入修复后的MQTT聊天室模块 -->
+    <script src="js/screens/mqtt-room.js"></script>
+    
+    <script>
+        let app;
+        let testRoomId = 'test_' + Math.random().toString(36).substr(2, 6);
+        let testUid = btoa(Math.random().toString()).replace(/=/g, '').substr(0, 32);
+        
+        // 初始化应用
+        window.addEventListener('DOMContentLoaded', () => {
+            app = createMqttRoomApp({
+                mountEl: document.getElementById('mqtt-app'),
+                getPlayerName: () => '测试用户',
+                brokerUrl: 'wss://test.mosquitto.org:8081/mqtt'
+            });
+            
+            updateStatus('info', '✅ 应用已初始化，准备测试');
+        });
+        
+        function updateStatus(type, message) {
+            const statusBox = document.getElementById('test-status');
+            statusBox.innerHTML += `<div class="${type}">[${new Date().toLocaleTimeString()}] ${message}</div>`;
+            statusBox.scrollTop = statusBox.scrollHeight;
+        }
+        
+        // 生成基础链接
+        function generateBasicLink() {
+            const link = `${window.location.origin}${window.location.pathname}?room=${testRoomId}&nick=访客${Math.floor(Math.random() * 1000)}`;
+            showLink(link);
+            updateStatus('success', '✅ 基础链接已生成');
+        }
+        
+        // 生成带密钥的链接
+        function generateUidLink() {
+            const link = `${window.location.origin}${window.location.pathname}?room=${testRoomId}&nick=密钥访客&uid=${testUid}`;
+            showLink(link);
+            updateStatus('success', '✅ 带密钥链接已生成');
+        }
+        
+        // 生成自动加入链接
+        function generateAutoLink() {
+            const link = `${window.location.origin}${window.location.pathname}?room=${testRoomId}&nick=自动访客&auto=true`;
+            showLink(link);
+            updateStatus('success', '✅ 自动加入链接已生成');
+        }
+        
+        function showLink(link) {
+            const display = document.getElementById('link-display');
+            display.style.display = 'block';
+            display.innerHTML = `
+                <strong>生成的链接:</strong><br>
+                <a href="${link}" target="_blank">${link}</a><br>
+                <button class="test-button" style="margin-top:10px;" onclick="navigator.clipboard.writeText('${link}').then(()=>updateStatus('info', '📋 已复制到剪贴板'))">复制链接</button>
+            `;
+        }
+        
+        // 测试直接连接
+        function testDirectConnection() {
+            updateStatus('info', '🔄 测试直接连接...');
+            
+            // 填充表单
+            const roomInput = document.querySelector('#mqtt-app .room-input');
+            const nickInput = document.querySelector('#mqtt-app .nickname-input');
+            
+            if (roomInput && nickInput) {
+                roomInput.value = testRoomId;
+                nickInput.value = '直连测试用户';
+                
+                // 点击加入按钮
+                const joinBtn = document.querySelector('#mqtt-app #btn-join-room');
+                if (joinBtn) {
+                    joinBtn.click();
+                    updateStatus('success', '✅ 已尝试直接连接');
+                } else {
+                    updateStatus('error', '❌ 找不到加入按钮');
+                }
+            } else {
+                updateStatus('error', '❌ 找不到输入框');
+            }
+        }
+        
+        // 模拟链接访问
+        function simulateLinkVisit() {
+            updateStatus('info', '🔄 模拟通过链接访问...');
+            
+            // 设置URL参数到window对象（模拟URL参数）
+            const params = new URLSearchParams();
+            params.set('room', testRoomId);
+            params.set('nick', '链接访客');
+            params.set('uid', testUid);
+            
+            // 修改当前URL（不刷新页面）
+            const newUrl = `${window.location.pathname}?${params.toString()}`;
+            window.history.pushState({}, '', newUrl);
+            
+            updateStatus('info', '📎 URL已更新，重新加载页面以测试链接...');
+            
+            // 延迟后重载
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        }
+        
+        // 清除并重载
+        function clearAndReload() {
+            localStorage.removeItem('mqtt_room_configs');
+            window.history.pushState({}, '', window.location.pathname);
+            updateStatus('info', '🗑️ 已清除数据，即将重载...');
+            setTimeout(() => location.reload(), 500);
+        }
+    </script>
+</body>
+</html>
