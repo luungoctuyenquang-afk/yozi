@@ -2972,6 +2972,23 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         
         // 设置默认昵称
         elements.nicknameInput.value = getPlayerName() || '匿名用户';
+        
+        // 检查URL中的房间参数，如果是房主则自动使用房主昵称
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomFromUrl = urlParams.get('room');
+        if (roomFromUrl && elements.roomInput) {
+            const localConfig = loadRoomConfig(roomFromUrl);
+            if (localConfig && localConfig.createdBy) {
+                // 如果用户是这个房间的房主，自动填入房主昵称
+                const currentPlayerName = getPlayerName();
+                if (currentPlayerName === localConfig.createdBy || 
+                    !elements.nicknameInput.value || 
+                    elements.nicknameInput.value === '匿名用户') {
+                    elements.nicknameInput.value = localConfig.createdBy;
+                    log('system', `🔄 检测到您是房间 "${roomFromUrl}" 的房主，自动填入房主昵称`);
+                }
+            }
+        }
         updateBrokerDisplay();
         
         // 加载房间历史记录
@@ -3265,9 +3282,9 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             inviteLink = generateInviteLink(roomId, '访客', true);
             log('system', '🔐 复制正式房间邀请链接（包含密钥）');
         } else {
-            // 临时房间：不需要密钥
+            // 临时房间和搜索房间：生成简单的房间号链接（不含密钥）
             inviteLink = generateInviteLink(roomId, '访客', false);
-            log('system', '🔓 复制临时房间邀请链接');
+            log('system', '🔓 复制房间链接（无密钥，任何人可加入）');
         }
         
         try {
@@ -3646,6 +3663,24 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         roomId = elements.roomInput.value.trim();
         nickname = elements.nicknameInput.value.trim();
         
+        // 检查房间是否已经被创建过
+        const existingConfig = loadRoomConfig(roomId);
+        if (existingConfig && existingConfig.createdBy) {
+            // 房间已存在，检查用户身份
+            const currentPlayerName = getPlayerName();
+            if (currentPlayerName === existingConfig.createdBy || nickname === existingConfig.createdBy) {
+                // 这是房主，应该直接加入而不是重新创建
+                showAlert(`房间 "${roomId}" 已存在，您是房主。请使用"加入房间"功能。`);
+                // 自动切换到加入房间模式
+                elements.nicknameInput.value = existingConfig.createdBy;
+                return;
+            } else {
+                // 不是房主，房间已存在不能重新创建
+                showAlert(`房间 "${roomId}" 已存在且有其他房主。请选择其他房间号或直接加入此房间。`);
+                return;
+            }
+        }
+        
         if (!roomId || !nickname) {
             showAlert('请输入房间号和昵称！');
             return;
@@ -3680,9 +3715,18 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             // 连接到房间
             await connectToMqttRoom();
             
-            // 显示复制邀请按钮
+            // 根据房间类型决定是否显示复制邀请按钮
             const copyInviteBtn = mountEl.querySelector('#btn-copy-invite');
-            if (copyInviteBtn) copyInviteBtn.style.display = 'inline-block';
+            if (copyInviteBtn) {
+                if (roomType === ROOM_TYPES.REGISTERED) {
+                    // 正式房间：显示复制邀请按钮（需要密钥）
+                    copyInviteBtn.style.display = 'inline-block';
+                    copyInviteBtn.title = '复制加密房间邀请链接';
+                } else {
+                    // 临时房间：隐藏复制邀请按钮（任何人都能直接加入）
+                    copyInviteBtn.style.display = 'none';
+                }
+            }
             
         } catch (error) {
             showAlert(error.message);
@@ -3765,6 +3809,42 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         // 尝试加载房间配置（如果本地存在）
         let localConfig = loadRoomConfig(roomId);
         
+        // 如果本地有房间配置，检查房主身份
+        if (localConfig && localConfig.createdBy) {
+            const currentPlayerName = getPlayerName();
+            
+            // 检查是否是房主身份
+            if (currentPlayerName === localConfig.createdBy || nickname === localConfig.createdBy) {
+                // 确认房主身份，使用保存的房主昵称和房间密钥
+                if (nickname !== localConfig.createdBy) {
+                    nickname = localConfig.createdBy;
+                    elements.nicknameInput.value = nickname;
+                    log('system', `👑 确认房主身份，使用房主昵称: ${nickname}`);
+                }
+                // 恢复房主的房间密钥权限
+                if (localConfig.roomKey) {
+                    window.__ROOM_UID__ = localConfig.roomKey;
+                    log('system', `🔑 房主身份确认，恢复房间密钥权限`);
+                }
+            } else {
+                // 不是房主，但要检查是否误输入了昵称
+                if (elements.nicknameInput.defaultValue === localConfig.createdBy) {
+                    // 可能是房主但昵称输错了
+                    const confirmOwner = confirm(`检测到您可能是房间 "${roomId}" 的房主 "${localConfig.createdBy}"，是否使用房主身份加入？`);
+                    if (confirmOwner) {
+                        nickname = localConfig.createdBy;
+                        elements.nicknameInput.value = nickname;
+                        log('system', `👑 使用房主身份加入: ${nickname}`);
+                        // 恢复房主的房间密钥权限
+                        if (localConfig.roomKey) {
+                            window.__ROOM_UID__ = localConfig.roomKey;
+                            log('system', `🔑 房主身份确认，恢复房间密钥权限`);
+                        }
+                    }
+                }
+            }
+        }
+        
         // 检查房间是否为正式注册房间
         log('system', '🔍 检查房间类型...');
         const registrationData = await checkRoomRegistration(roomId);
@@ -3839,6 +3919,11 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             // 判断用户身份（临时房间只有创建者才是房主）
             if (localConfig.createdBy && localConfig.createdBy === nickname) {
                 log('system', '👑 欢迎回来，房主！');
+                // 恢复房主的房间密钥权限
+                if (localConfig.roomKey && !window.__ROOM_UID__) {
+                    window.__ROOM_UID__ = localConfig.roomKey;
+                    log('system', `🔑 恢复房主密钥权限`);
+                }
             } else {
                 log('system', '👤 您以访客身份加入临时房间');
                 // 确保访客没有管理权限
@@ -3909,6 +3994,19 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             
             // 连接到房间
             await connectToMqttRoom();
+            
+            // 根据房间类型决定是否显示复制邀请按钮
+            const copyInviteBtn = mountEl.querySelector('#btn-copy-invite');
+            if (copyInviteBtn) {
+                if (roomConfig && roomConfig.roomType === ROOM_TYPES.REGISTERED) {
+                    // 正式房间：显示复制邀请按钮（需要密钥）
+                    copyInviteBtn.style.display = 'inline-block';
+                    copyInviteBtn.title = '复制加密房间邀请链接';
+                } else {
+                    // 临时房间或搜索房间：隐藏复制邀请按钮
+                    copyInviteBtn.style.display = 'none';
+                }
+            }
             
         } catch (error) {
             showAlert(error.message);
@@ -4000,9 +4098,14 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         // 加载历史聊天记录
                         loadChatHistoryToUI(roomId);
                         
-                        // 如果是外部房间，保存基础配置到本地
-                        if (roomConfig && roomConfig.isLocallyCreated === false) {
-                            saveBasicRoomConfig(roomId, nickname);
+                        // 保存房间配置到本地（确保房主权限和密钥被持久化）
+                        if (roomConfig) {
+                            if (roomConfig.isLocallyCreated === false) {
+                                saveBasicRoomConfig(roomId, nickname);
+                            } else {
+                                // 对于本地创建的房间，也要保存配置以确保房主权限和密钥持久化
+                                saveRoomConfig();
+                            }
                         }
                         
                         // 检查管理员权限

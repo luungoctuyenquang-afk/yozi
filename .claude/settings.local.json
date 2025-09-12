@@ -28,7 +28,9 @@
       "Bash(start index.html)",
       "Bash(start test-mqtt-room-management.html)",
       "Bash(start test-mqtt-invite-links.html)",
-      "Bash(start test-mqtt-connection-fix.html)"
+      "Bash(start test-mqtt-connection-fix.html)",
+      "Bash(powershell:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []
