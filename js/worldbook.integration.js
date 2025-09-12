@@ -43,7 +43,7 @@
   async function loadDefaultBook() {
     if (!IS_HTTP) { injectLocalLoadButton(); return; }
     try {
-      const res = await fetch('./public/worldbook/samples/travel.worldbook.json');
+      const res = await fetch('public/worldbook/samples/travel.worldbook.json');
       const json = await res.json();
       WB.book = WorldBookImporter?.import ? WorldBookImporter.import(json) : json;
       const n = WB.book?.entries?.length ?? 0;

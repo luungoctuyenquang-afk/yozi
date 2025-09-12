@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Code 测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Claude Code 功能测试</h1>
+    
+    <div class="test-section">
+        <h2>📡 服务器连接测试</h2>
+        <div id="server-status" class="status">检查中...</div>
+        <button onclick="testServerConnection()">测试服务器连接</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📚 依赖库测试</h2>
+        <div id="dependencies-status" class="status">检查中...</div>
+        <button onclick="testDependencies()">测试依赖库</button>
+    </div>
+
+    <div class="test-section">
+        <h2>🗄️ 数据库测试</h2>
+        <div id="database-status" class="status">检查中...</div>
+        <button onclick="testDatabase()">测试数据库</button>
+    </div>
+
+    <div class="test-section">
+        <h2>🌍 世界书引擎测试</h2>
+        <div id="worldbook-status" class="status">检查中...</div>
+        <button onclick="testWorldBook()">测试世界书引擎</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 测试日志</h2>
+        <div id="test-log" class="log">等待测试...</div>
+        <button onclick="clearLog()">清空日志</button>
+    </div>
+
+    <div class="test-section">
+        <h2>🔗 快速链接</h2>
+        <button onclick="window.open('http://localhost:3000', '_blank')">打开主应用</button>
+        <button onclick="window.open('http://localhost:3000/test-claude-code.html', '_blank')">在新窗口打开此测试页</button>
+    </div>
+
+    <!-- 加载必要的脚本 -->
+    <script src="https://unpkg.com/dexie/dist/dexie.min.js"></script>
+    <script src="public/worldbook/index.iife.js"></script>
+
+    <script>
+        let logElement = document.getElementById('test-log');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            logElement.innerHTML += logEntry + '\n';
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(logEntry);
+        }
+
+        function clearLog() {
+            logElement.innerHTML = '';
+        }
+
+        function setStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+        }
+
+        async function testServerConnection() {
+            log('开始测试服务器连接...');
+            try {
+                const response = await fetch('http://localhost:3000');
+                if (response.ok) {
+                    setStatus('server-status', '✅ 服务器连接正常', 'success');
+                    log('服务器连接测试通过');
+                } else {
+                    setStatus('server-status', '❌ 服务器响应异常', 'error');
+                    log(`服务器响应异常: ${response.status}`);
+                }
+            } catch (error) {
+                setStatus('server-status', '❌ 无法连接到服务器', 'error');
+                log(`连接错误: ${error.message}`);
+            }
+        }
+
+        function testDependencies() {
+            log('开始测试依赖库...');
+            const dependencies = {
+                'Dexie': typeof Dexie !== 'undefined',
+                'WorldBookKit': typeof WorldBookKit !== 'undefined'
+            };
+
+            let allPassed = true;
+            for (const [name, available] of Object.entries(dependencies)) {
+                if (available) {
+                    log(`✅ ${name} 已加载`);
+                } else {
+                    log(`❌ ${name} 未加载`);
+                    allPassed = false;
+                }
+            }
+
+            if (allPassed) {
+                setStatus('dependencies-status', '✅ 所有依赖库正常', 'success');
+            } else {
+                setStatus('dependencies-status', '❌ 部分依赖库缺失', 'error');
+            }
+        }
+
+        async function testDatabase() {
+            log('开始测试数据库...');
+            try {
+                if (typeof Dexie === 'undefined') {
+                    throw new Error('Dexie 未加载');
+                }
+
+                const db = new Dexie('TestDB');
+                db.version(1).stores({
+                    test: '++id, name'
+                });
+
+                await db.open();
+                await db.test.add({ name: 'test' });
+                const count = await db.test.count();
+                await db.delete();
+
+                setStatus('database-status', '✅ 数据库功能正常', 'success');
+                log('数据库测试通过');
+            } catch (error) {
+                setStatus('database-status', '❌ 数据库测试失败', 'error');
+                log(`数据库错误: ${error.message}`);
+            }
+        }
+
+        function testWorldBook() {
+            log('开始测试世界书引擎...');
+            try {
+                if (typeof WorldBookKit === 'undefined') {
+                    throw new Error('WorldBookKit 未加载');
+                }
+
+                const { WorldBookEngine } = WorldBookKit;
+                const engine = new WorldBookEngine({ seed: 42 });
+                
+                setStatus('worldbook-status', '✅ 世界书引擎正常', 'success');
+                log('世界书引擎测试通过');
+            } catch (error) {
+                setStatus('worldbook-status', '❌ 世界书引擎测试失败', 'error');
+                log(`世界书引擎错误: ${error.message}`);
+            }
+        }
+
+        // 页面加载时自动运行测试
+        window.addEventListener('load', () => {
+            log('页面加载完成，开始自动测试...');
+            setTimeout(() => {
+                testServerConnection();
+                testDependencies();
+                testDatabase();
+                testWorldBook();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

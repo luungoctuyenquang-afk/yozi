@@ -1,0 +1,7 @@
+node_modules/
+.git/
+playwright-report/
+test-results/
+*.log
+.project_*.txt
+test-*.html
