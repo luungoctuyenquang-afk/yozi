@@ -1756,8 +1756,10 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
 /* 强制修复房间列表区域夜间模式 - 最高优先级 */
 .mqtt-room-screen[data-theme="dark"] .room-list-section,
 .mqtt-room-screen.theme-dark .room-list-section,
+.mqtt-room-screen.dark-theme .room-list-section,
 .mqtt-room-screen[data-theme="dark"] .room-list-container,
-.mqtt-room-screen.theme-dark .room-list-container {
+.mqtt-room-screen.theme-dark .room-list-container,
+.mqtt-room-screen.dark-theme .room-list-container {
     background: #1a1f26 !important;
     border: 1px solid rgba(255,255,255,0.1) !important;
     color: #e9eef6 !important;
@@ -1765,20 +1767,23 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
 
 /* 强制修复加载状态和空状态文字 */
 .mqtt-room-screen[data-theme="dark"] .no-rooms,
-.mqtt-room-screen.theme-dark .no-rooms {
+.mqtt-room-screen.theme-dark .no-rooms,
+.mqtt-room-screen.dark-theme .no-rooms {
     background: transparent !important;
     color: #9fb1c7 !important;
 }
 
 /* 强制修复房间列表标题区域 */
 .mqtt-room-screen[data-theme="dark"] .room-list-header,
-.mqtt-room-screen.theme-dark .room-list-header {
+.mqtt-room-screen.theme-dark .room-list-header,
+.mqtt-room-screen.dark-theme .room-list-header {
     background: transparent !important;
     border-bottom: 1px solid rgba(255,255,255,0.1) !important;
 }
 
 .mqtt-room-screen[data-theme="dark"] .room-list-title,
-.mqtt-room-screen.theme-dark .room-list-title {
+.mqtt-room-screen.theme-dark .room-list-title,
+.mqtt-room-screen.dark-theme .room-list-title {
     color: #e9eef6 !important;
 }
 
