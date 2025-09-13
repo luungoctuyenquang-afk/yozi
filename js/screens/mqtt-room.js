@@ -1657,7 +1657,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     justify-content: center;
                     border-radius: 50%;
                     color: var(--text-primary);
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
                     backdrop-filter: blur(10px);
                 }
                 
@@ -2184,6 +2184,8 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     margin: 10px 0;
                     padding: 8px;
                     backdrop-filter: blur(10px);
+                    overflow: hidden;
+                    box-sizing: border-box;
                 }
                 
                 .history-header {
@@ -2253,6 +2255,8 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 .history-list {
                     max-height: 120px;
                     overflow-y: auto;
+                    overflow-x: hidden;
+                    box-sizing: border-box;
                 }
                 
                 .history-item {
@@ -2265,6 +2269,8 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     cursor: pointer;
                     transition: all 0.2s ease;
                     border: 1px solid var(--card-border);
+                    overflow: hidden;
+                    box-sizing: border-box;
                 }
                 
                 .history-item:hover {
@@ -2696,6 +2702,26 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     background: var(--card-bg);
                     transform: scale(1.3);
                     z-index: 10;
+                }
+                
+                /* iOS安全区域适配 - iPhone 15等设备 */
+                @supports (padding: env(safe-area-inset-top)) {
+                    .mqtt-room-screen {
+                        padding-top: env(safe-area-inset-top);
+                        padding-bottom: env(safe-area-inset-bottom);
+                    }
+                    
+                    .mqtt-room-container {
+                        padding-left: env(safe-area-inset-left);
+                        padding-right: env(safe-area-inset-right);
+                    }
+                    
+                    .room-history,
+                    .room-list-section {
+                        /* 确保内容不会溢出到安全区域之外 */
+                        margin-left: env(safe-area-inset-left);
+                        margin-right: env(safe-area-inset-right);
+                    }
                 }
                 
                 /* 手机屏幕适配 - 专门为375px×667px虚拟手机优化 */
