@@ -1215,11 +1215,11 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
     font-size: 14px;
 }
 
-/* MQTT房间列表夜间模式适配 */
+/* MQTT房间列表夜间模式适配 - 降低亮度 */
 .mqtt-room-screen[data-theme="dark"] .room-list-section,
 .mqtt-room-screen.theme-dark .room-list-section {
-    background: #1a1a1a;
-    border: 1px solid #333;
+    background: #0f0f0f; /* 更暗的背景 */
+    border: 1px solid #222; /* 更暗的边框 */
 }
 
 .mqtt-room-screen[data-theme="dark"] .room-list-header,
@@ -1234,9 +1234,9 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
 
 .mqtt-room-screen[data-theme="dark"] .room-item,
 .mqtt-room-screen.theme-dark .room-item {
-    background: #2a2a2a;
-    border-color: #444;
-    color: #e0e0e0;
+    background: #1a1a1a; /* 更暗的房间项背景 */
+    border-color: #333; /* 更暗的边框 */
+    color: #c0c0c0; /* 稍微暗一点的文字 */
 }
 
 .mqtt-room-screen[data-theme="dark"] .room-item:hover,
@@ -1330,4 +1330,353 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
 .mqtt-room-screen[data-theme="dark"] .btn-generate-room:hover,
 .mqtt-room-screen.theme-dark .btn-generate-room:hover {
     background: #333;
+}
+
+/* 房间历史记录样式 */
+.room-history {
+    margin: 15px 0;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border: 1px solid #e0e6ed;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e0e6ed;
+    flex-wrap: wrap; /* iOS兼容 */
+    gap: 8px; /* iOS兼容 */
+}
+
+.history-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #374151;
+    white-space: nowrap; /* 防止标题换行 */
+}
+
+.history-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap; /* iOS兼容 */
+}
+
+.history-search {
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 12px;
+    background: white;
+    min-width: 120px; /* 确保最小宽度 */
+    max-width: 150px; /* 限制最大宽度 */
+}
+
+.history-export-btn,
+.history-import-btn,
+.history-clear-btn {
+    padding: 6px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 32px; /* 确保按钮最小宽度 */
+}
+
+.history-export-btn:hover,
+.history-import-btn:hover {
+    background: #f3f4f6;
+}
+
+.history-clear-btn:hover {
+    background: #fef2f2;
+    border-color: #fca5a5;
+}
+
+.history-list {
+    max-height: 180px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch; /* iOS平滑滚动 */
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    margin: 4px 0;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-wrap: nowrap; /* 防止内容换行 */
+}
+
+.history-item:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+    transform: translateX(2px);
+}
+
+.history-item-info {
+    flex: 1;
+    min-width: 0; /* 允许文本截断 */
+}
+
+.history-room-name {
+    font-weight: 500;
+    font-size: 13px;
+    color: #374151;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.history-room-meta {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+.history-item-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0; /* 确保按钮不被压缩 */
+}
+
+.history-join-btn,
+.history-remove-btn {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.history-join-btn {
+    background: #3b82f6;
+    color: white;
+}
+
+.history-join-btn:hover {
+    background: #2563eb;
+}
+
+.history-remove-btn {
+    background: #ef4444;
+    color: white;
+}
+
+.history-remove-btn:hover {
+    background: #dc2626;
+}
+
+/* 夜间模式 - 房间历史记录 */
+.mqtt-room-screen[data-theme="dark"] .room-history,
+.mqtt-room-screen.theme-dark .room-history {
+    background: #111111;
+    border-color: #2a2a2a;
+}
+
+.mqtt-room-screen[data-theme="dark"] .history-header,
+.mqtt-room-screen.theme-dark .history-header {
+    border-bottom-color: #2a2a2a;
+}
+
+.mqtt-room-screen[data-theme="dark"] .history-title,
+.mqtt-room-screen.theme-dark .history-title {
+    color: #e5e7eb;
+}
+
+.mqtt-room-screen[data-theme="dark"] .history-search,
+.mqtt-room-screen.theme-dark .history-search {
+    background: #1f2937;
+    border-color: #374151;
+    color: #e5e7eb;
+}
+
+.mqtt-room-screen[data-theme="dark"] .history-export-btn,
+.mqtt-room-screen[data-theme="dark"] .history-import-btn,
+.mqtt-room-screen[data-theme="dark"] .history-clear-btn,
+.mqtt-room-screen.theme-dark .history-export-btn,
+.mqtt-room-screen.theme-dark .history-import-btn,
+.mqtt-room-screen.theme-dark .history-clear-btn {
+    background: #1f2937;
+    border-color: #374151;
+    color: #e5e7eb;
+}
+
+.mqtt-room-screen[data-theme="dark"] .history-item,
+.mqtt-room-screen.theme-dark .history-item {
+    background: #1f2937;
+    border-color: #374151;
+}
+
+.mqtt-room-screen[data-theme="dark"] .history-room-name,
+.mqtt-room-screen.theme-dark .history-room-name {
+    color: #e5e7eb;
+}
+
+.mqtt-room-screen[data-theme="dark"] .history-room-meta,
+.mqtt-room-screen.theme-dark .history-room-meta {
+    color: #9ca3af;
+}
+
+/* iOS特定优化 */
+@supports (-webkit-touch-callout: none) {
+    .history-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .history-controls {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .history-search {
+        flex: 1;
+        min-width: 100px;
+    }
+}
+
+/* PWA模式按钮尺寸优化 */
+@media (display-mode: standalone) {
+    /* 创建房间按钮优化 */
+    .btn-create-room,
+    .btn-join-room {
+        padding: 10px 16px !important; /* 标准按钮大小 */
+        font-size: 14px !important; /* 合适的字体大小 */
+        border-radius: 8px;
+        min-height: 40px; /* 确保最小高度 */
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        max-width: 180px; /* 限制最大宽度 */
+        white-space: nowrap;
+    }
+
+    /* 房间模式标签按钮优化 */
+    .mode-tab {
+        padding: 8px 12px !important; /* 减小内边距 */
+        font-size: 13px !important; /* 调整字体 */
+        min-height: 36px;
+        max-height: 36px;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    /* 房间类型选择器优化 */
+    .room-type-selector label {
+        font-size: 12px !important; /* 减小字体 */
+        margin-bottom: 6px !important;
+    }
+
+    .room-type-selector input[type="radio"] {
+        margin-right: 6px !important;
+        transform: scale(0.9); /* 稍微缩小单选框 */
+    }
+
+    /* 房间输入组优化 */
+    .room-input-group {
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
+    }
+
+    .room-input {
+        min-height: 36px !important; /* 统一输入框高度 */
+        font-size: 14px !important;
+    }
+
+    .nickname-input {
+        min-height: 36px !important; /* 统一输入框高度 */
+        font-size: 14px !important;
+    }
+
+    /* 生成房间按钮优化 */
+    .btn-generate-room {
+        padding: 8px 10px !important; /* 合理的内边距 */
+        font-size: 16px !important;
+        min-width: 40px !important;
+        max-width: 40px !important;
+        min-height: 36px !important; /* 与输入框高度一致 */
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    /* 复制邀请按钮优化 */
+    .btn-copy-invite {
+        padding: 8px 12px !important;
+        font-size: 13px !important;
+        min-height: 36px !important;
+        white-space: nowrap;
+    }
+
+    /* 房间操作按钮容器优化 */
+    .room-actions {
+        display: flex !important;
+        gap: 8px !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        margin: 12px 0 !important;
+    }
+
+    /* 设置面板按钮优化 */
+    .settings-toggle-btn {
+        padding: 8px 12px !important;
+        font-size: 13px !important;
+        min-height: 36px !important;
+    }
+
+    /* 房间设置选择器优化 */
+    .max-users-select,
+    .room-category-select {
+        min-height: 32px !important;
+        font-size: 13px !important;
+        padding: 6px 10px !important;
+    }
+
+    /* 确保在小屏幕上的响应式布局 */
+    .mqtt-room-screen {
+        font-size: 14px; /* 基础字体大小 */
+    }
+
+    /* 房间控制区域优化 */
+    .room-controls {
+        gap: 8px;
+    }
+
+    .room-controls > * {
+        margin-bottom: 8px;
+    }
+}
+
+/* 触摸设备专用优化（包括PWA） */
+@media (pointer: coarse) {
+    .btn-create-room,
+    .btn-join-room {
+        min-height: 44px; /* 触摸友好的最小高度 */
+        padding: 12px 18px;
+    }
+
+    .mode-tab {
+        min-height: 40px;
+        padding: 10px 14px;
+    }
+
+    .btn-generate-room {
+        min-width: 44px;
+        min-height: 44px;
+    }
 }
