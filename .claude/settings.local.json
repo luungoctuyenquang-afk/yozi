@@ -38,7 +38,8 @@
       "WebFetch(domain:github.com)",
       "Bash(npx @mendable/firecrawl-mcp-server:*)",
       "Bash(npx firecrawl-mcp:*)",
-      "Bash(set FIRECRAWL_API_KEY=fc_bd9d1eca108045c0913547f0d5714994)"
+      "Bash(set FIRECRAWL_API_KEY=fc_bd9d1eca108045c0913547f0d5714994)",
+      "Bash(FIRECRAWL_API_KEY=fc_bd9d1eca108045c0913547f0d5714994 npx firecrawl-mcp)"
     ],
     "deny": [],
     "ask": []
