@@ -1877,3 +1877,119 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
 .mqtt-room-screen.theme-dark [style*="background:#ffffff"] {
     background: #1a1f26 !important;
 }
+
+/* 强制修复房间列表区域夜间模式 - 最高优先级 */
+.mqtt-room-screen[data-theme="dark"] .room-list-section,
+.mqtt-room-screen.theme-dark .room-list-section,
+.mqtt-room-screen[data-theme="dark"] .room-list-container,
+.mqtt-room-screen.theme-dark .room-list-container {
+    background: #1a1f26 !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: #e9eef6 !important;
+}
+
+/* 强制修复加载状态和空状态文字 */
+.mqtt-room-screen[data-theme="dark"] .no-rooms,
+.mqtt-room-screen.theme-dark .no-rooms {
+    background: transparent !important;
+    color: #9fb1c7 !important;
+}
+
+/* 强制修复房间列表标题区域 */
+.mqtt-room-screen[data-theme="dark"] .room-list-header,
+.mqtt-room-screen.theme-dark .room-list-header {
+    background: transparent !important;
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+}
+
+.mqtt-room-screen[data-theme="dark"] .room-list-title,
+.mqtt-room-screen.theme-dark .room-list-title {
+    color: #e9eef6 !important;
+}
+
+/* 确保所有可能的白色背景容器都被覆盖 */
+.mqtt-room-screen[data-theme="dark"] .room-section > *,
+.mqtt-room-screen[data-theme="dark"] .room-list-section > *,
+.mqtt-room-screen[data-theme="dark"] .room-list-container > *,
+.mqtt-room-screen.theme-dark .room-section > *,
+.mqtt-room-screen.theme-dark .room-list-section > *,
+.mqtt-room-screen.theme-dark .room-list-container > * {
+    background: transparent !important;
+}
+
+/* 强制修复所有可能的CSS变量背景问题 */
+.mqtt-room-screen[data-theme="dark"] *[style*="var(--bg-secondary)"],
+.mqtt-room-screen[data-theme="dark"] *[style*="var(--card-bg)"],
+.mqtt-room-screen.theme-dark *[style*="var(--bg-secondary)"],
+.mqtt-room-screen.theme-dark *[style*="var(--card-bg)"] {
+    background: #1a1f26 !important;
+}
+
+/* 强制覆盖所有可能的亮色背景 */
+.mqtt-room-screen[data-theme="dark"] *[style*="background: #f"],
+.mqtt-room-screen[data-theme="dark"] *[style*="background:#f"],
+.mqtt-room-screen[data-theme="dark"] *[style*="background: rgba(255"],
+.mqtt-room-screen[data-theme="dark"] *[style*="background:rgba(255"],
+.mqtt-room-screen.theme-dark *[style*="background: #f"],
+.mqtt-room-screen.theme-dark *[style*="background:#f"],
+.mqtt-room-screen.theme-dark *[style*="background: rgba(255"],
+.mqtt-room-screen.theme-dark *[style*="background:rgba(255"] {
+    background: #1a1f26 !important;
+}
+
+/* 特别针对在线用户显示的背景修复 */
+.mqtt-room-screen[data-theme="dark"] .online-user[style*="background: #e8f5e8"],
+.mqtt-room-screen[data-theme="dark"] .online-user[style*="background: #fff3cd"],
+.mqtt-room-screen.theme-dark .online-user[style*="background: #e8f5e8"],
+.mqtt-room-screen.theme-dark .online-user[style*="background: #fff3cd"] {
+    background: rgba(26, 31, 38, 0.8) !important;
+    border: 1px solid rgba(102, 126, 234, 0.3) !important;
+}
+
+/* 精准修复房间列表区域 - 最高优先级 */
+body .mqtt-room-screen[data-theme="dark"] .room-list-section,
+body .mqtt-room-screen.theme-dark .room-list-section,
+body .mqtt-room-screen[data-theme="dark"] .room-list-container,
+body .mqtt-room-screen.theme-dark .room-list-container {
+    background: #1a1f26 !important;
+    background-color: #1a1f26 !important;
+}
+
+/* 确保动态插入的no-rooms元素背景正确 */
+body .mqtt-room-screen[data-theme="dark"] .no-rooms,
+body .mqtt-room-screen.theme-dark .no-rooms {
+    background: transparent !important;
+    background-color: transparent !important;
+    color: #9fb1c7 !important;
+}
+
+/* 确保房间项目背景正确 */
+body .mqtt-room-screen[data-theme="dark"] .room-item,
+body .mqtt-room-screen.theme-dark .room-item {
+    background: rgba(26, 31, 38, 0.8) !important;
+    background-color: rgba(26, 31, 38, 0.8) !important;
+}
+
+/* 进一步确保所有子元素 */
+body .mqtt-room-screen[data-theme="dark"] .room-list-section *,
+body .mqtt-room-screen.theme-dark .room-list-section * {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+/* 重新设置需要背景的元素 */
+body .mqtt-room-screen[data-theme="dark"] .room-list-section,
+body .mqtt-room-screen.theme-dark .room-list-section,
+body .mqtt-room-screen.dark-theme .room-list-section {
+    background: #1a1f26 !important;
+    background-color: #1a1f26 !important;
+}
+
+/* 终极解决方案 - 直接针对具体选择器 */
+.mqtt-room-screen.dark-theme .room-list-section,
+.mqtt-room-screen.dark-theme .room-list-container,
+.mqtt-room-screen.dark-theme .no-rooms {
+    background: #1a1f26 !important;
+    background-color: #1a1f26 !important;
+    color: #9fb1c7 !important;
+}

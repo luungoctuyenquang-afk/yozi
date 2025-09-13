@@ -4597,8 +4597,20 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 
                 // 如果是当前用户，添加特殊样式
                 if (user === nickname) {
-                    userEl.style.background = isUserAdmin ? '#fff3cd' : '#e8f5e8';
-                    userEl.style.color = isUserAdmin ? '#856404' : '#2e7d32';
+                    // 根据当前主题设置背景色
+                    const mqttScreen = mountEl.querySelector('.mqtt-room-screen');
+                    const isDarkTheme = mqttScreen && (mqttScreen.classList.contains('dark-theme') || 
+                                                       mqttScreen.getAttribute('data-theme') === 'dark');
+                    
+                    if (isDarkTheme) {
+                        // 夜间模式使用深色背景
+                        userEl.style.background = isUserAdmin ? 'rgba(102, 126, 234, 0.3)' : 'rgba(26, 31, 38, 0.8)';
+                        userEl.style.color = isUserAdmin ? '#e9eef6' : '#9fb1c7';
+                    } else {
+                        // 日间模式使用原来的亮色背景
+                        userEl.style.background = isUserAdmin ? '#fff3cd' : '#e8f5e8';
+                        userEl.style.color = isUserAdmin ? '#856404' : '#2e7d32';
+                    }
                     userEl.style.fontWeight = 'bold';
                     userEl.textContent = user + (isUserAdmin ? ' 👑 (我)' : ' (我)');
                 } else {
