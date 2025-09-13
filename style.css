@@ -1556,17 +1556,17 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
     }
 }
 
-/* MQTT聊天室CSS变量夜间模式修复 */
+/* MQTT聊天室CSS变量夜间模式修复 - 保持动画效果 */
 .mqtt-room-screen[data-theme="dark"],
 .mqtt-room-screen.theme-dark {
-    /* 确保CSS变量在夜间模式下有正确的值 */
-    --bg-primary: #0b0f15 !important;
-    --bg-secondary: #1a1f26 !important;
-    --card-bg: rgba(26, 31, 38, 0.8) !important; /* 更暗的卡片背景 */
-    --card-border: rgba(255,255,255,0.1) !important; /* 更暗的边框 */
-    --text-primary: #e9eef6 !important;
-    --text-secondary: #9fb1c7 !important;
-    --text-muted: #6b7280 !important;
+    /* 确保CSS变量在夜间模式下有正确的值，但不影响过渡动画 */
+    --bg-primary: #0b0f15;
+    --bg-secondary: #1a1f26;
+    --card-bg: rgba(26, 31, 38, 0.8);
+    --card-border: rgba(255,255,255,0.1);
+    --text-primary: #e9eef6;
+    --text-secondary: #9fb1c7;
+    --text-muted: #6b7280;
 }
 
 /* 修复夜间模式下的白色背景元素 */
