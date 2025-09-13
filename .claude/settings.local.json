@@ -27,7 +27,11 @@
       "PowerShell(start index.html)",
       "PowerShell(start http://localhost:3000)",
       "PowerShell(powershell:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(wmic:*)"
     ],
     "deny": [],
     "ask": []
