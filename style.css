@@ -1842,6 +1842,37 @@ body, html {
 
 /* 主题按钮使用原始样式 - 不添加任何覆盖规则让动画保持丝滑 */
 
+/* 专门修复MQTT历史房间列表在PWA中的显示问题 */
+.mqtt-room-screen .room-history {
+    contain: layout style paint;
+    -webkit-overflow-scrolling: touch;
+}
+
+.mqtt-room-screen .history-list {
+    contain: layout style paint;
+    -webkit-overflow-scrolling: touch;
+}
+
+.mqtt-room-screen .history-item {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    contain: layout style;
+}
+
+/* 暗色模式下历史房间列表的特殊处理 */
+.mqtt-room-screen[data-theme="dark"] .room-history,
+.mqtt-room-screen.theme-dark .room-history {
+    background: rgba(26, 31, 38, 0.95) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+}
+
+.mqtt-room-screen[data-theme="dark"] .history-item,
+.mqtt-room-screen.theme-dark .history-item {
+    background: rgba(11, 15, 21, 0.6) !important;
+    border: 1px solid rgba(255,255,255,0.05) !important;
+}
+
 /* 精准修复房间列表区域 - 最高优先级 */
 body .mqtt-room-screen[data-theme="dark"] .room-list-section,
 body .mqtt-room-screen.theme-dark .room-list-section,
