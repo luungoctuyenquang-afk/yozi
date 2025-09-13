@@ -1395,15 +1395,15 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                             </div>
                             
                             <!-- 创建房间类型选择（默认隐藏） -->
-                            <div class="room-type-selector" id="room-type-selector" style="display: none; margin: 12px 0; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
-                                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">选择房间类型：</div>
-                                <label style="display: flex; align-items: center; margin-bottom: 8px; cursor: pointer;">
-                                    <input type="radio" name="room-type" value="casual" checked style="margin-right: 8px;">
-                                    <span style="font-size: 13px;">🔓 临时房间（任何人可加入，适合快速测试）</span>
+                            <div class="room-type-selector" id="room-type-selector" style="display: none;">
+                                <div class="room-type-title">选择房间类型：</div>
+                                <label class="room-type-option">
+                                    <input type="radio" name="room-type" value="casual" checked>
+                                    <span class="room-type-text">🔓 临时房间（任何人可加入，适合快速测试）</span>
                                 </label>
-                                <label style="display: flex; align-items: center; cursor: pointer;">
-                                    <input type="radio" name="room-type" value="registered" style="margin-right: 8px;">
-                                    <span style="font-size: 13px;">🔐 正式房间（独占房间号，需要密钥）</span>
+                                <label class="room-type-option">
+                                    <input type="radio" name="room-type" value="registered">
+                                    <span class="room-type-text">🔐 正式房间（独占房间号，需要密钥）</span>
                                 </label>
                             </div>
                         </div>
@@ -1930,6 +1930,41 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 
                 .save-password-btn:active {
                     transform: translateY(0);
+                }
+                
+                /* 房间类型选择器样式 */
+                .room-type-selector {
+                    margin: 12px 0;
+                    padding: 12px;
+                    background: var(--bg-secondary);
+                    border-radius: 8px;
+                }
+                
+                .room-type-title {
+                    font-size: 12px;
+                    color: var(--text-secondary);
+                    margin-bottom: 8px;
+                }
+                
+                .room-type-option {
+                    display: flex;
+                    align-items: center;
+                    margin-bottom: 8px;
+                    cursor: pointer;
+                }
+                
+                .room-type-option:last-child {
+                    margin-bottom: 0;
+                }
+                
+                .room-type-option input[type="radio"] {
+                    margin-right: 8px;
+                    flex-shrink: 0;
+                }
+                
+                .room-type-text {
+                    font-size: 13px;
+                    line-height: 1.4;
                 }
                 
                 .room-actions {
@@ -2739,6 +2774,31 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 
                 /* 手机屏幕适配 - 专门为375px×667px虚拟手机优化 */
                 @media (max-width: 480px) {
+                    /* 房间类型选择器移动端优化 */
+                    .room-type-selector {
+                        margin: 8px 0 !important;
+                        padding: 8px !important;
+                    }
+                    
+                    .room-type-title {
+                        font-size: 11px !important;
+                        margin-bottom: 6px !important;
+                    }
+                    
+                    .room-type-option {
+                        margin-bottom: 6px !important;
+                    }
+                    
+                    .room-type-option input[type="radio"] {
+                        transform: scale(0.85);
+                        margin-right: 6px !important;
+                    }
+                    
+                    .room-type-text {
+                        font-size: 11px !important;
+                        line-height: 1.3 !important;
+                    }
+                    
                     .mqtt-room-screen {
                         /* 调整小屏幕变量 */
                         --spacing-xs: 3px;
