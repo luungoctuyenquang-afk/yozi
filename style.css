@@ -1680,3 +1680,200 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, Bl
         min-height: 44px;
     }
 }
+
+/* MQTT聊天室CSS变量夜间模式修复 */
+.mqtt-room-screen[data-theme="dark"],
+.mqtt-room-screen.theme-dark {
+    /* 确保CSS变量在夜间模式下有正确的值 */
+    --bg-primary: #0b0f15 !important;
+    --bg-secondary: #1a1f26 !important;
+    --card-bg: rgba(26, 31, 38, 0.8) !important; /* 更暗的卡片背景 */
+    --card-border: rgba(255,255,255,0.1) !important; /* 更暗的边框 */
+    --text-primary: #e9eef6 !important;
+    --text-secondary: #9fb1c7 !important;
+    --text-muted: #6b7280 !important;
+}
+
+/* 修复夜间模式下的白色背景元素 */
+.mqtt-room-screen[data-theme="dark"] .room-type-selector,
+.mqtt-room-screen.theme-dark .room-type-selector {
+    background: #1a1f26 !important; /* 使用深色背景 */
+    border: 1px solid rgba(255,255,255,0.1) !important;
+}
+
+.mqtt-room-screen[data-theme="dark"] .mode-tab,
+.mqtt-room-screen.theme-dark .mode-tab {
+    background: #1a1f26 !important;
+    border-color: rgba(255,255,255,0.1) !important;
+    color: #e9eef6 !important;
+}
+
+.mqtt-room-screen[data-theme="dark"] .mode-tab.active,
+.mqtt-room-screen.theme-dark .mode-tab.active {
+    background: linear-gradient(135deg, #7c6fff 0%, #49d1ff 100%) !important;
+    color: white !important;
+}
+
+/* 修复聊天容器和消息区域的背景 */
+.mqtt-room-screen[data-theme="dark"] .chat-container,
+.mqtt-room-screen.theme-dark .chat-container {
+    background: rgba(26, 31, 38, 0.9) !important;
+    border-color: rgba(255,255,255,0.1) !important;
+}
+
+.mqtt-room-screen[data-theme="dark"] .messages,
+.mqtt-room-screen.theme-dark .messages {
+    background: rgba(11, 15, 21, 0.5) !important;
+}
+
+.mqtt-room-screen[data-theme="dark"] .input-area,
+.mqtt-room-screen.theme-dark .input-area {
+    background: rgba(26, 31, 38, 0.9) !important;
+    border-color: rgba(255,255,255,0.1) !important;
+}
+
+.mqtt-room-screen[data-theme="dark"] .input-area input,
+.mqtt-room-screen.theme-dark .input-area input {
+    background: #1a1f26 !important;
+    border-color: rgba(255,255,255,0.1) !important;
+    color: #e9eef6 !important;
+}
+
+.mqtt-room-screen[data-theme="dark"] .emoji-picker,
+.mqtt-room-screen.theme-dark .emoji-picker {
+    background: #1a1f26 !important;
+    border-color: rgba(255,255,255,0.1) !important;
+}
+
+.mqtt-room-screen[data-theme="dark"] .room-section,
+.mqtt-room-screen.theme-dark .room-section {
+    background: rgba(26, 31, 38, 0.8) !important;
+    border-color: rgba(255,255,255,0.1) !important;
+}
+
+.mqtt-room-screen[data-theme="dark"] .settings-panel,
+.mqtt-room-screen.theme-dark .settings-panel {
+    background: #1a1f26 !important;
+    border-color: rgba(255,255,255,0.1) !important;
+}
+
+/* 修复房间输入框 */
+.mqtt-room-screen[data-theme="dark"] .room-input,
+.mqtt-room-screen[data-theme="dark"] .nickname-input,
+.mqtt-room-screen[data-theme="dark"] .room-password-input,
+.mqtt-room-screen.theme-dark .room-input,
+.mqtt-room-screen.theme-dark .nickname-input,
+.mqtt-room-screen.theme-dark .room-password-input {
+    background: #1a1f26 !important;
+    border-color: rgba(255,255,255,0.1) !important;
+    color: #e9eef6 !important;
+}
+
+/* 修复选择器 */
+.mqtt-room-screen[data-theme="dark"] .max-users-select,
+.mqtt-room-screen[data-theme="dark"] .room-category-select,
+.mqtt-room-screen.theme-dark .max-users-select,
+.mqtt-room-screen.theme-dark .room-category-select {
+    background: #1a1f26 !important;
+    border-color: rgba(255,255,255,0.1) !important;
+    color: #e9eef6 !important;
+}
+
+/* 修复按钮 */
+.mqtt-room-screen[data-theme="dark"] .settings-toggle-btn,
+.mqtt-room-screen.theme-dark .settings-toggle-btn {
+    background: rgba(26, 31, 38, 0.8) !important;
+    border-color: rgba(255,255,255,0.1) !important;
+    color: #9fb1c7 !important;
+}
+
+.mqtt-room-screen[data-theme="dark"] .emoji-btn,
+.mqtt-room-screen.theme-dark .emoji-btn {
+    background: rgba(26, 31, 38, 0.8) !important;
+    border-color: rgba(255,255,255,0.1) !important;
+    color: #e9eef6 !important;
+}
+
+/* 修复更多可能的白色背景元素 */
+.mqtt-room-screen[data-theme="dark"] .welcome-message,
+.mqtt-room-screen.theme-dark .welcome-message {
+    background: rgba(11, 15, 21, 0.8) !important;
+    border-color: rgba(255,255,255,0.1) !important;
+    color: #9fb1c7 !important;
+}
+
+.mqtt-room-screen[data-theme="dark"] .mqtt-header,
+.mqtt-room-screen.theme-dark .mqtt-header {
+    background: rgba(26, 31, 38, 0.95) !important;
+    border-color: rgba(255,255,255,0.1) !important;
+}
+
+.mqtt-room-screen[data-theme="dark"] .mqtt-content,
+.mqtt-room-screen.theme-dark .mqtt-content {
+    background: #0b0f15 !important;
+}
+
+/* 确保所有可能使用CSS变量的元素都有备用样式 */
+.mqtt-room-screen[data-theme="dark"] *[style*="var(--card-bg)"],
+.mqtt-room-screen[data-theme="dark"] *[style*="var(--bg-secondary)"],
+.mqtt-room-screen.theme-dark *[style*="var(--card-bg)"],
+.mqtt-room-screen.theme-dark *[style*="var(--bg-secondary)"] {
+    background: #1a1f26 !important;
+}
+
+/* 修复表情选择器内部元素 */
+.mqtt-room-screen[data-theme="dark"] .emoji-picker-header,
+.mqtt-room-screen[data-theme="dark"] .emoji-picker-content,
+.mqtt-room-screen.theme-dark .emoji-picker-header,
+.mqtt-room-screen.theme-dark .emoji-picker-content {
+    background: transparent !important;
+    color: #e9eef6 !important;
+}
+
+.mqtt-room-screen[data-theme="dark"] .emoji-category,
+.mqtt-room-screen.theme-dark .emoji-category {
+    background: rgba(26, 31, 38, 0.5) !important;
+    color: #9fb1c7 !important;
+}
+
+.mqtt-room-screen[data-theme="dark"] .emoji-category.active,
+.mqtt-room-screen.theme-dark .emoji-category.active {
+    background: linear-gradient(135deg, #7c6fff 0%, #49d1ff 100%) !important;
+    color: white !important;
+}
+
+/* 修复在线用户列表 */
+.mqtt-room-screen[data-theme="dark"] .online-list,
+.mqtt-room-screen.theme-dark .online-list {
+    background: rgba(26, 31, 38, 0.8) !important;
+    border-color: rgba(86, 211, 100, 0.3) !important;
+}
+
+.mqtt-room-screen[data-theme="dark"] .online-user,
+.mqtt-room-screen.theme-dark .online-user {
+    background: rgba(26, 31, 38, 0.9) !important;
+    border-color: rgba(112, 183, 255, 0.3) !important;
+}
+
+/* 修复私聊面板 */
+.mqtt-room-screen[data-theme="dark"] .private-chat-panel,
+.mqtt-room-screen.theme-dark .private-chat-panel {
+    background: rgba(26, 31, 38, 0.95) !important;
+    border-color: rgba(255,255,255,0.1) !important;
+}
+
+/* 确保所有内联样式的white/white背景都被覆盖 */
+.mqtt-room-screen[data-theme="dark"] [style*="background: white"],
+.mqtt-room-screen[data-theme="dark"] [style*="background:white"],
+.mqtt-room-screen[data-theme="dark"] [style*="background: #fff"],
+.mqtt-room-screen[data-theme="dark"] [style*="background:#fff"],
+.mqtt-room-screen[data-theme="dark"] [style*="background: #ffffff"],
+.mqtt-room-screen[data-theme="dark"] [style*="background:#ffffff"],
+.mqtt-room-screen.theme-dark [style*="background: white"],
+.mqtt-room-screen.theme-dark [style*="background:white"],
+.mqtt-room-screen.theme-dark [style*="background: #fff"],
+.mqtt-room-screen.theme-dark [style*="background:#fff"],
+.mqtt-room-screen.theme-dark [style*="background: #ffffff"],
+.mqtt-room-screen.theme-dark [style*="background:#ffffff"] {
+    background: #1a1f26 !important;
+}
