@@ -1873,6 +1873,57 @@ body, html {
     border: 1px solid rgba(255,255,255,0.05) !important;
 }
 
+/* PWA模式下MQTT房间类型选择器的优化 */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+    .mqtt-room-screen .room-type-selector {
+        padding: 8px !important;
+        margin: 8px 0 !important;
+    }
+    
+    .mqtt-room-screen .room-type-selector label {
+        padding: 6px 0;
+        font-size: 12px !important;
+    }
+    
+    .mqtt-room-screen .room-type-selector span {
+        font-size: 12px !important;
+    }
+    
+    .mqtt-room-screen .room-type-selector input[type="radio"] {
+        transform: scale(0.85);
+        margin-right: 6px !important;
+    }
+}
+
+/* iPhone和小屏设备的额外优化 */
+@media (max-width: 414px) and (-webkit-min-device-pixel-ratio: 2) {
+    .mqtt-room-screen .room-type-selector {
+        padding: 6px !important;
+        margin: 6px 0 !important;
+        background: rgba(var(--bg-secondary-rgb, 26, 31, 38), 0.95) !important;
+    }
+    
+    .mqtt-room-screen .room-type-selector > div:first-child {
+        font-size: 11px !important;
+        margin-bottom: 6px !important;
+    }
+    
+    .mqtt-room-screen .room-type-selector label {
+        padding: 4px 0;
+        margin-bottom: 6px !important;
+    }
+    
+    .mqtt-room-screen .room-type-selector span {
+        font-size: 11px !important;
+        line-height: 1.3;
+    }
+    
+    .mqtt-room-screen .room-type-selector input[type="radio"] {
+        transform: scale(0.8);
+        margin-right: 5px !important;
+    }
+}
+
 /* 精准修复房间列表区域 - 最高优先级 */
 body .mqtt-room-screen[data-theme="dark"] .room-list-section,
 body .mqtt-room-screen.theme-dark .room-list-section,
