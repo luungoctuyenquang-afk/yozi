@@ -2,16 +2,24 @@
   "name": "虚拟手机",
   "short_name": "虚拟手机",
   "description": "与AI伴侣零的虚拟世界",
-  "start_url": "./index.html",
+  "start_url": "./index.html?source=pwa",
   "scope": "./",
-  "display": "fullscreen",
-  "display_override": ["fullscreen", "standalone", "minimal-ui"],
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#0b0f15",
-  "theme_color": "#667eea",
+  "theme_color": "#0b0f15",
   "orientation": "portrait",
   "categories": ["entertainment", "social"],
+  "viewport": {
+    "width": "device-width",
+    "initial-scale": "1.0",
+    "minimum-scale": "1.0",
+    "maximum-scale": "1.0",
+    "user-scalable": "no",
+    "viewport-fit": "cover"
+  },
   "edge_side_panel": {
-    "preferred_width": 412
+    "preferred_width": 375
   },
   "launch_handler": {
     "client_mode": ["focus-existing", "auto"]

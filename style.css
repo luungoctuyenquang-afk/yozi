@@ -1924,6 +1924,19 @@ body, html {
     }
 }
 
+/* PWA模式专门优化 - 通过JS添加的类名 */
+.mqtt-room-screen.pwa-mode .room-type-selector {
+    transform: scale(0.9);
+    transform-origin: top left;
+    width: 111%; /* 补偿缩放后的宽度 */
+}
+
+.mqtt-room-screen.iphone-pwa .room-type-selector {
+    transform: scale(0.85);
+    transform-origin: top left;
+    width: 118%; /* 补偿缩放后的宽度 */
+}
+
 /* 精准修复房间列表区域 - 最高优先级 */
 body .mqtt-room-screen[data-theme="dark"] .room-list-section,
 body .mqtt-room-screen.theme-dark .room-list-section,

@@ -9,6 +9,15 @@
  */
 function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mosquitto.org:8081/mqtt' }) {
     
+    // 检测PWA模式
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                 window.matchMedia('(display-mode: fullscreen)').matches ||
+                 window.navigator.standalone ||
+                 document.referrer.includes('android-app://');
+    
+    // 检测iPhone
+    const isIPhone = /iPhone/.test(navigator.userAgent) && !window.MSStream;
+    
     // 内部状态
     let client = null;
     let isConnected = false;
@@ -1347,8 +1356,12 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     
     // 创建UI界面
     function createUI() {
+        // 添加PWA相关类名
+        const pwaClass = isPWA ? 'pwa-mode' : '';
+        const iphoneClass = isPWA && isIPhone ? 'iphone-pwa' : '';
+        
         mountEl.innerHTML = `
-            <div class="mqtt-room-screen">
+            <div class="mqtt-room-screen ${pwaClass} ${iphoneClass}">
                 <header class="mqtt-header">
                     <button id="mqtt-back-btn" class="back-btn">‹</button>
                     <h2>MQTT聊天室</h2>
