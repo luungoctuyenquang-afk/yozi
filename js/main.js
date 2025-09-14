@@ -354,6 +354,12 @@ document.addEventListener('DOMContentLoaded', () => {
             SettingsScreen.importData(event);
         });
         
+        // iOS风格设置应用 (新增)
+        Utils.safeBind(document.getElementById('open-ios-settings-app'), 'click', () => {
+            IOSSettings.show();
+            IOSSettings.init();  // 初始化iOS设置
+        });
+
         // 通用设置应用
         Utils.safeBind(document.getElementById('open-general-settings-app'), 'click', () => {
             Utils.showScreen('general-settings-screen');

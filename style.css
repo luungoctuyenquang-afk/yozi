@@ -1942,6 +1942,239 @@ body, html {
 }
 
 
+/* iOS Settings Minimal Styles - 独立的iOS风格设置界面 */
+/* 命名空间使用 .iosm-* 避免与原有设置冲突 */
+:root {
+    --iosm-bg: #f4f5f8;
+    --iosm-card: #ffffff;
+    --iosm-label: #111114;
+    --iosm-muted: #8a8f98;
+    --iosm-sep: rgba(0,0,0,.12);
+    --iosm-shadow: 0 8px 24px rgba(17,17,20,.06);
+    --iosm-radius: 10px;
+}
+
+/* iOS设置容器 */
+.screen.iosm {
+    display: none;
+    background: var(--iosm-bg);
+    color: var(--iosm-label);
+    flex-direction: column;
+    height: 100%;
+}
+
+.iosm-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    padding: 12px 16px 8px;
+    background: #f8f9fb;
+    border-bottom: 1px solid rgba(0,0,0,.06);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.iosm-back {
+    border: none;
+    background: #eee;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.iosm-back:hover {
+    background: #ddd;
+}
+
+.iosm-title {
+    flex: 1;
+    text-align: center;
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.iosm-body {
+    padding: 8px 12px 12px 16px;
+    height: calc(100% - 52px);
+    overflow: auto;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* iOS风格极简滚动条 */
+.iosm-body::-webkit-scrollbar {
+    width: 2px;
+}
+
+.iosm-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.iosm-body::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 2px;
+    transition: background-color 0.3s ease;
+}
+
+.iosm-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.18);
+}
+
+.iosm-body::-webkit-scrollbar-thumb:active {
+    background: rgba(0, 0, 0, 0.22);
+}
+
+/* Firefox滚动条样式 */
+.iosm-body {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.08) transparent;
+}
+
+/* 搜索框 */
+.iosm-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--iosm-card);
+    border-radius: var(--iosm-radius);
+    padding: 10px 12px;
+    color: var(--iosm-muted);
+    box-shadow: var(--iosm-shadow);
+    margin-bottom: 12px;
+}
+
+.iosm-search input {
+    border: none;
+    outline: none;
+    width: 100%;
+    font-size: 16px;
+    color: var(--iosm-label);
+    background: transparent;
+}
+
+.iosm-search .icon {
+    opacity: .6;
+}
+
+/* 个人资料卡片 */
+.iosm-profile {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    background: var(--iosm-card);
+    border-radius: var(--iosm-radius);
+    box-shadow: var(--iosm-shadow);
+    margin-bottom: 16px;
+    border: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.iosm-profile:hover {
+    transform: scale(1.02);
+}
+
+.iosm-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #e3e4e8;
+    object-fit: cover;
+}
+
+.iosm-ptext {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    flex: 1;
+}
+
+.iosm-pname {
+    font-weight: 700;
+    font-size: 20px;
+}
+
+.iosm-psub {
+    color: var(--iosm-muted);
+    font-size: 14px;
+    margin-top: 3px;
+}
+
+/* 设置组和行 */
+.iosm-group {
+    background: var(--iosm-card);
+    border-radius: var(--iosm-radius);
+    box-shadow: var(--iosm-shadow);
+    overflow: hidden;
+}
+
+.iosm-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 14px 14px;
+    position: relative;
+    text-align: left;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.iosm-row:hover {
+    background: rgba(0,0,0,0.03);
+}
+
+.iosm-row + .iosm-row::before {
+    content: "";
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    top: 0;
+    height: 0.5px;
+    background: var(--iosm-sep);
+}
+
+.iosm-leading {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #f0f1f4;
+    color: #5a5f66;
+    margin-right: 10px;
+    font-size: 16px;
+}
+
+.iosm-label {
+    font-size: 17px;
+}
+
+.iosm-value {
+    margin-left: auto;
+    color: var(--iosm-muted);
+    font-size: 14px;
+}
+
+.iosm-chev {
+    margin-left: 8px;
+    color: #b0b3b8;
+}
+
+.iosm-spacer {
+    height: 12px;
+}
+
 /* 精准修复房间列表区域 - 最高优先级 */
 body .mqtt-room-screen[data-theme="dark"] .room-list-section,
 body .mqtt-room-screen.theme-dark .room-list-section,
@@ -2343,14 +2576,16 @@ body .mqtt-room-screen.dark-theme .room-list-section {
     font-size: 11px;
 }
 
-.password-input-group {
+.password-input-group,
+.password-create-group {
     display: flex;
     gap: var(--spacing-sm);
     margin-top: var(--spacing-sm);
     align-items: center;
 }
 
-.room-password-input {
+.room-password-input,
+.room-password-create {
     flex: 1;
     padding: var(--spacing-sm) var(--spacing-md);
     border: 2px solid var(--warning-color);
@@ -2368,7 +2603,8 @@ body .mqtt-room-screen.dark-theme .room-list-section {
     box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.2);
 }
 
-.save-password-btn {
+.save-password-btn,
+.confirm-password-btn {
     padding: var(--spacing-sm) var(--spacing-md);
     background: var(--success-color);
     color: white;
@@ -2381,12 +2617,22 @@ body .mqtt-room-screen.dark-theme .room-list-section {
     white-space: nowrap;
 }
 
+.confirm-password-btn {
+    background: var(--primary-color);
+}
+
 .save-password-btn:hover {
     background: #4aa450;
     transform: translateY(-1px);
 }
 
-.save-password-btn:active {
+.confirm-password-btn:hover {
+    background: #5e72e4;
+    transform: translateY(-1px);
+}
+
+.save-password-btn:active,
+.confirm-password-btn:active {
     transform: translateY(0);
 }
 

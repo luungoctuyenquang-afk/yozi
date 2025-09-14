@@ -1,0 +1,77 @@
+<!-- ios-settings-minimal.html
+     Standalone component: drop this <section> into your app.
+     It does NOT auto-wire JS. Use data-key for routing later.
+-->
+<section id="ios-settings-minimal" class="screen iosm" role="region" aria-label="设置">
+    <header class="iosm-header">
+      <button class="iosm-back" data-back="home-screen" aria-label="返回">‹</button>
+      <h2 class="iosm-title">Settings</h2>
+    </header>
+  
+    <div class="iosm-body">
+      <div class="iosm-search">
+        <div class="icon">🔎</div>
+        <input id="iosm-search" placeholder="Search">
+      </div>
+  
+      <!-- 1. 头像 -->
+      <button class="iosm-profile" data-key="profile">
+        <img class="iosm-avatar" id="iosm-avatar" src="https://picsum.photos/seed/yy/120" alt="avatar">
+        <div class="iosm-ptext">
+          <div class="iosm-pname" id="iosm-name">右右</div>
+          <div class="iosm-psub" id="iosm-sub">个人信息</div>
+        </div>
+        <span class="iosm-chev">›</span>
+      </button>
+  
+      <!-- 分组 A：2~5 -->
+      <div class="iosm-group" aria-label="主功能">
+        <button class="iosm-row" data-key="api">
+          <span class="iosm-leading">🔗</span><span class="iosm-label">其他 API</span><span class="iosm-chev" style="margin-left:auto">›</span>
+        </button>
+        <button class="iosm-row" data-key="general">
+          <span class="iosm-leading">⚙️</span><span class="iosm-label">通用设置</span><span class="iosm-chev" style="margin-left:auto">›</span>
+        </button>
+        <button class="iosm-row" data-key="role">
+          <span class="iosm-leading">🎭</span><span class="iosm-label">角色</span><span class="iosm-chev" style="margin-left:auto">›</span>
+        </button>
+        <button class="iosm-row" data-key="chat">
+          <span class="iosm-leading">💬</span><span class="iosm-label">聊天</span><span class="iosm-chev" style="margin-left:auto">›</span>
+        </button>
+      </div>
+  
+      <div class="iosm-spacer"></div>
+  
+      <!-- 分组 B：6~9 -->
+      <div class="iosm-group" aria-label="数据与外观">
+        <button class="iosm-row" data-key="data">
+          <span class="iosm-leading">💾</span><span class="iosm-label">数据</span><span class="iosm-value">备份 / 恢复</span><span class="iosm-chev">›</span>
+        </button>
+        <button class="iosm-row" data-key="presets">
+          <span class="iosm-leading">🧰</span><span class="iosm-label">预设</span><span class="iosm-chev" style="margin-left:auto">›</span>
+        </button>
+        <button class="iosm-row" data-key="appearance">
+          <span class="iosm-leading">🎨</span><span class="iosm-label">美化</span><span class="iosm-value">主题 / 字体 / 壁纸</span><span class="iosm-chev">›</span>
+        </button>
+        <button class="iosm-row" data-key="extensions">
+          <span class="iosm-leading">🧩</span><span class="iosm-label">扩展</span><span class="iosm-chev" style="margin-left:auto">›</span>
+        </button>
+      </div>
+  
+      <div class="iosm-spacer"></div>
+  
+      <!-- 分组 C：10~12（缓存放末位更安全） -->
+      <div class="iosm-group" aria-label="应用与定位">
+        <button class="iosm-row" data-key="apps">
+          <span class="iosm-leading">📱</span><span class="iosm-label">App</span><span class="iosm-value">管理 / 排序</span><span class="iosm-chev">›</span>
+        </button>
+        <button class="iosm-row" data-key="gps">
+          <span class="iosm-leading">📍</span><span class="iosm-label">GPS</span><span class="iosm-value">定位：未设置</span><span class="iosm-chev">›</span>
+        </button>
+        <button class="iosm-row" data-key="cache">
+          <span class="iosm-leading">🧹</span><span class="iosm-label">缓存</span><span class="iosm-value">清理本地缓存</span>
+        </button>
+      </div>
+    </div>
+  </section>
+  

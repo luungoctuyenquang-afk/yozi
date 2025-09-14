@@ -29,6 +29,7 @@
                 <div class="app-icon" id="open-store-app"><div class="app-icon-bg">🛒</div><span class="app-name">商店</span></div>
                 <div class="app-icon" id="open-backpack-app"><div class="app-icon-bg">🎒</div><span class="app-name">背包</span></div>
                 <div class="app-icon" id="open-world-book-app"><div class="app-icon-bg">📖</div><span class="app-name">世界书</span></div>
+                <div class="app-icon" id="open-ios-settings-app"><div class="app-icon-bg">📱</div><span class="app-name">设置</span></div>
                 <div class="app-icon" id="open-settings-app"><div class="app-icon-bg">⚙️</div><span class="app-name">API设置</span></div>
                 <div class="app-icon" id="open-general-settings-app"><div class="app-icon-bg">🔧</div><span class="app-name">通用设置</span></div>
             </div> <!-- app-grid 结束 -->
@@ -639,6 +640,104 @@
             </div>
         </section>
 
+        <!-- iOS风格设置界面 (新增，不影响原有设置) -->
+        <section id="ios-settings-minimal" class="screen iosm" role="region" aria-label="设置">
+            <header class="iosm-header">
+                <button class="iosm-back" data-back="home-screen" aria-label="返回">‹</button>
+                <h2 class="iosm-title">设置</h2>
+            </header>
+
+            <div class="iosm-body">
+                <div class="iosm-search">
+                    <div class="icon">🔎</div>
+                    <input id="iosm-search" placeholder="搜索设置">
+                </div>
+
+                <!-- 个人资料卡片 -->
+                <button class="iosm-profile" data-key="profile">
+                    <img class="iosm-avatar" id="iosm-avatar" src="https://picsum.photos/seed/yy/120" alt="avatar">
+                    <div class="iosm-ptext">
+                        <div class="iosm-pname" id="iosm-name">虚拟助手</div>
+                        <div class="iosm-psub" id="iosm-sub">个人信息与设置</div>
+                    </div>
+                    <span class="iosm-chev">›</span>
+                </button>
+
+                <!-- 分组 A：主要功能 -->
+                <div class="iosm-group" aria-label="主功能">
+                    <button class="iosm-row" data-key="api">
+                        <span class="iosm-leading">🔗</span>
+                        <span class="iosm-label">API 设置</span>
+                        <span class="iosm-chev" style="margin-left:auto">›</span>
+                    </button>
+                    <button class="iosm-row" data-key="general">
+                        <span class="iosm-leading">⚙️</span>
+                        <span class="iosm-label">通用设置</span>
+                        <span class="iosm-chev" style="margin-left:auto">›</span>
+                    </button>
+                    <button class="iosm-row" data-key="worldbook">
+                        <span class="iosm-leading">📚</span>
+                        <span class="iosm-label">世界书</span>
+                        <span class="iosm-chev" style="margin-left:auto">›</span>
+                    </button>
+                    <button class="iosm-row" data-key="chat">
+                        <span class="iosm-leading">💬</span>
+                        <span class="iosm-label">聊天设置</span>
+                        <span class="iosm-chev" style="margin-left:auto">›</span>
+                    </button>
+                </div>
+
+                <div class="iosm-spacer"></div>
+
+                <!-- 分组 B：数据与外观 -->
+                <div class="iosm-group" aria-label="数据与外观">
+                    <button class="iosm-row" data-key="data">
+                        <span class="iosm-leading">💾</span>
+                        <span class="iosm-label">数据管理</span>
+                        <span class="iosm-value">备份/恢复</span>
+                        <span class="iosm-chev">›</span>
+                    </button>
+                    <button class="iosm-row" data-key="wallet">
+                        <span class="iosm-leading">💰</span>
+                        <span class="iosm-label">钱包</span>
+                        <span class="iosm-chev" style="margin-left:auto">›</span>
+                    </button>
+                    <button class="iosm-row" data-key="store">
+                        <span class="iosm-leading">🛒</span>
+                        <span class="iosm-label">商店</span>
+                        <span class="iosm-chev" style="margin-left:auto">›</span>
+                    </button>
+                    <button class="iosm-row" data-key="backpack">
+                        <span class="iosm-leading">🎒</span>
+                        <span class="iosm-label">背包</span>
+                        <span class="iosm-chev" style="margin-left:auto">›</span>
+                    </button>
+                </div>
+
+                <div class="iosm-spacer"></div>
+
+                <!-- 分组 C：高级功能 -->
+                <div class="iosm-group" aria-label="高级功能">
+                    <button class="iosm-row" data-key="mqtt">
+                        <span class="iosm-leading">🌐</span>
+                        <span class="iosm-label">MQTT聊天室</span>
+                        <span class="iosm-chev" style="margin-left:auto">›</span>
+                    </button>
+                    <button class="iosm-row" data-key="appearance">
+                        <span class="iosm-leading">🎨</span>
+                        <span class="iosm-label">外观主题</span>
+                        <span class="iosm-value">自定义</span>
+                        <span class="iosm-chev">›</span>
+                    </button>
+                    <button class="iosm-row" data-key="cache">
+                        <span class="iosm-leading">🧹</span>
+                        <span class="iosm-label">清理缓存</span>
+                        <span class="iosm-value">释放空间</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
         <section id="general-settings-screen" class="screen">
             <header class="settings-header">
                 <button id="general-settings-back-btn" class="back-btn">‹</button>
@@ -701,6 +800,7 @@
     <script src="js/screens/settings.js"></script>
     <script src="js/screens/general-settings.js"></script>
     <script src="js/screens/mqtt-room.js"></script>
+    <script src="js/screens/ios-settings.js"></script>
 
     <!-- 主入口（必须最后加载） -->
     <script src="js/main.js"></script>

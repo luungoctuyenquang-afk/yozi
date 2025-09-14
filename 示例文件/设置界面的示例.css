@@ -1,0 +1,52 @@
+
+/* ios-settings-minimal.css
+   Minimal iOS-like Settings skin (standalone). Namespaced with .iosm-* to avoid conflicts.
+*/
+:root{
+    --iosm-bg:#f4f5f8;
+    --iosm-card:#ffffff;
+    --iosm-label:#111114;
+    --iosm-muted:#8a8f98;
+    --iosm-sep:rgba(0,0,0,.12);
+    --iosm-shadow:0 8px 24px rgba(17,17,20,.06);
+    --iosm-radius:16px;
+  }
+  
+  /* container */
+  .screen.iosm { display:none; background:var(--iosm-bg); color:var(--iosm-label); }
+  
+  .iosm-header{
+    position:sticky; top:0; z-index:5;
+    padding:12px 16px 8px; background:#f8f9fb; border-bottom:1px solid rgba(0,0,0,.06);
+    display:flex; align-items:center; gap:8px;
+  }
+  .iosm-back{ border:none; background:#eee; width:32px; height:32px; border-radius:10px; font-size:20px; }
+  .iosm-title{ flex:1; text-align:center; margin:0; font-size:17px; font-weight:700; }
+  .iosm-body{ padding:12px; height:calc(100% - 52px); overflow:auto; }
+  
+  /* search */
+  .iosm-search{ display:flex; align-items:center; gap:8px; background:var(--iosm-card); border-radius:var(--iosm-radius); padding:12px 14px; color:var(--iosm-muted); box-shadow:var(--iosm-shadow); margin-bottom:14px; }
+  .iosm-search input{ border:none; outline:none; width:100%; font-size:16px; color:var(--iosm-label); background:transparent; }
+  .iosm-search .icon{ opacity:.6; }
+  
+  /* profile card */
+  .iosm-profile{ display:flex; align-items:center; gap:12px; padding:14px; background:var(--iosm-card); border-radius:var(--iosm-radius); box-shadow:var(--iosm-shadow); margin-bottom:18px; }
+  .iosm-avatar{ width:52px; height:52px; border-radius:50%; background:#e3e4e8; object-fit:cover; }
+  .iosm-ptext{ display:flex; flex-direction:column; line-height:1.2; }
+  .iosm-pname{ font-weight:700; font-size:18px; }
+  .iosm-psub{ color:var(--iosm-muted); font-size:13px; margin-top:2px; }
+  
+  /* group & row */
+  .iosm-group{ background:var(--iosm-card); border-radius:var(--iosm-radius); box-shadow:var(--iosm-shadow); overflow:hidden; }
+  .iosm-row{
+    width:100%; display:flex; align-items:center; padding:14px 14px; position:relative;
+    text-align:left; background:transparent; border:none; cursor:pointer;
+  }
+  .iosm-row + .iosm-row::before{ content:""; position:absolute; left:14px; right:14px; top:0; height:0.5px; background:var(--iosm-sep); }
+  .iosm-leading{ width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background:#f0f1f4; color:#5a5f66; margin-right:10px; font-size:16px; }
+  .iosm-label{ font-size:17px; }
+  .iosm-value{ margin-left:auto; color:var(--iosm-muted); font-size:14px; }
+  .iosm-chev{ margin-left:8px; color:#b0b3b8; }
+  
+  .iosm-spacer{ height:16px; }
+  
