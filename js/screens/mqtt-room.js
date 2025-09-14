@@ -1737,6 +1737,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     display: flex;
                     flex-direction: column;
                     padding: var(--spacing-lg);
+                    padding-bottom: calc(var(--spacing-lg) + 20px); /* 增加底部间距 */
                     gap: var(--spacing-lg);
                     overflow-y: auto;
                     /* 确保内容区域不会遮挡头部 */
@@ -2835,6 +2836,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     
                     .mqtt-content {
                         padding: 8px;
+                        padding-bottom: 25px; /* 移动端增加底部间距 */
                         gap: 8px;
                         height: calc(100vh - 50px);
                         overflow-y: auto;
