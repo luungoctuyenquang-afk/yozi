@@ -2784,12 +2784,15 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     }
                     
                     .room-type-option {
-                        margin-bottom: 6px !important;
+                        margin-bottom: 4px !important;
+                        padding: 2px 0 !important;
                     }
                     
                     .room-type-option input[type="radio"] {
-                        transform: scale(0.85);
-                        margin-right: 6px !important;
+                        transform: scale(0.7);
+                        margin-right: 4px !important;
+                        width: 14px !important;
+                        height: 14px !important;
                     }
                     
                     .room-type-text {
