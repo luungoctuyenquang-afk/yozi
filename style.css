@@ -19,6 +19,25 @@ body, html {
     position: relative; 
     overflow: hidden;
 }
+
+/* 移动端和PWA布局修复 - 解决垂直居中问题 */
+@media (max-width: 480px), (display-mode: standalone), (display-mode: fullscreen) {
+    body {
+        align-items: center; /* 保持垂直居中 */
+        height: 100vh; /* 使用视口高度 */
+        height: -webkit-fill-available; /* iOS兼容 */
+    }
+    
+    .mobile-container {
+        border-radius: 0;
+        width: 100vw;
+        height: 100vh;
+        height: -webkit-fill-available; /* iOS真实视口高度 */
+        max-width: none;
+        max-height: none;
+        box-shadow: none;
+    }
+}
 .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 20px; box-sizing: border-box; background-color: #f9f9f9; display: none; }
 #lock-screen { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; z-index: 10; }
 .time-display { font-size: 64px; font-weight: 200; }
