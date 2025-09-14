@@ -1457,6 +1457,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     <button id="mqtt-back-btn" class="back-btn">‹</button>
                     <h2>MQTT聊天室</h2>
                     <div class="header-controls">
+                        <button id="room-settings-btn" class="room-settings-btn" title="房间设置" style="display: none;">⚙️</button>
                         <button id="theme-toggle-btn" class="theme-toggle-btn" title="切换主题">🌙</button>
                         <div class="connection-status" id="mqtt-status">未连接</div>
                     </div>
@@ -1617,6 +1618,122 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                             </div>
                         </div>
                     </div>
+
+                    <!-- 房间设置面板 -->
+                    <div class="room-settings-panel" id="room-settings-panel" style="display: none;">
+                        <div class="settings-panel-header">
+                            <h3>⚙️ 房间设置</h3>
+                            <button class="settings-close-btn" id="settings-close-btn">✕</button>
+                        </div>
+
+                        <div class="settings-panel-content">
+                            <!-- 房间基本信息 -->
+                            <div class="settings-section">
+                                <h4>📋 房间信息</h4>
+                                <div class="settings-info">
+                                    <div class="info-row">
+                                        <span class="info-label">房间ID：</span>
+                                        <span class="info-value" id="settings-room-id">-</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">房主：</span>
+                                        <span class="info-value" id="settings-room-owner">-</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">创建时间：</span>
+                                        <span class="info-value" id="settings-create-time">-</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">房间类型：</span>
+                                        <span class="info-value" id="settings-room-type">-</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 房间权限设置 -->
+                            <div class="settings-section" id="owner-settings" style="display: none;">
+                                <h4>🔐 权限设置</h4>
+
+                                <!-- 房间密码 -->
+                                <div class="setting-item">
+                                    <label class="setting-label">
+                                        <input type="checkbox" id="settings-private-room">
+                                        <span>设置房间密码</span>
+                                    </label>
+                                    <div class="password-setting" id="password-setting" style="display: none;">
+                                        <input type="password" id="settings-room-password" placeholder="输入房间密码" class="settings-input">
+                                        <button class="settings-btn" id="save-room-password">保存密码</button>
+                                    </div>
+                                </div>
+
+                                <!-- 最大人数 -->
+                                <div class="setting-item">
+                                    <label class="setting-label">
+                                        <span>最大人数：</span>
+                                        <select id="settings-max-users" class="settings-select">
+                                            <option value="10">10人</option>
+                                            <option value="20" selected>20人</option>
+                                            <option value="50">50人</option>
+                                            <option value="100">100人</option>
+                                        </select>
+                                    </label>
+                                </div>
+
+                                <!-- 管理员管理 -->
+                                <div class="setting-item">
+                                    <label class="setting-label">管理员列表</label>
+                                    <div class="admin-list" id="admin-list">
+                                        <div class="no-admins">暂无管理员</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 房间操作 -->
+                            <div class="settings-section">
+                                <h4>🛠️ 房间操作</h4>
+                                <div class="settings-actions">
+                                    <button class="settings-btn btn-primary" id="backup-room-btn" style="display: none;">
+                                        💾 备份房间
+                                    </button>
+                                    <button class="settings-btn btn-secondary" id="restore-room-btn">
+                                        📂 恢复房间
+                                    </button>
+                                    <input type="file" id="restore-room-file" accept=".json" style="display: none;">
+
+                                    <button class="settings-btn btn-warning" id="clear-messages-btn">
+                                        🗑️ 清空聊天记录
+                                    </button>
+
+                                    <button class="settings-btn btn-danger" id="release-room-btn" style="display: none;">
+                                        🔓 释放房间
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 高级设置 -->
+                            <div class="settings-section">
+                                <h4>🔧 高级设置</h4>
+                                <div class="setting-item">
+                                    <label class="setting-label">
+                                        <input type="checkbox" id="settings-auto-reconnect" checked>
+                                        <span>自动重连</span>
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="setting-label">
+                                        <input type="checkbox" id="settings-show-timestamp" checked>
+                                        <span>显示时间戳</span>
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="setting-label">
+                                        <input type="checkbox" id="settings-notification" checked>
+                                        <span>消息通知</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>`;
 
@@ -1640,10 +1757,41 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             emojiPickerContent: mountEl.querySelector('#emoji-picker-content'),
             onlineCount: mountEl.querySelector('#online-count'),
             onlineList: mountEl.querySelector('#online-list'),
-            onlineListContent: mountEl.querySelector('#online-list-content')
+            onlineListContent: mountEl.querySelector('#online-list-content'),
+
+            // 设置面板相关元素
+            roomSettingsBtn: mountEl.querySelector('#room-settings-btn'),
+            settingsPanel: mountEl.querySelector('#room-settings-panel'),
+            settingsCloseBtn: mountEl.querySelector('#settings-close-btn'),
+
+            // 设置面板内的元素
+            settingsRoomId: mountEl.querySelector('#settings-room-id'),
+            settingsRoomOwner: mountEl.querySelector('#settings-room-owner'),
+            settingsCreateTime: mountEl.querySelector('#settings-create-time'),
+            settingsRoomType: mountEl.querySelector('#settings-room-type'),
+
+            ownerSettings: mountEl.querySelector('#owner-settings'),
+            settingsPrivateRoom: mountEl.querySelector('#settings-private-room'),
+            passwordSetting: mountEl.querySelector('#password-setting'),
+            settingsRoomPassword: mountEl.querySelector('#settings-room-password'),
+            saveRoomPasswordBtn: mountEl.querySelector('#save-room-password'),
+
+            settingsMaxUsers: mountEl.querySelector('#settings-max-users'),
+            adminList: mountEl.querySelector('#admin-list'),
+
+            backupRoomBtn: mountEl.querySelector('#backup-room-btn'),
+            restoreRoomBtn: mountEl.querySelector('#restore-room-btn'),
+            restoreRoomFile: mountEl.querySelector('#restore-room-file'),
+            clearMessagesBtn: mountEl.querySelector('#clear-messages-btn'),
+            releaseRoomBtn: mountEl.querySelector('#release-room-btn'),
+
+            settingsAutoReconnect: mountEl.querySelector('#settings-auto-reconnect'),
+            settingsShowTimestamp: mountEl.querySelector('#settings-show-timestamp'),
+            settingsNotification: mountEl.querySelector('#settings-notification')
         };
 
         // 绑定事件处理器
+        setupSettingsPanel();
 
         // 验证关键元素是否存在
         if (!elements.backBtn) {
@@ -2086,6 +2234,218 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             console.error('恢复房间数据失败:', error);
             showAlert('恢复失败：' + error.message);
         }
+    }
+
+    // 设置面板相关函数
+    function setupSettingsPanel() {
+        // 设置按钮点击事件
+        if (elements.roomSettingsBtn) {
+            elements.roomSettingsBtn.addEventListener('click', () => openSettingsPanel());
+        }
+
+        // 关闭按钮点击事件
+        if (elements.settingsCloseBtn) {
+            elements.settingsCloseBtn.addEventListener('click', () => closeSettingsPanel());
+        }
+
+        // 设置密码开关
+        if (elements.settingsPrivateRoom) {
+            elements.settingsPrivateRoom.addEventListener('change', (e) => {
+                if (elements.passwordSetting) {
+                    elements.passwordSetting.style.display = e.target.checked ? 'flex' : 'none';
+                }
+            });
+        }
+
+        // 保存密码按钮
+        if (elements.saveRoomPasswordBtn) {
+            elements.saveRoomPasswordBtn.addEventListener('click', () => saveRoomPassword());
+        }
+
+        // 最大人数设置
+        if (elements.settingsMaxUsers) {
+            elements.settingsMaxUsers.addEventListener('change', (e) => {
+                if (roomConfig) {
+                    roomConfig.maxUsers = parseInt(e.target.value);
+                    saveRoomConfig();
+                    publishRoomConfig();
+                }
+            });
+        }
+
+        // 备份房间按钮
+        if (elements.backupRoomBtn) {
+            elements.backupRoomBtn.addEventListener('click', () => backupRoomData());
+        }
+
+        // 恢复房间按钮
+        if (elements.restoreRoomBtn) {
+            elements.restoreRoomBtn.addEventListener('click', () => {
+                elements.restoreRoomFile.click();
+            });
+        }
+
+        // 恢复房间文件选择
+        if (elements.restoreRoomFile) {
+            elements.restoreRoomFile.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        restoreRoomData(event.target.result);
+                    };
+                    reader.readAsText(file);
+                }
+            });
+        }
+
+        // 清空聊天记录
+        if (elements.clearMessagesBtn) {
+            elements.clearMessagesBtn.addEventListener('click', () => {
+                if (confirm('确定要清空本地聊天记录吗？')) {
+                    clearMessages();
+                    if (roomId) {
+                        chatHistory.delete(roomId);
+                        saveChatHistory();
+                    }
+                    log('system', '💬 本地聊天记录已清空');
+                }
+            });
+        }
+
+        // 释放房间按钮
+        if (elements.releaseRoomBtn) {
+            elements.releaseRoomBtn.addEventListener('click', () => {
+                if (confirm(`确定要释放房间 "${roomId}" 吗？\n\n释放后：\n- 房间ID将可被他人使用\n- 其他用户将无法加入\n- 您需要重新创建或导入备份恢复房间`)) {
+                    clearRoomOccupation(roomId);
+                    log('system', `🔓 房间 "${roomId}" 已释放`);
+                    closeSettingsPanel();
+                    // 可选：自动离开房间
+                    leaveRoom();
+                }
+            });
+        }
+    }
+
+    // 打开设置面板
+    function openSettingsPanel() {
+        if (!elements.settingsPanel) return;
+
+        // 更新设置面板信息
+        updateSettingsPanelInfo();
+
+        // 显示面板
+        elements.settingsPanel.style.display = 'flex';
+        setTimeout(() => {
+            elements.settingsPanel.classList.add('show');
+        }, 10);
+    }
+
+    // 关闭设置面板
+    function closeSettingsPanel() {
+        if (!elements.settingsPanel) return;
+
+        elements.settingsPanel.classList.remove('show');
+        setTimeout(() => {
+            elements.settingsPanel.style.display = 'none';
+        }, 300);
+    }
+
+    // 更新设置面板信息
+    function updateSettingsPanelInfo() {
+        // 更新房间基本信息
+        if (elements.settingsRoomId) {
+            elements.settingsRoomId.textContent = roomId || '-';
+        }
+
+        if (elements.settingsRoomOwner && roomConfig) {
+            elements.settingsRoomOwner.textContent = roomConfig.createdBy || '-';
+        }
+
+        if (elements.settingsCreateTime && roomConfig) {
+            const createTime = roomConfig.createdAt ? new Date(roomConfig.createdAt).toLocaleString() : '-';
+            elements.settingsCreateTime.textContent = createTime;
+        }
+
+        if (elements.settingsRoomType && roomConfig) {
+            const typeText = roomConfig.roomType === ROOM_TYPES.REGISTERED ? '正式房间' : '临时房间';
+            elements.settingsRoomType.textContent = typeText;
+        }
+
+        // 显示房主专属设置
+        const isOwner = roomConfig && roomConfig.createdBy === nickname;
+        if (elements.ownerSettings) {
+            elements.ownerSettings.style.display = isOwner ? 'block' : 'none';
+        }
+
+        // 显示房主专属按钮
+        if (elements.backupRoomBtn) {
+            elements.backupRoomBtn.style.display = isOwner ? 'block' : 'none';
+        }
+        if (elements.releaseRoomBtn) {
+            elements.releaseRoomBtn.style.display = isOwner ? 'block' : 'none';
+        }
+
+        // 更新密码设置
+        if (elements.settingsPrivateRoom && roomConfig) {
+            elements.settingsPrivateRoom.checked = roomConfig.hasPassword || false;
+            if (elements.passwordSetting) {
+                elements.passwordSetting.style.display = roomConfig.hasPassword ? 'flex' : 'none';
+            }
+        }
+
+        // 更新最大人数
+        if (elements.settingsMaxUsers && roomConfig) {
+            elements.settingsMaxUsers.value = roomConfig.maxUsers || 20;
+        }
+
+        // 更新管理员列表
+        updateAdminList();
+    }
+
+    // 更新管理员列表
+    function updateAdminList() {
+        if (!elements.adminList) return;
+
+        const admins = roomConfig?.adminUsers || [];
+        if (admins.length === 0) {
+            elements.adminList.innerHTML = '<div class="no-admins">暂无管理员</div>';
+        } else {
+            elements.adminList.innerHTML = admins.map(admin => `
+                <div class="admin-item">
+                    <span class="admin-name">${admin}</span>
+                    <button class="remove-admin-btn" data-admin="${admin}">移除</button>
+                </div>
+            `).join('');
+
+            // 绑定移除管理员事件
+            elements.adminList.querySelectorAll('.remove-admin-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const adminName = e.target.dataset.admin;
+                    removeAdmin(adminName);
+                });
+            });
+        }
+    }
+
+    // 保存房间密码
+    function saveRoomPassword() {
+        if (!elements.settingsRoomPassword || !roomConfig) return;
+
+        const password = elements.settingsRoomPassword.value.trim();
+        if (!password && elements.settingsPrivateRoom.checked) {
+            showAlert('请输入房间密码');
+            return;
+        }
+
+        roomConfig.hasPassword = elements.settingsPrivateRoom.checked;
+        roomConfig.password = password;
+
+        saveRoomConfig();
+        publishRoomConfig();
+
+        showAlert('密码设置已更新');
+        log('system', roomConfig.hasPassword ? '🔐 房间密码已设置' : '🔓 房间密码已移除');
     }
 
     // 生成邀请链接
@@ -4074,17 +4434,22 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         // 禁用/启用房间连接按钮
         if (elements.createRoomBtn) elements.createRoomBtn.disabled = connected;
         if (elements.joinRoomBtn) elements.joinRoomBtn.disabled = connected;
-        
+
         // 禁用/启用聊天相关按钮
         if (elements.leaveBtn) elements.leaveBtn.disabled = !connected;
         if (elements.messageInput) elements.messageInput.disabled = !connected;
         if (elements.sendBtn) elements.sendBtn.disabled = !connected;
         if (elements.emojiBtn) elements.emojiBtn.disabled = !connected;
-        
+
         // 禁用/启用房间输入框
         if (elements.roomInput) elements.roomInput.disabled = connected;
         if (elements.nicknameInput) elements.nicknameInput.disabled = connected;
-        
+
+        // 显示/隐藏设置按钮
+        if (elements.roomSettingsBtn) {
+            elements.roomSettingsBtn.style.display = connected ? 'block' : 'none';
+        }
+
         if (connected && elements.messageInput) {
             elements.messageInput.focus();
         }
