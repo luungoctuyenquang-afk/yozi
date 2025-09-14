@@ -3316,7 +3316,10 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         if (!configData || configData.roomId !== roomId) return;
 
         // 如果自己是房主，忽略配置更新（避免覆盖本地配置）
-        if (roomConfig && roomConfig.createdBy === nickname) return;
+        if (roomConfig && roomConfig.createdBy === nickname) {
+            log('system', '📤 房主身份确认，使用本地配置');
+            return;
+        }
 
         // 更新本地房间配置（访客使用）
         const remoteConfig = {
@@ -3333,6 +3336,8 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         // 保存远程配置供密码验证使用
         window.__remoteRoomConfig__ = remoteConfig;
 
+        log('system', `📥 接收到房间配置（房主：${configData.createdBy}）`);
+
         // 如果房间需要密码且用户还没验证
         if (remoteConfig.hasPassword && !window.__passwordVerified__) {
             // 显示密码输入框
@@ -3343,11 +3348,23 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 if (passwordInput) {
                     passwordInput.focus();
                 }
-                showAlert('此房间需要密码，请输入密码！');
+                log('system', '🔒 此房间需要密码，请在上方输入密码并按回车确认');
+                showAlert('此房间需要密码，请输入密码并按回车！');
             }
+        } else if (!remoteConfig.hasPassword) {
+            log('system', '🔓 此房间无需密码，欢迎加入！');
         }
 
-        log('system', `📥 接收到房间配置（房主：${configData.createdBy}）`);
+        // 更新房间设置显示
+        const maxUsersSelect = mountEl.querySelector('#max-users-select');
+        if (maxUsersSelect && remoteConfig.maxUsers) {
+            maxUsersSelect.value = remoteConfig.maxUsers;
+        }
+
+        const categorySelect = mountEl.querySelector('#room-category-select');
+        if (categorySelect && remoteConfig.category) {
+            categorySelect.value = remoteConfig.category;
+        }
     }
     
     // 生成邀请链接
@@ -4301,40 +4318,14 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             }
         }
         
+        // 注释掉本地密码验证，改为连接后通过MQTT验证
+        // 本地配置的密码可能不准确（只有房主的localStorage有）
+        // 真正的密码验证应该在收到MQTT配置消息后进行
+        /*
         if (!skipPasswordCheck && localConfig && localConfig.isPrivate && localConfig.password) {
-            // 显示密码输入框
-            const passwordInputGroup = mountEl.querySelector('.password-input-group');
-            if (passwordInputGroup) {
-                passwordInputGroup.style.display = 'flex';
-            }
-
-            // 获取用户输入的密码
-            const passwordInput = mountEl.querySelector('.room-password-input');
-            const inputPassword = passwordInput ? passwordInput.value.trim() : '';
-
-            // 如果密码为空，提示用户输入
-            if (!inputPassword) {
-                showAlert('此房间需要密码，请输入密码后再试！');
-                // 让密码输入框获得焦点
-                if (passwordInput) {
-                    passwordInput.focus();
-                }
-                return;
-            }
-
-            // 验证密码
-            if (inputPassword !== localConfig.password) {
-                showAlert('房间密码错误！');
-                // 清空密码输入框
-                if (passwordInput) {
-                    passwordInput.value = '';
-                    passwordInput.focus();
-                }
-                return;
-            }
-
-            log('system', '✅ 密码验证成功');
+            // 这段代码会阻止连接，改为连接后验证
         }
+        */
         
         try {
             // 确保有房间配置
