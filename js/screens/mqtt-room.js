@@ -4429,37 +4429,41 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 updateStatus('connected', '✅ 已连接');
                 updateConnectionStatus('connected');
                 log('system', `已加入房间: ${roomId}`);
-                
+
                 // 显示房间类型和用户身份
                 if (roomConfig) {
                     const roomTypeText = roomConfig.roomType === ROOM_TYPES.REGISTERED ? '🔐 正式房间' : '🔓 临时房间';
                     const isOwner = roomConfig.createdBy === nickname;
                     const roleText = isOwner ? '👑 房主' : '👤 访客';
-                    
+
                     // 更新状态显示
                     const statusEl = mountEl.querySelector('#mqtt-status');
                     if (statusEl) {
                         statusEl.innerHTML = `<span style="color: var(--success-color);">${roomTypeText}</span> <span style="color: var(--info-color);">${roleText}</span>`;
                     }
                 }
-                
+
                 // 清空之前的在线用户列表，然后添加自己
                 clearOnlineUsers();
                 addOnlineUser(nickname);
-                
+
                 const adminTopic = `game/${roomId}/admin`;
                 const moderationTopic = `game/${roomId}/moderation`;
                 const configTopic = `game/${roomId}/config`;  // 新增配置主题
-
-                // 如果是房主，发布房间配置
-                if (roomConfig && roomConfig.createdBy === nickname) {
-                    publishRoomConfig();
-                }
 
                 client.subscribe([messageTopic, presenceTopic, adminTopic, moderationTopic, configTopic], (err) => {
                     if (!err) {
                         publishPresence('join');
                         updateUI(true);
+
+                        // 如果是房主，发布房间配置（移到订阅成功后）
+                        if (roomConfig && roomConfig.createdBy === nickname) {
+                            // 延迟一点发布，确保订阅已经生效
+                            setTimeout(() => {
+                                publishRoomConfig();
+                            }, 500);
+                        }
+
                         // 添加房间到历史记录
                         addToRoomHistory(roomId, nickname);
                         // 加载历史聊天记录

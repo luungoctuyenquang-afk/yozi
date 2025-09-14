@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT连接测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .test-group {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 3px;
+            margin: 5px 0;
+        }
+        .connected { background: #d4edda; color: #155724; }
+        .disconnected { background: #f8d7da; color: #721c24; }
+        .connecting { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 MQTT连接调试工具</h1>
+
+        <div class="test-group">
+            <h2>测试1：基础连接测试</h2>
+            <button onclick="testBasicConnection()">测试基础连接</button>
+            <div id="status1" class="status disconnected">未连接</div>
+            <div id="log1" class="log">等待测试...</div>
+        </div>
+
+        <div class="test-group">
+            <h2>测试2：创建无密码房间</h2>
+            <input type="text" id="room2" placeholder="房间号" value="test-room-001">
+            <input type="text" id="nick2" placeholder="昵称" value="测试用户1">
+            <button onclick="createNormalRoom()">创建房间</button>
+            <div id="status2" class="status disconnected">未连接</div>
+            <div id="log2" class="log">等待测试...</div>
+        </div>
+
+        <div class="test-group">
+            <h2>测试3：加入无密码房间</h2>
+            <input type="text" id="room3" placeholder="房间号" value="test-room-001">
+            <input type="text" id="nick3" placeholder="昵称" value="测试用户2">
+            <button onclick="joinNormalRoom()">加入房间</button>
+            <div id="status3" class="status disconnected">未连接</div>
+            <div id="log3" class="log">等待测试...</div>
+        </div>
+
+        <div class="test-group">
+            <h2>清理测试数据</h2>
+            <button onclick="clearTestData()">清理localStorage</button>
+            <button onclick="disconnectAll()">断开所有连接</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script>
+        let clients = {};
+
+        function log(id, message, type = 'info') {
+            const logDiv = document.getElementById(`log${id}`);
+            const time = new Date().toLocaleTimeString();
+            const color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'black';
+            logDiv.innerHTML += `<div style="color: ${color}">[${time}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateStatus(id, status) {
+            const statusDiv = document.getElementById(`status${id}`);
+            statusDiv.className = `status ${status}`;
+            statusDiv.textContent = status === 'connected' ? '已连接' :
+                                   status === 'connecting' ? '连接中...' : '未连接';
+        }
+
+        function testBasicConnection() {
+            log(1, '开始测试基础MQTT连接...');
+            updateStatus(1, 'connecting');
+
+            const client = mqtt.connect('wss://test.mosquitto.org:8081/mqtt', {
+                clientId: `test_${Math.random().toString(16).substr(2, 8)}`,
+                clean: true,
+                connectTimeout: 10000
+            });
+
+            client.on('connect', () => {
+                log(1, '✅ 成功连接到MQTT服务器！', 'success');
+                updateStatus(1, 'connected');
+
+                // 测试订阅
+                client.subscribe('test/topic', (err) => {
+                    if (err) {
+                        log(1, `❌ 订阅失败: ${err.message}`, 'error');
+                    } else {
+                        log(1, '✅ 成功订阅测试主题', 'success');
+                    }
+                });
+
+                // 测试发布
+                setTimeout(() => {
+                    client.publish('test/topic', 'Hello MQTT!', (err) => {
+                        if (err) {
+                            log(1, `❌ 发布失败: ${err.message}`, 'error');
+                        } else {
+                            log(1, '✅ 成功发布测试消息', 'success');
+                        }
+                    });
+                }, 1000);
+            });
+
+            client.on('error', (err) => {
+                log(1, `❌ 连接错误: ${err.message}`, 'error');
+                updateStatus(1, 'disconnected');
+            });
+
+            client.on('message', (topic, message) => {
+                log(1, `📥 收到消息: ${message.toString()}`);
+            });
+
+            clients['test1'] = client;
+        }
+
+        function createNormalRoom() {
+            const roomId = document.getElementById('room2').value;
+            const nickname = document.getElementById('nick2').value;
+
+            log(2, `创建房间: ${roomId}, 昵称: ${nickname}`);
+            updateStatus(2, 'connecting');
+
+            const client = mqtt.connect('wss://test.mosquitto.org:8081/mqtt', {
+                clientId: `room_${Math.random().toString(16).substr(2, 8)}`,
+                clean: true,
+                will: {
+                    topic: `game/${roomId}/presence`,
+                    payload: JSON.stringify({
+                        type: 'leave',
+                        name: nickname,
+                        timestamp: Date.now()
+                    })
+                }
+            });
+
+            client.on('connect', () => {
+                log(2, '✅ 连接成功！', 'success');
+                updateStatus(2, 'connected');
+
+                const topics = [
+                    `game/${roomId}/messages`,
+                    `game/${roomId}/presence`,
+                    `game/${roomId}/config`
+                ];
+
+                client.subscribe(topics, (err) => {
+                    if (err) {
+                        log(2, `❌ 订阅失败: ${err.message}`, 'error');
+                    } else {
+                        log(2, '✅ 成功订阅房间主题', 'success');
+
+                        // 发送加入消息
+                        client.publish(`game/${roomId}/presence`, JSON.stringify({
+                            type: 'join',
+                            name: nickname,
+                            timestamp: Date.now()
+                        }));
+                        log(2, '📤 发送加入消息');
+                    }
+                });
+            });
+
+            client.on('error', (err) => {
+                log(2, `❌ 错误: ${err.message}`, 'error');
+                updateStatus(2, 'disconnected');
+            });
+
+            client.on('message', (topic, message) => {
+                try {
+                    const data = JSON.parse(message.toString());
+                    if (topic.includes('presence')) {
+                        log(2, `👤 ${data.name} ${data.type === 'join' ? '加入' : '离开'}房间`);
+                    } else if (topic.includes('config')) {
+                        log(2, `📋 收到房间配置`);
+                    }
+                } catch (e) {
+                    log(2, `📥 收到消息: ${message.toString()}`);
+                }
+            });
+
+            clients['room2'] = client;
+        }
+
+        function joinNormalRoom() {
+            const roomId = document.getElementById('room3').value;
+            const nickname = document.getElementById('nick3').value;
+
+            log(3, `加入房间: ${roomId}, 昵称: ${nickname}`);
+            updateStatus(3, 'connecting');
+
+            const client = mqtt.connect('wss://test.mosquitto.org:8081/mqtt', {
+                clientId: `join_${Math.random().toString(16).substr(2, 8)}`,
+                clean: true,
+                will: {
+                    topic: `game/${roomId}/presence`,
+                    payload: JSON.stringify({
+                        type: 'leave',
+                        name: nickname,
+                        timestamp: Date.now()
+                    })
+                }
+            });
+
+            client.on('connect', () => {
+                log(3, '✅ 连接成功！', 'success');
+                updateStatus(3, 'connected');
+
+                const topics = [
+                    `game/${roomId}/messages`,
+                    `game/${roomId}/presence`,
+                    `game/${roomId}/config`
+                ];
+
+                client.subscribe(topics, (err) => {
+                    if (err) {
+                        log(3, `❌ 订阅失败: ${err.message}`, 'error');
+                    } else {
+                        log(3, '✅ 成功订阅房间主题', 'success');
+
+                        // 发送加入消息
+                        client.publish(`game/${roomId}/presence`, JSON.stringify({
+                            type: 'join',
+                            name: nickname,
+                            timestamp: Date.now()
+                        }));
+                        log(3, '📤 发送加入消息');
+                    }
+                });
+            });
+
+            client.on('error', (err) => {
+                log(3, `❌ 错误: ${err.message}`, 'error');
+                updateStatus(3, 'disconnected');
+            });
+
+            client.on('message', (topic, message) => {
+                try {
+                    const data = JSON.parse(message.toString());
+                    if (topic.includes('presence')) {
+                        log(3, `👤 ${data.name} ${data.type === 'join' ? '加入' : '离开'}房间`);
+                    } else if (topic.includes('config')) {
+                        log(3, `📋 收到房间配置: ${data.hasPassword ? '需要密码' : '无需密码'}`);
+                    }
+                } catch (e) {
+                    log(3, `📥 收到消息: ${message.toString()}`);
+                }
+            });
+
+            clients['room3'] = client;
+        }
+
+        function clearTestData() {
+            localStorage.removeItem('mqtt_room_configs');
+            localStorage.removeItem('mqtt_room_history');
+            alert('已清理测试数据');
+        }
+
+        function disconnectAll() {
+            Object.values(clients).forEach(client => {
+                if (client.connected) {
+                    client.end();
+                }
+            });
+            clients = {};
+            alert('已断开所有连接');
+        }
+    </script>
+</body>
+</html>
