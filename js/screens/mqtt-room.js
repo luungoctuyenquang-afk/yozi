@@ -766,10 +766,10 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         const privateRoomCheckbox = mountEl.querySelector('#private-room-checkbox');
         const passwordInput = mountEl.querySelector('.room-password-input');
         const savePasswordBtn = mountEl.querySelector('#save-password-btn');
-        
+
         if (privateRoomCheckbox && passwordInput) {
             const passwordInputGroup = mountEl.querySelector('.password-input-group');
-            
+
             privateRoomCheckbox.addEventListener('change', () => {
                 const isPrivate = privateRoomCheckbox.checked;
                 if (passwordInputGroup) {
@@ -777,14 +777,35 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 } else {
                     passwordInput.style.display = isPrivate ? 'block' : 'none';
                 }
-                roomConfig.isPrivate = isPrivate;
-                
+
                 if (!isPrivate) {
                     passwordInput.value = '';
-                    roomConfig.password = '';
-                    roomConfig.hasPassword = false;
+                    // 清除保存的密码
+                    if (savePasswordBtn) {
+                        delete savePasswordBtn.dataset.savedPassword;
+                        savePasswordBtn.textContent = '保存';
+                        savePasswordBtn.style.background = '';
+                    }
                 } else {
-                    roomConfig.hasPassword = true;
+                    // 自动聚焦到密码输入框
+                    passwordInput.focus();
+                }
+
+                // 如果房间已存在，更新配置
+                if (roomConfig && roomConfig.roomId) {
+                    roomConfig.isPrivate = isPrivate;
+                    if (!isPrivate) {
+                        roomConfig.password = '';
+                        roomConfig.hasPassword = false;
+                    }
+                }
+            });
+
+            // 监听密码输入框变化，重置保存按钮状态
+            passwordInput.addEventListener('input', () => {
+                if (savePasswordBtn) {
+                    savePasswordBtn.textContent = '保存';
+                    savePasswordBtn.style.background = '';
                 }
             });
             
@@ -800,13 +821,22 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         showAlert('密码长度不能超过50个字符！');
                         return;
                     }
-                    
-                    roomConfig.password = password;
-                    roomConfig.hasPassword = true;
-                    saveRoomConfig();
-                    
-                    showAlert('密码已保存！');
-                    log('system', '✅ 房间密码已设置');
+
+                    // 暂存密码到按钮的data属性，等创建房间时使用
+                    savePasswordBtn.dataset.savedPassword = password;
+                    savePasswordBtn.textContent = '已保存';
+                    savePasswordBtn.style.background = '#28a745';
+
+                    showAlert('密码已暂存，创建房间时将自动应用！');
+
+                    // 如果房间已存在，更新房间配置
+                    if (roomConfig && roomConfig.roomId) {
+                        roomConfig.password = password;
+                        roomConfig.hasPassword = true;
+                        roomConfig.isPrivate = true;
+                        saveRoomConfig();
+                        log('system', '✅ 已更新当前房间密码');
+                    }
                 });
             }
         }
@@ -1103,25 +1133,73 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     
     // 创建新房间配置（临时房间）
     function createRoomConfig(targetRoomId, roomType = ROOM_TYPES.CASUAL) {
-        // 临时房间：不检查是否存在，允许多人“创建”同一房间
+        // 临时房间：不检查是否存在，允许多人"创建"同一房间
         // 但只有第一个创建者是真正的房主
-        
+
         roomConfig = { ...defaultRoomConfig };
         roomConfig.createdBy = nickname;
         roomConfig.adminUsers = [nickname];
         roomConfig.createdAt = Date.now();
         roomConfig.roomId = targetRoomId;
         roomConfig.roomType = roomType;
-        
+
+        // 从UI读取房间设置
+        const privateCheckbox = mountEl.querySelector('#private-room-checkbox');
+        const maxUsersSelect = mountEl.querySelector('#max-users-select');
+        const categorySelect = mountEl.querySelector('#room-category-select');
+        const passwordInput = mountEl.querySelector('.room-password-input');
+
+        // 应用设置
+        if (privateCheckbox && privateCheckbox.checked) {
+            roomConfig.isPrivate = true;
+            roomConfig.hasPassword = true;
+            if (passwordInput) {
+                // 优先使用当前输入的密码，如果为空则使用保存的密码
+                let password = passwordInput.value.trim();
+                const saveBtn = mountEl.querySelector('#save-password-btn');
+
+                // 如果输入框为空但有保存的密码，使用保存的
+                if (!password && saveBtn && saveBtn.dataset.savedPassword) {
+                    password = saveBtn.dataset.savedPassword;
+                    log('system', '使用已保存的密码');
+                }
+
+                if (password.length >= 3) {
+                    roomConfig.password = password;
+                    log('system', `🔒 房间已设置密码保护（密码：${password}）`);
+                } else {
+                    showAlert('密码长度至少3个字符！将创建无密码房间。');
+                    roomConfig.isPrivate = false;
+                    roomConfig.hasPassword = false;
+                    roomConfig.password = '';
+                    // 取消勾选密码保护
+                    privateCheckbox.checked = false;
+                }
+            }
+        } else {
+            // 确保不勾选时清除密码设置
+            roomConfig.isPrivate = false;
+            roomConfig.hasPassword = false;
+            roomConfig.password = '';
+        }
+
+        if (maxUsersSelect) {
+            roomConfig.maxUsers = parseInt(maxUsersSelect.value) || 20;
+        }
+
+        if (categorySelect) {
+            roomConfig.category = categorySelect.value || 'chat';
+        }
+
         // 生成房间唯一密钥（UID）
         if (!roomConfig.roomKey) {
             roomConfig.roomKey = generateRoomKey();
             window.__ROOM_UID__ = roomConfig.roomKey; // 保存到全局变量
         }
-        
+
         // 保存新房间配置
         saveRoomConfig();
-        
+
         // 发布房间创建消息到全局主题
         publishRoomCreated(targetRoomId, {
             maxUsers: roomConfig.maxUsers,
@@ -3194,6 +3272,83 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             .replace(/\//g, '_')
             .replace(/=/g, '');
     }
+
+    // 简单的密码哈希函数（用于验证，不是真正的加密）
+    async function hashPassword(password) {
+        // 使用浏览器内置的 crypto API
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        return hashHex.substring(0, 16); // 只取前16位作为简单哈希
+    }
+
+    // 发布房间配置到MQTT（房主专用）
+    async function publishRoomConfig() {
+        if (!client || !isConnected || !roomConfig) return;
+        if (roomConfig.createdBy !== nickname) return; // 只有房主能发布配置
+
+        const configTopic = `game/${roomId}/config`;
+        const configData = {
+            roomId: roomId,
+            createdBy: roomConfig.createdBy,
+            isPrivate: roomConfig.isPrivate || false,
+            hasPassword: roomConfig.hasPassword || false,
+            passwordHash: roomConfig.password ? await hashPassword(roomConfig.password) : null,
+            maxUsers: roomConfig.maxUsers || 20,
+            category: roomConfig.category || 'chat',
+            roomType: roomConfig.roomType || ROOM_TYPES.CASUAL,
+            timestamp: Date.now()
+        };
+
+        // 使用 retained 消息，确保新加入的用户能获取配置
+        client.publish(configTopic, JSON.stringify(configData), {
+            qos: 1,
+            retain: true
+        });
+
+        log('system', '📢 已发布房间配置到MQTT');
+    }
+
+    // 处理接收到的房间配置
+    async function handleRoomConfig(configData) {
+        if (!configData || configData.roomId !== roomId) return;
+
+        // 如果自己是房主，忽略配置更新（避免覆盖本地配置）
+        if (roomConfig && roomConfig.createdBy === nickname) return;
+
+        // 更新本地房间配置（访客使用）
+        const remoteConfig = {
+            roomId: configData.roomId,
+            createdBy: configData.createdBy,
+            isPrivate: configData.isPrivate,
+            hasPassword: configData.hasPassword,
+            passwordHash: configData.passwordHash,  // 保存哈希值用于验证
+            maxUsers: configData.maxUsers,
+            category: configData.category,
+            roomType: configData.roomType
+        };
+
+        // 保存远程配置供密码验证使用
+        window.__remoteRoomConfig__ = remoteConfig;
+
+        // 如果房间需要密码且用户还没验证
+        if (remoteConfig.hasPassword && !window.__passwordVerified__) {
+            // 显示密码输入框
+            const passwordInputGroup = mountEl.querySelector('.password-input-group');
+            if (passwordInputGroup) {
+                passwordInputGroup.style.display = 'flex';
+                const passwordInput = mountEl.querySelector('.room-password-input');
+                if (passwordInput) {
+                    passwordInput.focus();
+                }
+                showAlert('此房间需要密码，请输入密码！');
+            }
+        }
+
+        log('system', `📥 接收到房间配置（房主：${configData.createdBy}）`);
+    }
     
     // 生成邀请链接
     function generateInviteLink(roomId, nickname, includeUid = false) {
@@ -3489,6 +3644,36 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         if (elements.sendBtn) {
             elements.sendBtn.addEventListener('click', () => sendMessage());
         }
+
+        // 绑定密码输入框的回车事件（用于验证密码）
+        const passwordInput = mountEl.querySelector('.room-password-input');
+        if (passwordInput) {
+            passwordInput.addEventListener('keypress', async (e) => {
+                if (e.key === 'Enter' && window.__remoteRoomConfig__ && window.__remoteRoomConfig__.hasPassword) {
+                    // 验证密码
+                    const inputPassword = passwordInput.value.trim();
+                    if (inputPassword) {
+                        const inputHash = await hashPassword(inputPassword);
+                        if (inputHash === window.__remoteRoomConfig__.passwordHash) {
+                            window.__passwordVerified__ = true;
+                            showAlert('✅ 密码正确！');
+                            // 隐藏密码输入框
+                            const passwordInputGroup = mountEl.querySelector('.password-input-group');
+                            if (passwordInputGroup) {
+                                passwordInputGroup.style.display = 'none';
+                            }
+                            // 清空密码输入框
+                            passwordInput.value = '';
+                            log('system', '🔓 密码验证成功，欢迎进入房间！');
+                        } else {
+                            showAlert('❌ 密码错误！');
+                            passwordInput.value = '';
+                            passwordInput.focus();
+                        }
+                    }
+                }
+            });
+        }
         
         // 回车发送消息
         if (elements.messageInput) {
@@ -3729,12 +3914,60 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         roomConfig.roomId = targetRoomId;
         roomConfig.roomKey = registrationData.roomKey;
         roomConfig.roomType = ROOM_TYPES.REGISTERED;
-        
+
+        // 从UI读取房间设置（与临时房间一样）
+        const privateCheckbox = mountEl.querySelector('#private-room-checkbox');
+        const maxUsersSelect = mountEl.querySelector('#max-users-select');
+        const categorySelect = mountEl.querySelector('#room-category-select');
+        const passwordInput = mountEl.querySelector('.room-password-input');
+
+        // 应用设置
+        if (privateCheckbox && privateCheckbox.checked) {
+            roomConfig.isPrivate = true;
+            roomConfig.hasPassword = true;
+            if (passwordInput) {
+                // 优先使用当前输入的密码，如果为空则使用保存的密码
+                let password = passwordInput.value.trim();
+                const saveBtn = mountEl.querySelector('#save-password-btn');
+
+                // 如果输入框为空但有保存的密码，使用保存的
+                if (!password && saveBtn && saveBtn.dataset.savedPassword) {
+                    password = saveBtn.dataset.savedPassword;
+                    log('system', '使用已保存的密码');
+                }
+
+                if (password.length >= 3) {
+                    roomConfig.password = password;
+                    log('system', `🔒 正式房间已设置密码保护（密码：${password}）`);
+                } else {
+                    showAlert('密码长度至少3个字符！将创建无密码房间。');
+                    roomConfig.isPrivate = false;
+                    roomConfig.hasPassword = false;
+                    roomConfig.password = '';
+                    // 取消勾选密码保护
+                    privateCheckbox.checked = false;
+                }
+            }
+        } else {
+            // 确保不勾选时清除密码设置
+            roomConfig.isPrivate = false;
+            roomConfig.hasPassword = false;
+            roomConfig.password = '';
+        }
+
+        if (maxUsersSelect) {
+            roomConfig.maxUsers = parseInt(maxUsersSelect.value) || 20;
+        }
+
+        if (categorySelect) {
+            roomConfig.category = categorySelect.value || 'chat';
+        }
+
         window.__ROOM_UID__ = roomConfig.roomKey;
-        
+
         // 保存配置
         saveRoomConfig();
-        
+
         // 发布房间创建消息
         publishRoomCreated(targetRoomId, {
             maxUsers: roomConfig.maxUsers,
@@ -4074,16 +4307,33 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             if (passwordInputGroup) {
                 passwordInputGroup.style.display = 'flex';
             }
-            
+
             // 获取用户输入的密码
             const passwordInput = mountEl.querySelector('.room-password-input');
             const inputPassword = passwordInput ? passwordInput.value.trim() : '';
-            
-            // 如果有本地配置且需要密码，进行验证
-            const accessResult = validateRoomAccess(roomId, inputPassword);
-            if (!accessResult) {
+
+            // 如果密码为空，提示用户输入
+            if (!inputPassword) {
+                showAlert('此房间需要密码，请输入密码后再试！');
+                // 让密码输入框获得焦点
+                if (passwordInput) {
+                    passwordInput.focus();
+                }
                 return;
             }
+
+            // 验证密码
+            if (inputPassword !== localConfig.password) {
+                showAlert('房间密码错误！');
+                // 清空密码输入框
+                if (passwordInput) {
+                    passwordInput.value = '';
+                    passwordInput.focus();
+                }
+                return;
+            }
+
+            log('system', '✅ 密码验证成功');
         }
         
         try {
@@ -4208,8 +4458,14 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 
                 const adminTopic = `game/${roomId}/admin`;
                 const moderationTopic = `game/${roomId}/moderation`;
-                
-                client.subscribe([messageTopic, presenceTopic, adminTopic, moderationTopic], (err) => {
+                const configTopic = `game/${roomId}/config`;  // 新增配置主题
+
+                // 如果是房主，发布房间配置
+                if (roomConfig && roomConfig.createdBy === nickname) {
+                    publishRoomConfig();
+                }
+
+                client.subscribe([messageTopic, presenceTopic, adminTopic, moderationTopic, configTopic], (err) => {
                     if (!err) {
                         publishPresence('join');
                         updateUI(true);
@@ -4265,6 +4521,10 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     updateConnectionStatus('disconnected');
                     updateUI(false);
                     clearOnlineUsers(); // 清空在线用户列表
+
+                    // 清理密码验证相关的全局变量
+                    delete window.__remoteRoomConfig__;
+                    delete window.__passwordVerified__;
                 }
             });
             
@@ -4289,6 +4549,10 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     updateConnectionStatus('disconnected');
                     updateUI(false);
                     clearOnlineUsers(); // 清空在线用户列表
+
+                    // 清理密码验证相关的全局变量
+                    delete window.__remoteRoomConfig__;
+                    delete window.__passwordVerified__;
                     // 重置服务器索引为下次连接做准备
                     currentBrokerIndex = 0;
                     updateBrokerDisplay();
@@ -4494,6 +4758,12 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 }
             }
             
+            // 处理配置消息
+            if (topic === `game/${roomId}/config`) {
+                await handleRoomConfig(data);
+                return;
+            }
+
             if (topic === messageTopic && data.type === 'chat') {
                 const isOwnMessage = data.name === nickname;
                 addChatMessage(data.name, data.text, data.timestamp, isOwnMessage);
