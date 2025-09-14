@@ -1602,16 +1602,13 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
                     background: var(--bg-primary);
                     color: var(--text-primary);
-                    height: 100vh;
+                    height: 100%;
                     display: flex;
                     flex-direction: column;
                     box-sizing: border-box;
                     overflow: hidden;
                     position: relative;
-                    /* 确保在虚拟手机中不会超出边界 */
-                    max-height: 667px;
                     width: 100%;
-                    max-width: 375px;
                 }
                 
                 /* 背景渐变效果 */
@@ -2811,11 +2808,11 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         --border-radius-sm: 6px;
                         --border-radius-lg: 12px;
                         
-                        /* 固定虚拟手机尺寸 */
-                        width: 375px !important;
-                        height: 667px !important;
-                        max-width: 375px !important;
-                        max-height: 667px !important;
+                        /* 使用100%高度，让父容器控制尺寸 */
+                        width: 100% !important;
+                        height: 100% !important;
+                        max-width: none !important;
+                        max-height: none !important;
                         overflow: hidden;
                     }
                     
