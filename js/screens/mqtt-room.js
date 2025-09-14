@@ -906,17 +906,30 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         }
     }
     
+    // 保存指定房间的配置
+    function saveRoomConfigForRoom(targetRoomId, config) {
+        try {
+            const roomConfigs = JSON.parse(localStorage.getItem('mqtt_room_configs') || '{}');
+            roomConfigs[targetRoomId] = config;
+            localStorage.setItem('mqtt_room_configs', JSON.stringify(roomConfigs));
+            return true;
+        } catch (error) {
+            console.warn('保存房间配置失败:', error);
+            return false;
+        }
+    }
+
     function loadRoomConfig(targetRoomId) {
         try {
             const roomConfigs = JSON.parse(localStorage.getItem('mqtt_room_configs') || '{}');
             if (roomConfigs[targetRoomId]) {
-                roomConfig = { ...defaultRoomConfig, ...roomConfigs[targetRoomId] };
-                return roomConfig;
+                // 不要直接修改全局 roomConfig，只返回配置
+                return { ...defaultRoomConfig, ...roomConfigs[targetRoomId] };
             }
         } catch (error) {
             console.warn('加载房间配置失败:', error);
         }
-        
+
         // 如果房间不存在本地配置，返回null
         return null;
     }
@@ -1551,6 +1564,9 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         
                         <div class="control-buttons">
                             <button class="leave-btn btn-leave" disabled>❌ 离开</button>
+                            <button class="backup-btn" id="backup-room-btn" style="display: none;">💾 备份房间</button>
+                            <button class="restore-btn" id="restore-room-btn" style="display: none;">📂 恢复房间</button>
+                            <input type="file" id="restore-file-input" accept=".json" style="display: none;">
                         </div>
                         <div class="status-display status disconnected">📴 未连接</div>
                         <div class="broker-info">
@@ -1602,1516 +1618,8 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         </div>
                     </div>
                 </div>
-            </div>
-            
-            <style>
-                /* =================== MQTT聊天室美化样式 =================== */
-                /* CSS变量定义 - 支持深浅主题切换 */
-                .mqtt-room-screen {
-                    /* 颜色变量定义 */
-                    --bg-primary: #0b0f15;
-                    --bg-secondary: #1a1f26;
-                    --card-bg: rgba(255,255,255,.08);
-                    --card-border: rgba(255,255,255,.15);
-                    --text-primary: #e9eef6;
-                    --text-secondary: #9fb1c7;
-                    --text-muted: #6b7280;
-                    
-                    /* 主题色彩 */
-                    --accent-gradient: linear-gradient(135deg, #7c6fff 0%, #49d1ff 100%);
-                    --success-color: #56d364;
-                    --error-color: #ff6b6b;
-                    --warning-color: #ffd166;
-                    --info-color: #70b7ff;
-                    
-                    /* 阴影和效果 */
-                    --shadow-sm: 0 2px 8px rgba(0,0,0,0.1);
-                    --shadow-md: 0 4px 12px rgba(0,0,0,0.15);
-                    --shadow-lg: 0 8px 24px rgba(0,0,0,0.2);
-                    --border-radius: 12px;
-                    --border-radius-sm: 8px;
-                    --border-radius-lg: 16px;
-                    
-                    /* 间距 */
-                    --spacing-xs: 4px;
-                    --spacing-sm: 8px;
-                    --spacing-md: 12px;
-                    --spacing-lg: 16px;
-                    --spacing-xl: 20px;
-                    --spacing-2xl: 24px;
-                }
-                
-                /* 浅色主题支持 */
-                @media (prefers-color-scheme: light) {
-                    .mqtt-room-screen:not(.dark-theme) {
-                        --bg-primary: #f6f8fb;
-                        --bg-secondary: #ffffff;
-                        --card-bg: rgba(255,255,255,0.9);
-                        --card-border: rgba(0,0,0,0.08);
-                        --text-primary: #0b1c36;
-                        --text-secondary: #5b6b80;
-                        --text-muted: #9ca3af;
-                    }
-                }
-                
-                /* 强制浅色主题 */
-                .mqtt-room-screen.light-theme {
-                    --bg-primary: #f6f8fb;
-                    --bg-secondary: #ffffff;
-                    --card-bg: rgba(255,255,255,0.9);
-                    --card-border: rgba(0,0,0,0.08);
-                    --text-primary: #0b1c36;
-                    --text-secondary: #5b6b80;
-                    --text-muted: #9ca3af;
-                }
-                
-                /* 强制深色主题 */
-                .mqtt-room-screen.dark-theme {
-                    --bg-primary: #0b0f15;
-                    --bg-secondary: #1a1f26;
-                    --card-bg: rgba(255,255,255,.08);
-                    --card-border: rgba(255,255,255,.15);
-                    --text-primary: #e9eef6;
-                    --text-secondary: #9fb1c7;
-                    --text-muted: #6b7280;
-                }
-                
-                .mqtt-room-screen {
-                    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-                    background: var(--bg-primary);
-                    color: var(--text-primary);
-                    height: 100%;
-                    display: flex;
-                    flex-direction: column;
-                    box-sizing: border-box;
-                    overflow: hidden;
-                    position: relative;
-                    width: 100%;
-                }
-                
-                /* 背景渐变效果 */
-                .mqtt-room-screen::before {
-                    content: "";
-                    position: fixed;
-                    inset: -20%;
-                    background: 
-                        radial-gradient(60% 60% at 20% 20%, rgba(124, 111, 255, 0.15), transparent 60%),
-                        radial-gradient(60% 60% at 80% 30%, rgba(73, 209, 255, 0.12), transparent 60%),
-                        radial-gradient(60% 60% at 50% 80%, rgba(255, 154, 199, 0.15), transparent 60%);
-                    filter: blur(40px);
-                    z-index: -1;
-                    opacity: 0.6;
-                }
-                
-                @media (prefers-color-scheme: light) {
-                    .mqtt-room-screen::before {
-                        opacity: 0.3;
-                    }
-                }
-                
-                .mqtt-header {
-                    background: var(--card-bg);
-                    backdrop-filter: blur(20px);
-                    border-bottom: 1px solid var(--card-border);
-                    padding: var(--spacing-lg);
-                    box-shadow: var(--shadow-sm);
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-lg);
-                    position: sticky;
-                    top: 0;
-                    z-index: 1000;
-                    /* 确保头部固定且可点击 */
-                    flex-shrink: 0;
-                    min-height: 60px;
-                }
-                
-                .header-controls {
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-md);
-                }
-                
-                .theme-toggle-btn {
-                    background: none;
-                    border: none;
-                    font-size: 18px;
-                    cursor: pointer;
-                    padding: 6px;
-                    width: 32px;
-                    height: 32px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    border-radius: 50%;
-                    color: var(--text-primary);
-                    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-                    backdrop-filter: blur(10px);
-                }
-                
-                .theme-toggle-btn:hover {
-                    background: var(--card-border);
-                    transform: scale(1.1) rotate(15deg);
-                }
-                
-                .back-btn {
-                    background: none;
-                    border: none;
-                    font-size: 24px;
-                    cursor: pointer;
-                    padding: 0;
-                    width: 32px;
-                    height: 32px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    border-radius: 50%;
-                    color: var(--text-primary);
-                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                }
-                
-                .back-btn:hover {
-                    background: var(--card-border);
-                    transform: scale(1.05);
-                }
-                
-                .mqtt-header h2 {
-                    margin: 0;
-                    flex: 1;
-                    font-size: 18px;
-                    font-weight: 600;
-                    color: var(--text-primary);
-                }
-                
-                .connection-status {
-                    font-size: 12px;
-                    padding: var(--spacing-xs) var(--spacing-sm);
-                    border-radius: var(--border-radius-sm);
-                    font-weight: 600;
-                    backdrop-filter: blur(10px);
-                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                }
-                
-                .connection-status.connected {
-                    background: rgba(86, 211, 100, 0.15);
-                    color: var(--success-color);
-                    border: 1px solid rgba(86, 211, 100, 0.3);
-                }
-                
-                .connection-status.connecting {
-                    background: rgba(255, 209, 102, 0.15);
-                    color: var(--warning-color);
-                    border: 1px solid rgba(255, 209, 102, 0.3);
-                }
-                
-                .connection-status.disconnected {
-                    background: rgba(255, 107, 107, 0.15);
-                    color: var(--error-color);
-                    border: 1px solid rgba(255, 107, 107, 0.3);
-                }
-                
-                .mqtt-content {
-                    flex: 1;
-                    display: flex;
-                    flex-direction: column;
-                    padding: var(--spacing-lg);
-                    padding-bottom: calc(var(--spacing-lg) + 35px); /* 增加底部间距 */
-                    gap: var(--spacing-lg);
-                    overflow-y: auto;
-                    /* 确保内容区域不会遮挡头部 */
-                    height: calc(100vh - 60px);
-                    max-height: calc(667px - 60px);
-                }
-                
-                .room-section {
-                    background: var(--card-bg);
-                    backdrop-filter: blur(20px);
-                    border: 1px solid var(--card-border);
-                    padding: var(--spacing-xl);
-                    border-radius: var(--border-radius-lg);
-                    box-shadow: var(--shadow-md);
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                    /* 优化房间控制区域，减少空间占用 */
-                    flex-shrink: 0;
-                    margin-bottom: var(--spacing-md);
-                }
-                
-                .room-section:hover {
-                    transform: translateY(-2px);
-                    box-shadow: var(--shadow-lg);
-                }
-                
-                .room-controls {
-                    display: flex;
-                    gap: var(--spacing-md);
-                    margin-bottom: var(--spacing-md);
-                    flex-wrap: wrap;
-                }
-                
-                .room-controls input {
-                    padding: var(--spacing-md) var(--spacing-lg);
-                    border: 2px solid var(--card-border);
-                    border-radius: var(--border-radius);
-                    font-size: 16px;
-                    flex: 1;
-                    min-width: 120px;
-                    background: var(--bg-secondary);
-                    color: var(--text-primary);
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                    backdrop-filter: blur(10px);
-                }
-                
-                .room-controls input:focus {
-                    outline: none;
-                    border-color: var(--info-color);
-                    box-shadow: 0 0 0 4px rgba(112, 183, 255, 0.1);
-                    transform: translateY(-1px);
-                }
-                
-                .room-controls input::placeholder {
-                    color: var(--text-muted);
-                }
-                
-                .control-buttons {
-                    display: flex;
-                    gap: var(--spacing-sm);
-                    margin-bottom: var(--spacing-md);
-                }
-                
-                .control-buttons button {
-                    padding: var(--spacing-md) var(--spacing-lg);
-                    border: none;
-                    border-radius: var(--border-radius);
-                    font-size: 14px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    flex: 1;
-                    position: relative;
-                    overflow: hidden;
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                    backdrop-filter: blur(10px);
-                }
-                
-                .control-buttons button:disabled {
-                    opacity: 0.5;
-                    cursor: not-allowed;
-                    transform: none !important;
-                }
-                
-                /* 房间设置样式 */
-                .room-settings {
-                    margin-top: var(--spacing-md);
-                }
-                
-                .settings-toggle {
-                    text-align: center;
-                    margin-bottom: var(--spacing-sm);
-                }
-                
-                .settings-toggle-btn {
-                    background: var(--card-bg);
-                    border: 1px solid var(--card-border);
-                    color: var(--text-secondary);
-                    padding: var(--spacing-sm) var(--spacing-md);
-                    border-radius: var(--border-radius);
-                    cursor: pointer;
-                    font-size: 12px;
-                    transition: all 0.2s ease;
-                }
-                
-                .settings-toggle-btn:hover {
-                    background: var(--card-border);
-                    color: var(--text-primary);
-                }
-                
-                .settings-panel {
-                    background: var(--bg-secondary);
-                    border: 1px solid var(--card-border);
-                    border-radius: var(--border-radius);
-                    padding: var(--spacing-md);
-                    margin-top: var(--spacing-sm);
-                }
-                
-                .setting-row {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: var(--spacing-sm);
-                    font-size: 12px;
-                }
-                
-                .setting-label {
-                    color: var(--text-secondary);
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-xs);
-                }
-                
-                .setting-label input[type="checkbox"] {
-                    margin: 0;
-                }
-                
-                .max-users-select,
-                .room-category-select {
-                    background: var(--card-bg);
-                    border: 1px solid var(--card-border);
-                    color: var(--text-primary);
-                    padding: 4px 8px;
-                    border-radius: var(--border-radius-sm);
-                    font-size: 11px;
-                }
-                
-                .password-input-group {
-                    display: flex;
-                    gap: var(--spacing-sm);
-                    margin-top: var(--spacing-sm);
-                    align-items: center;
-                }
-                
-                .room-password-input {
-                    flex: 1;
-                    padding: var(--spacing-sm) var(--spacing-md);
-                    border: 2px solid var(--warning-color);
-                    border-radius: var(--border-radius);
-                    background: rgba(255, 193, 7, 0.1);
-                    color: var(--text-primary);
-                    font-size: 14px;
-                    transition: all 0.2s ease;
-                    box-sizing: border-box;
-                }
-                
-                .room-password-input:focus {
-                    outline: none;
-                    border-color: var(--warning-color);
-                    box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.2);
-                }
-                
-                .save-password-btn {
-                    padding: var(--spacing-sm) var(--spacing-md);
-                    background: var(--success-color);
-                    color: white;
-                    border: none;
-                    border-radius: var(--border-radius);
-                    cursor: pointer;
-                    font-size: 12px;
-                    font-weight: 500;
-                    transition: all 0.2s ease;
-                    white-space: nowrap;
-                }
-                
-                .save-password-btn:hover {
-                    background: #4aa450;
-                    transform: translateY(-1px);
-                }
-                
-                .save-password-btn:active {
-                    transform: translateY(0);
-                }
-                
-                /* 房间类型选择器样式 */
-                .room-type-selector {
-                    margin: 12px 0;
-                    padding: 12px;
-                    background: var(--bg-secondary);
-                    border-radius: 8px;
-                }
-                
-                .room-type-title {
-                    font-size: 12px;
-                    color: var(--text-secondary);
-                    margin-bottom: 8px;
-                }
-                
-                .room-type-option {
-                    display: flex;
-                    align-items: center;
-                    margin-bottom: 8px;
-                    cursor: pointer;
-                }
-                
-                .room-type-option:last-child {
-                    margin-bottom: 0;
-                }
-                
-                .room-type-option input[type="radio"] {
-                    margin-right: 8px;
-                    flex-shrink: 0;
-                }
-                
-                .room-type-text {
-                    font-size: 13px;
-                    line-height: 1.4;
-                }
-                
-                .room-actions {
-                    display: flex;
-                    gap: var(--spacing-md);
-                    margin-top: var(--spacing-md);
-                    justify-content: center;
-                }
-                
-                .btn-create-room,
-                .btn-join-room {
-                    flex: 1;
-                    padding: var(--spacing-md) var(--spacing-lg);
-                    border: none;
-                    border-radius: var(--border-radius);
-                    font-size: 14px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: var(--spacing-sm);
-                }
-                
-                .btn-create-room {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    box-shadow: var(--shadow-md);
-                }
-                
-                .btn-create-room:hover {
-                    transform: translateY(-2px);
-                    box-shadow: var(--shadow-lg);
-                }
-                
-                .btn-join-room {
-                    background: linear-gradient(135deg, #56d364 0%, #28a745 100%);
-                    color: white;
-                    box-shadow: var(--shadow-md);
-                }
-                
-                .btn-join-room:hover {
-                    transform: translateY(-2px);
-                    box-shadow: var(--shadow-lg);
-                }
-                
-                .btn-create-room:disabled,
-                .btn-join-room:disabled {
-                    opacity: 0.6;
-                    cursor: not-allowed;
-                    transform: none;
-                }
-                
-                .room-owner-badge {
-                    background: linear-gradient(135deg, #ffd700 0%, #ffb347 100%);
-                    color: #8b4513;
-                    padding: 4px 8px;
-                    border-radius: 12px;
-                    font-size: 11px;
-                    font-weight: bold;
-                    margin-left: 8px;
-                    box-shadow: 0 2px 4px rgba(255, 215, 0, 0.3);
-                }
-                
-                .btn-connect {
-                    background: var(--accent-gradient);
-                    color: white;
-                    box-shadow: var(--shadow-sm);
-                }
-                
-                .btn-connect:hover:not(:disabled) {
-                    transform: translateY(-2px);
-                    box-shadow: var(--shadow-md);
-                }
-                
-                .btn-connect:active:not(:disabled) {
-                    transform: translateY(0px);
-                }
-                
-                .btn-leave {
-                    background: linear-gradient(135deg, var(--error-color) 0%, #e74c3c 100%);
-                    color: white;
-                    box-shadow: var(--shadow-sm);
-                }
-                
-                .btn-leave:hover:not(:disabled) {
-                    transform: translateY(-2px);
-                    box-shadow: var(--shadow-md);
-                }
-                
-                .btn-leave:active:not(:disabled) {
-                    transform: translateY(0px);
-                }
-                
-                .control-buttons button:disabled {
-                    background: var(--card-border) !important;
-                    color: var(--text-muted) !important;
-                    cursor: not-allowed;
-                    box-shadow: none !important;
-                }
-                
-                .status-display {
-                    padding: var(--spacing-sm);
-                    border-radius: var(--border-radius-sm);
-                    font-size: 12px;
-                    font-weight: 600;
-                    margin-bottom: var(--spacing-sm);
-                    text-align: center;
-                    backdrop-filter: blur(10px);
-                }
-                
-                .broker-info {
-                    text-align: center;
-                    margin-bottom: var(--spacing-sm);
-                    color: var(--text-secondary);
-                    font-size: 12px;
-                }
-                
-                .broker-info small {
-                    color: var(--text-muted);
-                }
-                
-                .online-users-info {
-                    text-align: center;
-                    margin-bottom: var(--spacing-sm);
-                }
-                
-                .online-count {
-                    font-size: 14px;
-                    color: var(--success-color);
-                    font-weight: 600;
-                    cursor: pointer;
-                    padding: var(--spacing-xs) var(--spacing-sm);
-                    border-radius: var(--border-radius);
-                    background: rgba(86, 211, 100, 0.1);
-                    border: 1px solid rgba(86, 211, 100, 0.3);
-                    margin-bottom: var(--spacing-sm);
-                    backdrop-filter: blur(10px);
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                }
-                
-                .online-count:hover {
-                    background: rgba(86, 211, 100, 0.2);
-                    transform: translateY(-1px);
-                }
-                
-                .online-list {
-                    background: rgba(86, 211, 100, 0.1);
-                    border: 1px solid rgba(86, 211, 100, 0.3);
-                    border-radius: var(--border-radius-sm);
-                    padding: var(--spacing-sm);
-                    margin-top: var(--spacing-sm);
-                    max-height: 120px;
-                    overflow-y: auto;
-                    backdrop-filter: blur(10px);
-                }
-                
-                .online-list-header {
-                    font-weight: 600;
-                    font-size: 12px;
-                    color: var(--success-color);
-                    margin-bottom: var(--spacing-sm);
-                }
-                
-                .online-list-content {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: var(--spacing-xs);
-                }
-                
-                .online-user {
-                    background: rgba(112, 183, 255, 0.15);
-                    color: var(--info-color);
-                    padding: var(--spacing-xs) var(--spacing-sm);
-                    border-radius: var(--border-radius);
-                    font-size: 11px;
-                    font-weight: 500;
-                    border: 1px solid rgba(112, 183, 255, 0.3);
-                    backdrop-filter: blur(5px);
-                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                }
-                
-                .online-user:hover {
-                    background: rgba(112, 183, 255, 0.25);
-                    transform: translateY(-1px);
-                }
-                
-                .user-actions {
-                    display: flex;
-                    gap: 3px;
-                    margin-left: 5px;
-                }
-                
-                .private-chat-btn,
-                .admin-action-btn,
-                .kick-btn,
-                .remove-admin-btn {
-                    padding: 2px 6px;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    font-size: 10px;
-                    transition: all 0.2s ease;
-                    min-width: 20px;
-                    height: 20px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-                
-                .private-chat-btn {
-                    background: var(--info-color);
-                }
-                
-                .private-chat-btn:hover {
-                    background: #5a9fd4;
-                    transform: scale(1.1);
-                }
-                
-                .admin-action-btn {
-                    background: var(--warning-color);
-                }
-                
-                .admin-action-btn:hover {
-                    background: #e6a800;
-                    transform: scale(1.1);
-                }
-                
-                .kick-btn {
-                    background: var(--error-color);
-                }
-                
-                .kick-btn:hover {
-                    background: #e53e3e;
-                    transform: scale(1.1);
-                }
-                
-                .remove-admin-btn {
-                    background: var(--text-muted);
-                }
-                
-                .remove-admin-btn:hover {
-                    background: #718096;
-                    transform: scale(1.1);
-                }
-                
-                .warning {
-                    background: rgba(255, 209, 102, 0.15);
-                    border: 1px solid rgba(255, 209, 102, 0.3);
-                    color: var(--warning-color);
-                    padding: var(--spacing-sm);
-                    border-radius: var(--border-radius-sm);
-                    font-size: 11px;
-                    text-align: center;
-                    margin-top: var(--spacing-sm);
-                    backdrop-filter: blur(10px);
-                }
-                
-                .room-history {
-                    background: var(--card-bg);
-                    border: 1px solid var(--card-border);
-                    border-radius: var(--border-radius-sm);
-                    margin: 10px 0;
-                    padding: 8px;
-                    backdrop-filter: blur(10px);
-                    overflow: hidden;
-                    box-sizing: border-box;
-                }
-                
-                .history-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 8px;
-                }
-                
-                .history-controls {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                }
-                
-                .history-search {
-                    padding: 4px 8px;
-                    border: 1px solid var(--card-border);
-                    border-radius: 4px;
-                    font-size: 12px;
-                    width: 120px;
-                    background: var(--bg-secondary);
-                    color: var(--text-primary);
-                    transition: all 0.2s ease;
-                }
-                
-                .history-search:focus {
-                    outline: none;
-                    border-color: var(--info-color);
-                    box-shadow: 0 0 0 2px rgba(112, 183, 255, 0.1);
-                }
-                
-                .history-title {
-                    font-size: 12px;
-                    font-weight: bold;
-                    color: var(--text-secondary);
-                }
-                
-                .history-export-btn,
-                .history-import-btn,
-                .history-clear-btn {
-                    background: none;
-                    border: none;
-                    font-size: 14px;
-                    cursor: pointer;
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                    color: var(--text-muted);
-                    transition: all 0.2s ease;
-                }
-                
-                .history-export-btn:hover {
-                    background: var(--card-border);
-                    color: var(--success-color);
-                }
-                
-                .history-import-btn:hover {
-                    background: var(--card-border);
-                    color: var(--info-color);
-                }
-                
-                .history-clear-btn:hover {
-                    background: var(--card-border);
-                    color: var(--error-color);
-                }
-                
-                .history-list {
-                    max-height: 120px;
-                    overflow-y: auto;
-                    overflow-x: hidden;
-                    box-sizing: border-box;
-                }
-                
-                .history-item {
-                    display: flex;
-                    align-items: center;
-                    padding: 6px 8px;
-                    margin: 2px 0;
-                    background: var(--bg-secondary);
-                    border-radius: 6px;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    border: 1px solid var(--card-border);
-                    overflow: hidden;
-                    box-sizing: border-box;
-                }
-                
-                .history-item:hover {
-                    background: var(--card-bg);
-                    border-color: var(--info-color);
-                    transform: translateY(-1px);
-                }
-                
-                .history-room {
-                    font-weight: bold;
-                    color: var(--info-color);
-                    font-size: 13px;
-                    margin-right: 8px;
-                    flex-shrink: 0;
-                }
-                
-                .history-nickname {
-                    color: var(--text-secondary);
-                    font-size: 12px;
-                    margin-right: 8px;
-                    flex-shrink: 0;
-                }
-                
-                .history-time {
-                    font-size: 11px;
-                    color: var(--text-muted);
-                    margin-right: 8px;
-                    flex-shrink: 0;
-                    margin-left: auto;
-                }
-                
-                .history-remove {
-                    background: none;
-                    border: none;
-                    color: var(--error-color);
-                    cursor: pointer;
-                    font-size: 16px;
-                    padding: 0;
-                    width: 20px;
-                    height: 20px;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    flex-shrink: 0;
-                    transition: all 0.2s ease;
-                }
-                
-                .history-remove:hover {
-                    background: rgba(255, 107, 107, 0.15);
-                    transform: scale(1.1);
-                }
-                
-                .no-results {
-                    text-align: center;
-                    color: var(--text-muted);
-                    font-size: 12px;
-                    padding: 20px;
-                    font-style: italic;
-                }
-                
-                .chat-container {
-                    background: var(--card-bg);
-                    backdrop-filter: blur(20px);
-                    border: 1px solid var(--card-border);
-                    border-radius: var(--border-radius-lg);
-                    flex: 1;
-                    display: flex;
-                    flex-direction: column;
-                    overflow: hidden;
-                    box-shadow: var(--shadow-md);
-                    /* 优化聊天容器高度分配 */
-                    min-height: 350px;
-                    max-height: calc(100vh - 280px);
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                }
-                
-                .chat-container:hover {
-                    box-shadow: var(--shadow-lg);
-                }
-                
-                .messages {
-                    flex: 1;
-                    overflow-y: auto;
-                    padding: var(--spacing-lg);
-                    background: transparent;
-                }
-                
-                /* 美化滚动条样式 */
-                .messages::-webkit-scrollbar {
-                    width: 6px;
-                }
-                
-                .messages::-webkit-scrollbar-track {
-                    background: transparent;
-                    border-radius: 3px;
-                }
-                
-                .messages::-webkit-scrollbar-thumb {
-                    background: var(--card-border);
-                    border-radius: 3px;
-                    transition: all 0.3s ease;
-                }
-                
-                .messages::-webkit-scrollbar-thumb:hover {
-                    background: var(--text-muted);
-                }
-                
-                /* Firefox滚动条样式 */
-                .messages {
-                    scrollbar-width: thin;
-                    scrollbar-color: var(--card-border) transparent;
-                }
-                
-                /* 其他滚动区域统一样式 */
-                .mqtt-content::-webkit-scrollbar,
-                .history-list::-webkit-scrollbar,
-                .online-list::-webkit-scrollbar {
-                    width: 4px;
-                }
-                
-                .mqtt-content::-webkit-scrollbar-track,
-                .history-list::-webkit-scrollbar-track,
-                .online-list::-webkit-scrollbar-track {
-                    background: transparent;
-                    border-radius: 2px;
-                }
-                
-                .mqtt-content::-webkit-scrollbar-thumb,
-                .history-list::-webkit-scrollbar-thumb,
-                .online-list::-webkit-scrollbar-thumb {
-                    background: var(--card-border);
-                    border-radius: 2px;
-                    transition: all 0.3s ease;
-                }
-                
-                .mqtt-content::-webkit-scrollbar-thumb:hover,
-                .history-list::-webkit-scrollbar-thumb:hover,
-                .online-list::-webkit-scrollbar-thumb:hover {
-                    background: var(--text-muted);
-                }
-                
-                .mqtt-content,
-                .history-list,
-                .online-list {
-                    scrollbar-width: thin;
-                    scrollbar-color: var(--card-border) transparent;
-                }
-                
-                .welcome-message {
-                    text-align: center;
-                    color: var(--text-secondary);
-                    font-size: 14px;
-                    padding: var(--spacing-xl);
-                    border-radius: var(--border-radius);
-                    background: rgba(255, 255, 255, 0.05);
-                    backdrop-filter: blur(10px);
-                    border: 1px solid var(--card-border);
-                }
-                
-                .welcome-message p {
-                    margin: var(--spacing-sm) 0;
-                    color: var(--text-muted);
-                }
-                
-                .message {
-                    margin-bottom: var(--spacing-md);
-                    padding: var(--spacing-md) var(--spacing-lg);
-                    border-radius: var(--border-radius-lg);
-                    font-size: 14px;
-                    line-height: 1.5;
-                    word-wrap: break-word;
-                    backdrop-filter: blur(10px);
-                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                    position: relative;
-                }
-                
-                .message:hover {
-                    transform: translateY(-1px);
-                }
-                
-                .message.chat {
-                    background: rgba(112, 183, 255, 0.15);
-                    border-left: 4px solid var(--info-color);
-                    color: var(--text-primary);
-                }
-                
-                .message.own-message {
-                    background: var(--accent-gradient);
-                    color: white;
-                    margin-left: 60px;
-                    border-radius: var(--border-radius-lg) var(--border-radius-lg) var(--border-radius-sm) var(--border-radius-lg);
-                    box-shadow: var(--shadow-sm);
-                }
-                
-                .message.presence {
-                    background: rgba(255, 154, 199, 0.15);
-                    border: 1px solid rgba(255, 154, 199, 0.3);
-                    color: var(--text-secondary);
-                    font-style: italic;
-                    font-size: 12px;
-                    text-align: center;
-                }
-                
-                .message.system {
-                    background: rgba(255, 209, 102, 0.15);
-                    border: 1px solid rgba(255, 209, 102, 0.3);
-                    color: var(--warning-color);
-                    font-size: 12px;
-                    text-align: center;
-                    font-weight: 500;
-                }
-                
-                /* 私聊消息样式 */
-                .message.private {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    border: 2px solid rgba(118, 75, 162, 0.3);
-                    position: relative;
-                }
-                
-                .message.private::before {
-                    content: '🔒 私聊';
-                    position: absolute;
-                    top: -8px;
-                    right: 10px;
-                    background: #764ba2;
-                    color: white;
-                    font-size: 10px;
-                    padding: 2px 6px;
-                    border-radius: 10px;
-                    font-weight: bold;
-                }
-                
-                .message.private.own-message {
-                    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-                    border: 2px solid rgba(245, 87, 108, 0.3);
-                }
-                
-                .message.private.own-message::before {
-                    background: #f5576c;
-                }
-                
-                .message-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: var(--spacing-xs);
-                }
-                
-                .user-name {
-                    font-weight: 600;
-                    font-size: 13px;
-                    color: var(--text-primary);
-                }
-                
-                .message.chat .user-name {
-                    color: var(--info-color);
-                }
-                
-                .message-time {
-                    font-size: 11px;
-                    color: var(--text-muted);
-                    opacity: 0.8;
-                    font-weight: 500;
-                }
-                
-                .input-area {
-                    padding: var(--spacing-lg);
-                    display: flex;
-                    gap: var(--spacing-md);
-                    border-top: 1px solid var(--card-border);
-                    background: var(--card-bg);
-                    backdrop-filter: blur(20px);
-                    position: relative;
-                }
-                
-                .input-area input {
-                    flex: 1;
-                    padding: var(--spacing-md) var(--spacing-lg);
-                    border: 2px solid var(--card-border);
-                    border-radius: 24px;
-                    font-size: 16px;
-                    background: var(--bg-secondary);
-                    color: var(--text-primary);
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                    backdrop-filter: blur(10px);
-                }
-                
-                .input-area input:focus {
-                    outline: none;
-                    border-color: var(--info-color);
-                    box-shadow: 0 0 0 4px rgba(112, 183, 255, 0.1);
-                    transform: translateY(-1px);
-                }
-                
-                .input-area input::placeholder {
-                    color: var(--text-muted);
-                }
-                
-                .input-area button {
-                    width: 44px;
-                    height: 44px;
-                    background: var(--accent-gradient);
-                    color: white;
-                    border: none;
-                    border-radius: 50%;
-                    cursor: pointer;
-                    font-size: 16px;
-                    box-shadow: var(--shadow-sm);
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-                
-                .input-area button:hover:not(:disabled) {
-                    box-shadow: var(--shadow-md);
-                    transform: translateY(-2px) scale(1.05);
-                }
-                
-                .input-area button:active:not(:disabled) {
-                    transform: translateY(0) scale(0.98);
-                }
-                
-                .input-area button:disabled {
-                    background: var(--card-border) !important;
-                    color: var(--text-muted) !important;
-                    cursor: not-allowed;
-                    transform: none !important;
-                    box-shadow: none !important;
-                }
-                
-                /* 表情按钮样式 */
-                .emoji-btn {
-                    width: 44px;
-                    height: 44px;
-                    background: var(--card-bg);
-                    color: var(--text-primary);
-                    border: 2px solid var(--card-border);
-                    border-radius: 50%;
-                    cursor: pointer;
-                    font-size: 20px;
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-                
-                .emoji-btn:hover:not(:disabled) {
-                    background: var(--accent-gradient);
-                    border-color: transparent;
-                    transform: scale(1.05) rotate(15deg);
-                }
-                
-                .emoji-btn:disabled {
-                    opacity: 0.5;
-                    cursor: not-allowed;
-                }
-                
-                /* 表情选择器面板 */
-                .emoji-picker {
-                    position: absolute;
-                    bottom: 70px;
-                    left: var(--spacing-lg);
-                    right: var(--spacing-lg);
-                    background: var(--bg-secondary);
-                    border: 1px solid var(--card-border);
-                    border-radius: var(--border-radius-lg);
-                    box-shadow: var(--shadow-lg);
-                    z-index: 1000;
-                    backdrop-filter: blur(20px);
-                    max-height: 300px;
-                    overflow: hidden;
-                    display: flex;
-                    flex-direction: column;
-                }
-                
-                .emoji-picker-header {
-                    display: flex;
-                    gap: 2px;
-                    padding: var(--spacing-sm);
-                    border-bottom: 1px solid var(--card-border);
-                    background: var(--card-bg);
-                    overflow-x: auto;
-                }
-                
-                .emoji-category {
-                    padding: var(--spacing-xs) var(--spacing-sm);
-                    border-radius: var(--border-radius-sm);
-                    cursor: pointer;
-                    font-size: 18px;
-                    transition: all 0.2s ease;
-                    flex-shrink: 0;
-                }
-                
-                .emoji-category:hover {
-                    background: var(--card-border);
-                    transform: scale(1.1);
-                }
-                
-                .emoji-category.active {
-                    background: var(--accent-gradient);
-                    transform: scale(1.15);
-                }
-                
-                .emoji-picker-content {
-                    padding: var(--spacing-md);
-                    overflow-y: auto;
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
-                    gap: var(--spacing-xs);
-                    flex: 1;
-                }
-                
-                .emoji-item {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 40px;
-                    height: 40px;
-                    font-size: 24px;
-                    cursor: pointer;
-                    border-radius: var(--border-radius-sm);
-                    transition: all 0.2s ease;
-                }
-                
-                .emoji-item:hover {
-                    background: var(--card-bg);
-                    transform: scale(1.3);
-                    z-index: 10;
-                }
-                
-                /* iOS安全区域适配 - iPhone 15等设备 */
-                @supports (padding: env(safe-area-inset-top)) {
-                    .mqtt-room-screen {
-                        padding-top: env(safe-area-inset-top);
-                        padding-bottom: env(safe-area-inset-bottom);
-                    }
-                    
-                    .mqtt-room-container {
-                        padding-left: env(safe-area-inset-left);
-                        padding-right: env(safe-area-inset-right);
-                    }
-                    
-                    .room-history,
-                    .room-list-section {
-                        /* 确保内容不会溢出到安全区域之外 */
-                        margin-left: env(safe-area-inset-left);
-                        margin-right: env(safe-area-inset-right);
-                    }
-                }
-                
-                /* 手机屏幕适配 - 专门为375px×667px虚拟手机优化 */
-                @media (max-width: 480px) {
-                    /* 房间类型选择器移动端优化 */
-                    .room-type-selector {
-                        margin: 8px 0 !important;
-                        padding: 8px !important;
-                    }
-                    
-                    .room-type-title {
-                        font-size: 11px !important;
-                        margin-bottom: 6px !important;
-                    }
-                    
-                    .room-type-option {
-                        margin-bottom: 4px !important;
-                        padding: 2px 0 !important;
-                    }
-                    
-                    .room-type-option input[type="radio"] {
-                        transform: scale(0.7);
-                        margin-right: 4px !important;
-                        width: 14px !important;
-                        height: 14px !important;
-                    }
-                    
-                    .room-type-text {
-                        font-size: 11px !important;
-                        line-height: 1.3 !important;
-                    }
-                    
-                    .mqtt-room-screen {
-                        /* 调整小屏幕变量 */
-                        --spacing-xs: 3px;
-                        --spacing-sm: 6px;
-                        --spacing-md: 8px;
-                        --spacing-lg: 12px;
-                        --spacing-xl: 16px;
-                        --spacing-2xl: 20px;
-                        --border-radius: 8px;
-                        --border-radius-sm: 6px;
-                        --border-radius-lg: 12px;
-                        
-                        /* 使用100%高度，让父容器控制尺寸 */
-                        width: 100% !important;
-                        height: 100% !important;
-                        max-width: none !important;
-                        max-height: none !important;
-                        overflow: hidden;
-                    }
-                    
-                    .mqtt-header {
-                        padding: 12px 16px;
-                        min-height: 50px;
-                        max-height: 50px;
-                        flex-shrink: 0;
-                    }
-                    
-                    .mqtt-header h2 {
-                        font-size: 16px;
-                        font-weight: 600;
-                    }
-                    
-                    .connection-status {
-                        font-size: 11px;
-                        padding: 4px 8px;
-                    }
-                    
-                    .mqtt-content {
-                        padding: 8px;
-                        padding-bottom: 45px; /* 移动端增加底部间距 */
-                        gap: 8px;
-                        height: calc(100vh - 50px);
-                        overflow-y: auto;
-                        flex: 1;
-                    }
-                    
-                    .room-section {
-                        padding: 12px;
-                        border-radius: 12px;
-                        flex-shrink: 0;
-                        margin-bottom: 8px;
-                    }
-                    
-                    .room-controls {
-                        flex-direction: column;
-                        gap: 6px;
-                        margin-bottom: 8px;
-                    }
-                    
-                    .room-controls input {
-                        min-width: unset;
-                        padding: 10px 12px;
-                        font-size: 14px;
-                        height: 40px;
-                        box-sizing: border-box;
-                    }
-                    
-                    .control-buttons {
-                        margin-bottom: 8px;
-                        gap: 6px;
-                    }
-                    
-                    .control-buttons button {
-                        padding: 8px 12px;
-                        font-size: 13px;
-                        min-height: 36px;
-                    }
-                    
-                    .chat-container {
-                        /* 关键：给聊天容器分配剩余的所有空间 */
-                        flex: 1;
-                        min-height: 280px;
-                        max-height: calc(100vh - 280px);
-                        display: flex;
-                        flex-direction: column;
-                        border-radius: 12px;
-                    }
-                    
-                    .messages {
-                        /* 确保消息区域能够正常滚动，不会挤压输入区域 */
-                        flex: 1;
-                        overflow-y: auto;
-                        padding: 8px;
-                        min-height: 200px;
-                        max-height: calc(100vh - 380px);
-                        -webkit-overflow-scrolling: touch;
-                    }
-                    
-                    .message {
-                        padding: 6px 10px;
-                        margin-bottom: 6px;
-                        font-size: 13px;
-                        line-height: 1.4;
-                    }
-                    
-                    .message.own-message {
-                        margin-left: 30px;
-                        margin-right: 0px;
-                    }
-                    
-                    .message-header {
-                        margin-bottom: 3px;
-                    }
-                    
-                    .user-name {
-                        font-size: 12px;
-                        font-weight: 600;
-                    }
-                    
-                    .message-time {
-                        font-size: 10px;
-                    }
-                    
-                    .input-area {
-                        padding: 8px;
-                        gap: 6px;
-                        flex-shrink: 0;
-                        min-height: 60px;
-                        max-height: 60px;
-                    }
-                    
-                    .input-area input {
-                        padding: 8px 12px;
-                        font-size: 14px;
-                        height: 36px;
-                        box-sizing: border-box;
-                    }
-                    
-                    .input-area button {
-                        width: 36px;
-                        height: 36px;
-                        font-size: 14px;
-                        flex-shrink: 0;
-                    }
-                    
-                    /* 优化小屏幕下的背景效果 */
-                    .mqtt-room-screen::before {
-                        filter: blur(25px);
-                        opacity: 0.3;
-                    }
-                    
-                    .mqtt-room-screen.light-theme::before,
-                    .mqtt-room-screen:not(.dark-theme)::before {
-                        opacity: 0.15;
-                    }
-                    
-                    .mqtt-room-screen.dark-theme::before {
-                        opacity: 0.3;
-                    }
-                    
-                    /* 优化房间历史记录在小屏幕的显示 */
-                    .room-history {
-                        max-height: 100px;
-                        margin: 8px 0;
-                    }
-                    
-                    .history-list {
-                        max-height: 80px;
-                    }
-                    
-                    .history-item {
-                        padding: 4px 6px;
-                        margin: 1px 0;
-                    }
-                    
-                    .history-room, .history-nickname {
-                        font-size: 11px;
-                    }
-                    
-                    .history-time {
-                        font-size: 9px;
-                    }
-                    
-                    /* 在线用户信息优化 */
-                    .online-count {
-                        font-size: 12px;
-                        padding: 4px 8px;
-                    }
-                    
-                    .online-list {
-                        max-height: 80px;
-                        padding: 6px;
-                    }
-                    
-                    .online-user {
-                        font-size: 10px;
-                        padding: 2px 6px;
-                    }
-                    
-                    /* 状态显示优化 */
-                    .status-display {
-                        padding: 6px;
-                        font-size: 11px;
-                        margin-bottom: 6px;
-                    }
-                    
-                    .broker-info {
-                        margin-bottom: 6px;
-                        font-size: 11px;
-                    }
-                    
-                    .online-users-info {
-                        margin-bottom: 6px;
-                    }
-                    
-                    .warning {
-                        padding: 6px;
-                        font-size: 10px;
-                        margin-top: 6px;
-                    }
-                    
-                    /* 欢迎消息优化 */
-                    .welcome-message {
-                        padding: 12px;
-                        font-size: 12px;
-                    }
-                    
-                    .welcome-message p {
-                        margin: 6px 0;
-                    }
-                }
-            </style>
-        `;
-        
+            </div>`;
+
         // 获取UI元素引用
         elements = {
             backBtn: mountEl.querySelector('#mqtt-back-btn'),
@@ -3132,12 +1640,11 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             emojiPickerContent: mountEl.querySelector('#emoji-picker-content'),
             onlineCount: mountEl.querySelector('#online-count'),
             onlineList: mountEl.querySelector('#online-list'),
-            onlineListContent: mountEl.querySelector('#online-list-content'),
-            onlineCountDisplay: mountEl.querySelector('.online-count'),
-            roomHistoryContainer: mountEl.querySelector('#room-history-container'),
-            roomHistoryList: mountEl.querySelector('#room-history-list')
+            onlineListContent: mountEl.querySelector('#online-list-content')
         };
-        
+
+        // 绑定事件处理器
+
         // 验证关键元素是否存在
         if (!elements.backBtn) {
             console.error('MQTT聊天室：返回按钮未找到');
@@ -3146,9 +1653,9 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             console.error('MQTT聊天室：消息容器未找到');
         }
         if (!elements.themeToggleBtn) {
-            console.error('MQTT聊天室：主题切换按钮未找到');
+            console.warn('MQTT聊天室：主题切换按钮未找到');
         }
-        
+
         // 设置默认昵称
         elements.nicknameInput.value = getPlayerName() || '匿名用户';
         
@@ -3290,6 +1797,9 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         if (roomConfig.createdBy !== nickname) return; // 只有房主能发布配置
 
         const configTopic = `game/${roomId}/config`;
+        const permissionsTopic = `game/${roomId}/permissions`;
+
+        // 房间配置信息
         const configData = {
             roomId: roomId,
             createdBy: roomConfig.createdBy,
@@ -3302,24 +1812,84 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             timestamp: Date.now()
         };
 
-        // 使用 retained 消息，确保新加入的用户能获取配置
+        // 权限信息（独立发布，最重要！）
+        const permissionsData = {
+            owner: roomConfig.createdBy,  // 房主永久有效
+            admins: roomConfig.adminUsers || [],  // 管理员列表
+            createdAt: roomConfig.createdAt || Date.now(),
+            updatedAt: Date.now()
+        };
+
+        // 发布配置
         client.publish(configTopic, JSON.stringify(configData), {
             qos: 1,
             retain: true
         });
 
-        log('system', '📢 已发布房间配置到MQTT');
+        // 发布权限（更重要，使用 QoS 2 确保送达）
+        client.publish(permissionsTopic, JSON.stringify(permissionsData), {
+            qos: 2,
+            retain: true
+        });
+
+        log('system', '📢 已发布房间配置和权限到MQTT');
+    }
+
+    // 处理接收到的房间权限（最重要！）
+    function handleRoomPermissions(permissionsData) {
+        if (!permissionsData) return;
+
+        // 保存权限信息到全局变量（不是localStorage！）
+        window.__roomPermissions__ = permissionsData;
+
+        // 更新本地的房间配置
+        if (!roomConfig) {
+            roomConfig = { ...defaultRoomConfig };
+        }
+
+        roomConfig.createdBy = permissionsData.owner;
+        roomConfig.adminUsers = permissionsData.admins || [];
+
+        // 判断当前用户的角色
+        const isOwner = permissionsData.owner === nickname;
+        const isAdmin = permissionsData.admins && permissionsData.admins.includes(nickname);
+
+        if (isOwner) {
+            log('system', '👑 您是房主，拥有完全管理权限');
+            isRoomAdmin = true;
+        } else if (isAdmin) {
+            log('system', '⭐ 您是管理员');
+            isRoomAdmin = true;
+        } else {
+            log('system', '👤 您是访客');
+            isRoomAdmin = false;
+        }
+
+        // 更新UI显示
+        updateAdminUI();
+    }
+
+    // 更新管理员UI（显示/隐藏管理功能）
+    function updateAdminUI() {
+        const backupBtn = mountEl.querySelector('#backup-room-btn');
+        const restoreBtn = mountEl.querySelector('#restore-room-btn');
+
+        // 只有房主才能看到备份/恢复按钮
+        const isOwner = window.__roomPermissions__ && window.__roomPermissions__.owner === nickname;
+
+        if (backupBtn) {
+            backupBtn.style.display = isOwner ? 'inline-block' : 'none';
+        }
+        if (restoreBtn) {
+            restoreBtn.style.display = isOwner ? 'inline-block' : 'none';
+        }
     }
 
     // 处理接收到的房间配置
     async function handleRoomConfig(configData) {
         if (!configData || configData.roomId !== roomId) return;
 
-        // 如果自己是房主，忽略配置更新（避免覆盖本地配置）
-        if (roomConfig && roomConfig.createdBy === nickname) {
-            log('system', '📤 房主身份确认，使用本地配置');
-            return;
-        }
+        // 不再检查是否是房主，因为权限信息从 permissions topic 获取
 
         // 更新本地房间配置（访客使用）
         const remoteConfig = {
@@ -3351,6 +1921,34 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 log('system', '🔒 此房间需要密码，请在上方输入密码并按回车确认');
                 showAlert('此房间需要密码，请输入密码并按回车！');
             }
+
+            // 禁用消息输入和发送功能
+            if (elements.messageInput) {
+                elements.messageInput.disabled = true;
+                elements.messageInput.placeholder = '请先输入房间密码...';
+            }
+            if (elements.sendBtn) {
+                elements.sendBtn.disabled = true;
+            }
+            if (elements.emojiBtn) {
+                elements.emojiBtn.disabled = true;
+            }
+
+            // 在聊天区域显示提示
+            const messagesContainer = mountEl.querySelector('#messages-container');
+            if (messagesContainer) {
+                messagesContainer.innerHTML = `
+                    <div class="password-required-notice" style="
+                        text-align: center;
+                        padding: 50px 20px;
+                        color: var(--text-secondary);
+                    ">
+                        <div style="font-size: 48px; margin-bottom: 20px;">🔒</div>
+                        <div style="font-size: 18px; margin-bottom: 10px;">此房间需要密码</div>
+                        <div style="font-size: 14px;">请在上方输入密码并按回车键验证</div>
+                    </div>
+                `;
+            }
         } else if (!remoteConfig.hasPassword) {
             log('system', '🔓 此房间无需密码，欢迎加入！');
         }
@@ -3367,6 +1965,129 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         }
     }
     
+    // 备份房间数据（房主专用）
+    function backupRoomData() {
+        if (!roomConfig || roomConfig.createdBy !== nickname) {
+            showAlert('只有房主可以备份房间数据');
+            return;
+        }
+
+        const backupData = {
+            version: '1.0',
+            timestamp: Date.now(),
+            room: {
+                roomId: roomId,
+                roomType: roomConfig.roomType,
+                createdAt: roomConfig.createdAt,
+                createdBy: roomConfig.createdBy,
+                roomKey: roomConfig.roomKey
+            },
+            config: {
+                maxUsers: roomConfig.maxUsers,
+                category: roomConfig.category,
+                isPrivate: roomConfig.isPrivate,
+                hasPassword: roomConfig.hasPassword,
+                password: roomConfig.password  // 注意：这是明文密码，实际应用应该加密
+            },
+            permissions: {
+                owner: roomConfig.createdBy,
+                admins: roomConfig.adminUsers || []
+            },
+            chatHistory: chatHistory.get(roomId) || []
+        };
+
+        // 创建下载链接
+        const dataStr = JSON.stringify(backupData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `room_${roomId}_backup_${Date.now()}.json`;
+        a.click();
+
+        URL.revokeObjectURL(url);
+        log('system', '✅ 房间数据已备份');
+    }
+
+    // 恢复房间数据（房主专用）
+    async function restoreRoomData(fileContent) {
+        try {
+            const backupData = JSON.parse(fileContent);
+
+            if (!backupData.version || !backupData.room) {
+                throw new Error('无效的备份文件格式');
+            }
+
+            // 先检查房间是否已被其他人占用
+            const currentOccupation = await checkRoomOccupation(backupData.room.roomId);
+
+            if (currentOccupation && currentOccupation.roomKey !== backupData.room.roomKey) {
+                // 房间已被其他人占用，提供选项
+                const options = confirm(
+                    `⚠️ 房间 "${backupData.room.roomId}" 已被其他人占用！\n\n` +
+                    `当前房主：${currentOccupation.owner}\n` +
+                    `原房主：${backupData.room.createdBy}\n\n` +
+                    `是否要使用新的房间ID恢复？\n` +
+                    `选择"确定"将生成新房间ID\n` +
+                    `选择"取消"将放弃恢复`
+                );
+
+                if (options) {
+                    // 生成新的房间ID
+                    const timestamp = Date.now().toString(36);
+                    const randomStr = Math.random().toString(36).substr(2, 4);
+                    const newRoomId = `${backupData.room.roomId}-${timestamp}-${randomStr}`;
+
+                    showAlert(`原房间ID已被占用，将使用新ID：${newRoomId}`);
+                    backupData.room.roomId = newRoomId;
+                } else {
+                    throw new Error('房间恢复已取消');
+                }
+            }
+
+            // 恢复房间配置
+            roomConfig = {
+                ...defaultRoomConfig,
+                ...backupData.config,
+                roomId: backupData.room.roomId,
+                roomType: backupData.room.roomType,
+                createdAt: backupData.room.createdAt,
+                createdBy: backupData.room.createdBy,
+                roomKey: backupData.room.roomKey,
+                adminUsers: backupData.permissions.admins
+            };
+
+            // 恢复到localStorage（作为本地缓存）
+            saveRoomConfig();
+
+            // 恢复聊天记录
+            if (backupData.chatHistory) {
+                chatHistory.set(backupData.room.roomId, backupData.chatHistory);
+            }
+
+            // 如果已连接，发布到MQTT
+            if (isConnected) {
+                publishRoomConfig();
+                // 发布房间占用信息，激活房间
+                if (roomConfig.roomId && roomConfig.createdBy && roomConfig.roomKey) {
+                    publishRoomOccupation(roomConfig.roomId, roomConfig.createdBy, roomConfig.roomKey);
+                }
+            }
+
+            log('system', '✅ 房间数据已恢复，房间已激活');
+            showAlert('房间数据恢复成功！房间已激活，其他用户现在可以加入。');
+
+            // 更新UI
+            elements.roomInput.value = backupData.room.roomId;
+            elements.nicknameInput.value = backupData.room.createdBy;
+
+        } catch (error) {
+            console.error('恢复房间数据失败:', error);
+            showAlert('恢复失败：' + error.message);
+        }
+    }
+
     // 生成邀请链接
     function generateInviteLink(roomId, nickname, includeUid = false) {
         const url = new URL(window.location.href);
@@ -3656,6 +2377,32 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         if (elements.leaveBtn) {
             elements.leaveBtn.addEventListener('click', () => leaveRoom());
         }
+
+        // 备份按钮（房主专用）
+        const backupBtn = mountEl.querySelector('#backup-room-btn');
+        if (backupBtn) {
+            backupBtn.addEventListener('click', () => backupRoomData());
+        }
+
+        // 恢复按钮（房主专用）
+        const restoreBtn = mountEl.querySelector('#restore-room-btn');
+        const restoreInput = mountEl.querySelector('#restore-file-input');
+        if (restoreBtn && restoreInput) {
+            restoreBtn.addEventListener('click', () => {
+                restoreInput.click();
+            });
+
+            restoreInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        restoreRoomData(event.target.result);
+                    };
+                    reader.readAsText(file);
+                }
+            });
+        }
         
         // 发送按钮
         if (elements.sendBtn) {
@@ -3682,6 +2429,25 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                             // 清空密码输入框
                             passwordInput.value = '';
                             log('system', '🔓 密码验证成功，欢迎进入房间！');
+
+                            // 启用消息输入框和发送按钮
+                            if (elements.messageInput) {
+                                elements.messageInput.disabled = false;
+                                elements.messageInput.placeholder = '输入消息...';
+                            }
+                            if (elements.sendBtn) {
+                                elements.sendBtn.disabled = false;
+                            }
+                            if (elements.emojiBtn) {
+                                elements.emojiBtn.disabled = false;
+                            }
+
+                            // 清空聊天区域的密码提示
+                            const messagesContainer = mountEl.querySelector('#messages-container');
+                            if (messagesContainer) {
+                                messagesContainer.innerHTML = '';
+                                log('system', '✅ 您现在可以查看和发送消息了');
+                            }
                         } else {
                             showAlert('❌ 密码错误！');
                             passwordInput.value = '';
@@ -4013,13 +2779,55 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     async function createRoom() {
         roomId = elements.roomInput.value.trim();
         nickname = elements.nicknameInput.value.trim();
-        
-        // 检查房间是否已经被创建过
+
+        // 先检查本地是否有该房间的配置
         const existingConfig = loadRoomConfig(roomId);
         if (existingConfig && existingConfig.createdBy) {
             // 房间已存在，检查用户身份
             const currentPlayerName = getPlayerName();
             if (currentPlayerName === existingConfig.createdBy || nickname === existingConfig.createdBy) {
+                // 这是房主，检查是否需要迁移旧房间
+                if (!existingConfig.roomKey) {
+                    // 旧版本房间，需要迁移
+                    const migrate = confirm(
+                        `检测到这是旧版本创建的房间 "${roomId}"！\n\n` +
+                        `需要升级才能继续使用：\n` +
+                        `1. 系统将生成新的安全密钥\n` +
+                        `2. 房间将被激活到服务器\n` +
+                        `3. 其他用户即可正常加入\n\n` +
+                        `是否立即升级？`
+                    );
+
+                    if (migrate) {
+                        // 生成新的roomKey并更新配置
+                        existingConfig.roomKey = generateRoomKey();
+                        existingConfig.version = '2.0';
+                        saveRoomConfigForRoom(roomId, existingConfig);
+
+                        // 保存更新后的配置
+                        roomConfig = existingConfig;
+                        roomId = existingConfig.roomId;
+                        nickname = existingConfig.createdBy;
+
+                        // 发布占用信息，激活房间
+                        log('system', '正在激活房间到服务器...');
+
+                        // 连接并发布占用信息
+                        try {
+                            await connectToMqttRoom();
+                            publishRoomOccupation(roomId, existingConfig.createdBy, existingConfig.roomKey);
+                        } catch (error) {
+                            console.error('激活房间失败:', error);
+                            showAlert('房间激活失败，请重试');
+                            return;
+                        }
+
+                        log('system', `✅ 房间 "${roomId}" 已成功升级并激活！`);
+                        showAlert('房间升级成功！建议您立即备份房间数据。');
+                        return;
+                    }
+                }
+
                 // 这是房主，应该直接加入而不是重新创建
                 showAlert(`房间 "${roomId}" 已存在，您是房主。请使用"加入房间"功能。`);
                 // 自动切换到加入房间模式
@@ -4030,6 +2838,14 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 showAlert(`房间 "${roomId}" 已存在且有其他房主。请选择其他房间号或直接加入此房间。`);
                 return;
             }
+        }
+
+        // 检查MQTT服务器上的房间占用状态
+        log('system', '🔍 检查房间ID是否已被占用...');
+        const roomOccupied = await checkRoomOccupation(roomId);
+        if (roomOccupied) {
+            showAlert(`❌ 房间 "${roomId}" 已被占用！\n\n房主: ${roomOccupied.owner}\n创建时间: ${new Date(roomOccupied.createdAt).toLocaleString()}\n\n请选择其他房间号或联系房主。`);
+            return;
         }
         
         if (!roomId || !nickname) {
@@ -4062,9 +2878,15 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 // 临时房间：原有逻辑
                 createRoomConfig(roomId, ROOM_TYPES.CASUAL);
             }
-            
+
             // 连接到房间
             await connectToMqttRoom();
+
+            // 发布房间占用信息到MQTT服务器
+            const roomConfig = loadRoomConfig(roomId);
+            if (roomConfig && roomConfig.roomKey) {
+                publishRoomOccupation(roomId, nickname, roomConfig.roomKey);
+            }
             
             // 根据房间类型决定是否显示复制邀请按钮
             const copyInviteBtn = mountEl.querySelector('#btn-copy-invite');
@@ -4084,6 +2906,108 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         }
     }
     
+    // 检查房间占用状态
+    async function checkRoomOccupation(targetRoomId) {
+        return new Promise((resolve) => {
+            // 创建临时客户端检查房间占用状态
+            const checkClient = mqtt.connect(brokerUrl, {
+                clientId: `check_${Math.random().toString(16).substr(2, 8)}`,
+                clean: true,
+                connectTimeout: 5000
+            });
+
+            let timeoutId = setTimeout(() => {
+                checkClient.end();
+                resolve(null); // 超时则认为房间未被占用
+            }, 3000);
+
+            checkClient.on('connect', () => {
+                const occupationTopic = `game/${targetRoomId}/occupation`;
+
+                checkClient.subscribe(occupationTopic, (err) => {
+                    if (err) {
+                        clearTimeout(timeoutId);
+                        checkClient.end();
+                        resolve(null);
+                        return;
+                    }
+                });
+
+                // 监听占用消息
+                checkClient.on('message', (topic, message) => {
+                    if (topic === occupationTopic) {
+                        try {
+                            const occupationData = JSON.parse(message.toString());
+                            clearTimeout(timeoutId);
+                            checkClient.end();
+
+                            // 验证占用信息的有效性
+                            if (occupationData && occupationData.owner && occupationData.roomKey) {
+                                resolve(occupationData);
+                            } else {
+                                resolve(null);
+                            }
+                        } catch (e) {
+                            clearTimeout(timeoutId);
+                            checkClient.end();
+                            resolve(null);
+                        }
+                    }
+                });
+            });
+
+            checkClient.on('error', () => {
+                clearTimeout(timeoutId);
+                checkClient.end();
+                resolve(null);
+            });
+        });
+    }
+
+    // 发布房间占用信息
+    function publishRoomOccupation(targetRoomId, ownerName, roomKey) {
+        if (!client || !client.connected) return;
+
+        const occupationData = {
+            roomId: targetRoomId,
+            owner: ownerName,
+            roomKey: roomKey,
+            createdAt: Date.now(),
+            version: '1.0'
+        };
+
+        const occupationTopic = `game/${targetRoomId}/occupation`;
+
+        // 发布retained消息，确保房间占用信息持久化
+        client.publish(occupationTopic, JSON.stringify(occupationData), {
+            retain: true,
+            qos: 1
+        }, (err) => {
+            if (err) {
+                console.error('发布房间占用信息失败:', err);
+            } else {
+                log('system', `✅ 房间 "${targetRoomId}" 已注册为专属房间`);
+            }
+        });
+    }
+
+    // 清除房间占用信息（房主释放房间时调用）
+    function clearRoomOccupation(targetRoomId) {
+        if (!client || !client.connected) return;
+
+        const occupationTopic = `game/${targetRoomId}/occupation`;
+
+        // 发布空的retained消息来清除占用信息
+        client.publish(occupationTopic, '', {
+            retain: true,
+            qos: 1
+        }, (err) => {
+            if (!err) {
+                log('system', `🔓 房间 "${targetRoomId}" 占用已释放`);
+            }
+        });
+    }
+
     // 检查房间注册状态
     async function checkRoomRegistration(targetRoomId) {
         return new Promise((resolve) => {
@@ -4139,10 +3063,37 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     async function joinRoom() {
         roomId = elements.roomInput.value.trim();
         nickname = elements.nicknameInput.value.trim();
-        
+
         if (!roomId || !nickname) {
             showAlert('请输入房间号和昵称！');
             return;
+        }
+
+        // 先检查房间是否已被占用（激活）
+        log('system', '🔍 检查房间状态...');
+        const roomOccupation = await checkRoomOccupation(roomId);
+
+        if (!roomOccupation) {
+            // 房间未被占用，不能加入
+            showAlert(`❌ 房间 "${roomId}" 不存在或未激活！\n\n可能原因：\n1. 房间ID输入错误\n2. 房主尚未创建此房间\n3. 房主已释放此房间\n\n请确认房间ID或联系房主。`);
+            return;
+        }
+
+        // 房间已被占用，可以尝试加入
+        log('system', `✅ 找到房间 "${roomId}"，房主: ${roomOccupation.owner}`);
+
+        // 检查是否是房主本人
+        const currentPlayerName = getPlayerName();
+        if (currentPlayerName === roomOccupation.owner || nickname === roomOccupation.owner) {
+            // 是房主，需要验证是否有本地备份
+            const localConfig = loadRoomConfig(roomId);
+            if (!localConfig || localConfig.roomKey !== roomOccupation.roomKey) {
+                showAlert(`⚠️ 检测到您是房主 "${roomOccupation.owner}"，但本地没有房间密钥！\n\n请使用房间备份文件恢复房间权限。`);
+                return;
+            }
+            // 恢复房主权限
+            window.__ROOM_UID__ = localConfig.roomKey;
+            log('system', `👑 房主身份确认，恢复房间权限`);
         }
         
         // 检查昵称长度
@@ -4449,9 +3400,10 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
 
                 const adminTopic = `game/${roomId}/admin`;
                 const moderationTopic = `game/${roomId}/moderation`;
-                const configTopic = `game/${roomId}/config`;  // 新增配置主题
+                const configTopic = `game/${roomId}/config`;  // 配置主题
+                const permissionsTopic = `game/${roomId}/permissions`;  // 权限主题（最重要！）
 
-                client.subscribe([messageTopic, presenceTopic, adminTopic, moderationTopic, configTopic], (err) => {
+                client.subscribe([messageTopic, presenceTopic, adminTopic, moderationTopic, configTopic, permissionsTopic], (err) => {
                     if (!err) {
                         publishPresence('join');
                         updateUI(true);
@@ -4571,10 +3523,29 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         // 更新用户计数
                         updateRoomUserCount(roomId, nickname, 'leave');
                         
-                        // 如果是房主离开，发布房间关闭消息
+                        // 如果是房主离开，询问是否释放房间
                         if (roomConfig && roomConfig.createdBy === nickname) {
-                            publishRoomClosed(roomId);
-                            log('system', '房主离开，房间将关闭...');
+                            const releaseRoom = confirm(
+                                `您是房主，是否要释放房间 "${roomId}"？\n\n` +
+                                `⚠️ 释放风险：\n` +
+                                `- 房间ID将可被其他人占用\n` +
+                                `- 如果ID被占用，您需要使用新ID恢复房间\n` +
+                                `- 其他用户将无法再加入此房间\n\n` +
+                                `✅ 不释放的好处：\n` +
+                                `- 房间保持激活，其他用户可继续使用\n` +
+                                `- 您随时可以用房主身份重新加入\n` +
+                                `- 房间ID永远为您保留\n\n` +
+                                `建议：长期房间选择"取消"保留，临时房间选择"确定"释放`
+                            );
+
+                            if (releaseRoom) {
+                                // 清除房间占用信息
+                                clearRoomOccupation(roomId);
+                                publishRoomClosed(roomId);
+                                log('system', '房主离开，房间已释放');
+                            } else {
+                                log('system', '房主离开，房间保持激活状态');
+                            }
                         }
                         
                         log('system', '正在离开房间...');
@@ -4625,12 +3596,22 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     function sendMessage() {
         const text = elements.messageInput.value.trim();
         if (!text) return;
-        
+
         if (!isConnected || !client) {
             showAlert('未连接到聊天室，无法发送消息');
             return;
         }
-        
+
+        // 检查是否需要密码验证
+        if (window.__remoteRoomConfig__ && window.__remoteRoomConfig__.hasPassword && !window.__passwordVerified__) {
+            showAlert('⚠️ 请先输入房间密码才能发送消息！');
+            const passwordInput = mountEl.querySelector('.room-password-input');
+            if (passwordInput) {
+                passwordInput.focus();
+            }
+            return;
+        }
+
         // 检查消息长度
         if (text.length > 500) {
             showAlert('消息长度不能超过500个字符');
@@ -4753,6 +3734,12 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 }
             }
             
+            // 处理权限消息（最优先！）
+            if (topic === `game/${roomId}/permissions`) {
+                handleRoomPermissions(data);
+                return;
+            }
+
             // 处理配置消息
             if (topic === `game/${roomId}/config`) {
                 await handleRoomConfig(data);
@@ -4760,6 +3747,12 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             }
 
             if (topic === messageTopic && data.type === 'chat') {
+                // 检查是否需要密码验证才能看到消息
+                if (window.__remoteRoomConfig__ && window.__remoteRoomConfig__.hasPassword && !window.__passwordVerified__) {
+                    // 未验证密码，显示提示而不是消息内容
+                    log('system', '🔒 [需要密码才能查看消息]');
+                    return;
+                }
                 const isOwnMessage = data.name === nickname;
                 addChatMessage(data.name, data.text, data.timestamp, isOwnMessage);
             } else if (topic === presenceTopic) {

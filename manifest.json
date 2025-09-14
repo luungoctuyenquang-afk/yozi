@@ -1,13 +1,50 @@
 {
-  "name": "虚拟手机",
+  "name": "虚拟手机 - AI伴侣",
   "short_name": "虚拟手机",
-  "description": "与AI伴侣零的虚拟世界",
+  "description": "与AI伴侣零的虚拟世界，支持MQTT聊天室、世界书系统和虚拟经济",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#667eea",
   "theme_color": "#764ba2",
   "orientation": "portrait",
+  "categories": ["social", "entertainment", "games"],
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "MQTT聊天室",
+      "short_name": "聊天室",
+      "description": "进入MQTT多人聊天室",
+      "url": "./index.html#mqtt-room",
+      "icons": [{ "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' fill='%237c6fff'/%3E%3Ctext x='48' y='58' font-size='40' text-anchor='middle' fill='white'%3E💬%3C/text%3E%3C/svg%3E", "sizes": "96x96", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "AI对话",
+      "short_name": "AI",
+      "description": "与AI伴侣零对话",
+      "url": "./index.html#chat",
+      "icons": [{ "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' fill='%23764ba2'/%3E%3Ctext x='48' y='58' font-size='40' text-anchor='middle' fill='white'%3E🤖%3C/text%3E%3C/svg%3E", "sizes": "96x96", "type": "image/svg+xml" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='540' height='1170' viewBox='0 0 540 1170'%3E%3Crect width='540' height='1170' fill='%23667eea'/%3E%3Ctext x='270' y='585' font-size='60' text-anchor='middle' fill='white'%3E虚拟手机主界面%3C/text%3E%3C/svg%3E",
+      "sizes": "540x1170",
+      "type": "image/svg+xml",
+      "platform": "narrow",
+      "label": "主界面"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='540' height='1170' viewBox='0 0 540 1170'%3E%3Crect width='540' height='1170' fill='%237c6fff'/%3E%3Ctext x='270' y='585' font-size='60' text-anchor='middle' fill='white'%3EMQTT聊天室%3C/text%3E%3C/svg%3E",
+      "sizes": "540x1170",
+      "type": "image/svg+xml",
+      "platform": "narrow",
+      "label": "MQTT聊天室"
+    }
+  ],
+  "related_applications": [],
   "icons": [
     {
       "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%23667eea'/%3E%3Ctext x='96' y='115' font-size='80' text-anchor='middle' fill='white' font-family='sans-serif'%3E📱%3C/text%3E%3C/svg%3E",
