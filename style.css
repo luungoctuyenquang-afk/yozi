@@ -1951,7 +1951,7 @@ body, html {
     --iosm-muted: #8a8f98;
     --iosm-sep: rgba(0,0,0,.12);
     --iosm-shadow: 0 8px 24px rgba(17,17,20,.06);
-    --iosm-radius: 10px;
+    --iosm-radius: 16px;
 }
 
 /* iOS设置容器 */
@@ -1967,12 +1967,11 @@ body, html {
     position: sticky;
     top: 0;
     z-index: 5;
-    padding: 12px 16px 8px;
-    background: #f8f9fb;
-    border-bottom: 1px solid rgba(0,0,0,.06);
+    padding: 14px 10px 2px;
+    background: var(--iosm-bg);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 }
 
 .iosm-back {
@@ -1991,15 +1990,16 @@ body, html {
 }
 
 .iosm-title {
-    flex: 1;
-    text-align: center;
+    padding: 0 10px 8px;
+    font-size: 34px;
+    font-weight: 750;
+    letter-spacing: .2px;
     margin: 0;
-    font-size: 17px;
-    font-weight: 700;
+    width: 100%;
 }
 
 .iosm-body {
-    padding: 8px 12px 12px 16px;
+    padding: 0 8px 16px 4px;
     height: calc(100% - 52px);
     overflow: auto;
     overflow-y: scroll;
@@ -2008,31 +2008,53 @@ body, html {
 
 /* iOS风格极简滚动条 */
 .iosm-body::-webkit-scrollbar {
-    width: 2px;
+    width: 1px;
+    background: transparent;
 }
 
 .iosm-body::-webkit-scrollbar-track {
     background: transparent;
+    margin: 0;
 }
 
 .iosm-body::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.08);
-    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 1px;
     transition: background-color 0.3s ease;
+    border: none;
+    margin: 0;
 }
 
 .iosm-body::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.18);
+    background: rgba(0, 0, 0, 0.12);
 }
 
 .iosm-body::-webkit-scrollbar-thumb:active {
-    background: rgba(0, 0, 0, 0.22);
+    background: rgba(0, 0, 0, 0.15);
+}
+
+/* 让滚动条贴近屏幕边缘 */
+.iosm-body {
+    margin-right: -15px;
 }
 
 /* Firefox滚动条样式 */
 .iosm-body {
     scrollbar-width: thin;
-    scrollbar-color: rgba(0, 0, 0, 0.08) transparent;
+    scrollbar-color: rgba(0, 0, 0, 0.05) transparent;
+}
+
+/* 强制iOS PWA版本字体为黑色 */
+.screen.iosm * {
+    color: var(--iosm-label) !important;
+}
+
+.iosm-row, .iosm-label, .iosm-pname, .iosm-psub {
+    color: var(--iosm-label) !important;
+}
+
+.iosm-back {
+    color: var(--iosm-label) !important;
 }
 
 /* 搜索框 */
@@ -2065,12 +2087,12 @@ body, html {
 .iosm-profile {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 16px;
+    gap: 12px;
+    padding: 14px;
     background: var(--iosm-card);
     border-radius: var(--iosm-radius);
     box-shadow: var(--iosm-shadow);
-    margin-bottom: 16px;
+    margin-bottom: 18px;
     border: none;
     width: 100%;
     text-align: left;
@@ -2083,8 +2105,8 @@ body, html {
 }
 
 .iosm-avatar {
-    width: 60px;
-    height: 60px;
+    width: 52px;
+    height: 52px;
     border-radius: 50%;
     background: #e3e4e8;
     object-fit: cover;
@@ -2099,13 +2121,13 @@ body, html {
 
 .iosm-pname {
     font-weight: 700;
-    font-size: 20px;
+    font-size: 18px;
 }
 
 .iosm-psub {
     color: var(--iosm-muted);
-    font-size: 14px;
-    margin-top: 3px;
+    font-size: 13px;
+    margin-top: 2px;
 }
 
 /* 设置组和行 */
@@ -2172,7 +2194,7 @@ body, html {
 }
 
 .iosm-spacer {
-    height: 12px;
+    height: 16px;
 }
 
 /* 精准修复房间列表区域 - 最高优先级 */
