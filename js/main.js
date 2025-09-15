@@ -356,8 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // iOS风格设置应用 (新增)
         Utils.safeBind(document.getElementById('open-ios-settings-app'), 'click', () => {
-            IOSSettings.show();
-            IOSSettings.init();  // 初始化iOS设置
+            IOSSettings.show();  // 只调用show，init在内部处理
         });
 
         // 通用设置应用

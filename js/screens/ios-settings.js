@@ -1,21 +1,31 @@
 // iOS风格设置界面模块
 const IOSSettings = {
+    // 标记是否已初始化
+    initialized: false,
+
     // 初始化
     init() {
+        // 防止重复初始化
+        if (this.initialized) return;
+
         this.bindEvents();
         this.updateProfile();
+        this.initialized = true;
     },
 
     // 绑定事件
     bindEvents() {
         const root = document.querySelector('#ios-settings-minimal');
-        if (!root) return;
+        if (!root) {
+            console.warn('IOSSettings: 找不到根元素 #ios-settings-minimal');
+            return;
+        }
 
         // 返回按钮
         const backBtn = root.querySelector('.iosm-back');
         if (backBtn) {
             backBtn.addEventListener('click', () => {
-                Utils.showScreen('home');
+                Utils.showScreen('home-screen');  // 修正为正确的主屏幕ID
             });
         }
 
@@ -325,6 +335,11 @@ const IOSSettings = {
 
     // 显示设置界面
     show() {
+        // 确保初始化
+        if (!this.initialized) {
+            this.init();
+        }
+
         Utils.showScreen('ios-settings-minimal');
         this.updateProfile();
     },

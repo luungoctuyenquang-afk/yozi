@@ -94,13 +94,13 @@ const Utils = {
     // 显示屏幕
     showScreen(screenId) {
         const screens = document.querySelectorAll('.screen');
-        const flexScreens = ['lock-screen', 'chat-screen', 'wallet-screen', 'store-screen', 
-                            'backpack-screen', 'world-book-screen', 'settings-screen', 
-                            'general-settings-screen', 'mqtt-room-screen'];
-        
+        const flexScreens = ['lock-screen', 'chat-screen', 'wallet-screen', 'store-screen',
+                            'backpack-screen', 'world-book-screen', 'settings-screen',
+                            'general-settings-screen', 'mqtt-room-screen', 'ios-settings-minimal'];
+
         screens.forEach(s => {
-            s.style.display = s.id === screenId 
-                ? (flexScreens.includes(s.id) ? 'flex' : 'block') 
+            s.style.display = s.id === screenId
+                ? (flexScreens.includes(s.id) ? 'flex' : 'block')
                 : 'none';
         });
     },

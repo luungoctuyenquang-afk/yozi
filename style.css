@@ -1962,12 +1962,13 @@ body, html {
     flex-direction: column;
     height: 100%;
     overflow: hidden;
-    position: fixed;
+    /* 默认使用absolute定位，与其他界面保持一致 */
+    position: absolute;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
-    touch-action: none;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 20px;
 }
 
 .iosm-header {
@@ -2066,6 +2067,100 @@ body, html {
 
 .iosm-back {
     color: var(--iosm-label) !important;
+}
+
+/* iPhone 15 PWA适配 - 安全区域支持 */
+@supports (padding: env(safe-area-inset-top)) {
+    /* 只在PWA模式下应用安全区域 */
+    @media (display-mode: standalone), (display-mode: fullscreen) {
+        .screen.iosm {
+            /* 使用环境变量处理安全区域 */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+            height: 100vh;
+            box-sizing: border-box;
+        }
+    }
+
+    /* 只在PWA模式下调整头部和内容区域 */
+    @media (display-mode: standalone), (display-mode: fullscreen) {
+        .iosm-header {
+            /* 头部贴合顶部，考虑动态岛 */
+            top: env(safe-area-inset-top);
+            padding-top: max(14px, env(safe-area-inset-top));
+            /* iPhone 15动态岛高度约59px */
+            margin-top: 0;
+        }
+
+        .iosm-body {
+            /* 调整内容区域高度，避免被底部Home指示条遮挡 */
+            height: calc(100vh - 52px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+            padding-bottom: max(40px, calc(40px + env(safe-area-inset-bottom)));
+        }
+
+        /* 返回按钮在PWA模式下的位置调整 */
+        .iosm-back {
+            /* 确保按钮在动态岛下方 */
+            margin-top: max(0px, calc(env(safe-area-inset-top) - 14px));
+        }
+    }
+}
+
+/* iPhone 15 Pro/Pro Max 专属适配（动态岛） */
+@media screen and (min-width: 390px) and (max-width: 430px) and (-webkit-device-pixel-ratio: 3) {
+    @supports (padding: env(safe-area-inset-top)) {
+        .screen.iosm {
+            /* iPhone 15系列特殊处理 */
+            padding-top: max(59px, env(safe-area-inset-top)); /* 59px为动态岛高度 */
+        }
+
+        .iosm-header {
+            /* 确保头部在动态岛下方 */
+            top: 0;
+            padding-top: calc(env(safe-area-inset-top) + 14px);
+            background: var(--iosm-bg);
+            /* 添加轻微渐变遮罩效果 */
+            background: linear-gradient(to bottom,
+                var(--iosm-bg) 0%,
+                var(--iosm-bg) 85%,
+                rgba(242, 242, 247, 0.95) 100%);
+        }
+
+        .iosm-title {
+            /* 标题位置微调 */
+            padding-top: 8px;
+        }
+    }
+}
+
+/* PWA全屏模式特别优化 */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+    .screen.iosm {
+        /* 全屏模式下的特殊处理 */
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        max-width: none;
+        border-radius: 0;
+        padding: 0; /* 移除Web版的padding */
+    }
+
+    .iosm-body {
+        /* 优化滚动性能 */
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+
+    /* 优化触摸响应 */
+    .iosm-row, .iosm-profile {
+        -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+        touch-action: manipulation;
+    }
 }
 
 /* 搜索框 */
