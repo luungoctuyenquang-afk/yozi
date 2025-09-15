@@ -1,43 +1,64 @@
 /* 基本重置和全局样式 */
-body, html { 
-    margin: 0; 
-    padding: 0; 
-    height: 100%; 
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
-    background-color: #f0f2f5; 
-    display: flex; 
-    justify-content: center; 
-    align-items: center; 
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #000; /* 黑色背景匹配iOS状态栏 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
     color: #333;
+    /* 防止iOS橡皮筋效果 */
+    position: fixed;
+    width: 100%;
+    overflow: hidden;
 }
 .mobile-container {
-    width: 375px;
-    height: 667px;
+    width: 100vw;
+    height: 100vh;
+    height: -webkit-fill-available; /* iOS真实视口高度 */
     background-color: #ffffff;
-    border-radius: 20px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: 0;
+    box-shadow: none;
     position: relative;
     overflow: hidden;
     /* 添加过渡动画 */
     transition: background 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
 }
 
-/* 移动端和PWA布局修复 - 解决垂直居中问题 */
+/* 桌面端布局 - 模拟手机外观 */
+@media (min-width: 481px) and (display-mode: browser) {
+    .mobile-container {
+        width: 393px; /* iPhone 15 Pro 宽度 */
+        height: 852px; /* iPhone 15 Pro 高度 */
+        border-radius: 40px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+}
+
+/* PWA和移动端全屏布局 */
 @media (max-width: 480px), (display-mode: standalone), (display-mode: fullscreen) {
     body {
-        align-items: center; /* 保持垂直居中 */
-        height: 100vh; /* 使用视口高度 */
-        height: -webkit-fill-available; /* iOS兼容 */
+        align-items: flex-start; /* 从顶部开始 */
+        height: 100vh;
+        height: -webkit-fill-available;
+        background: #000; /* 黑色背景匹配状态栏 */
     }
-    
+
     .mobile-container {
         border-radius: 0;
         width: 100vw;
         height: 100vh;
-        height: -webkit-fill-available; /* iOS真实视口高度 */
+        height: -webkit-fill-available;
         max-width: none;
         max-height: none;
         box-shadow: none;
+        /* iOS安全区域处理 */
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
     }
 }
 .screen {
@@ -47,7 +68,10 @@ body, html {
     width: 100%;
     height: 100%;
     padding: 20px;
-    padding-top: 40px; /* 增加顶部内边距 */
+    padding-top: calc(40px + env(safe-area-inset-top)); /* 顶部安全区域 */
+    padding-bottom: calc(20px + env(safe-area-inset-bottom)); /* 底部安全区域 */
+    padding-left: calc(20px + env(safe-area-inset-left));
+    padding-right: calc(20px + env(safe-area-inset-right));
     box-sizing: border-box;
     background-color: #f9f9f9;
     display: none;
@@ -62,7 +86,8 @@ body, html {
     cursor: pointer;
     z-index: 10;
     transition: background 0.5s ease;
-    padding-top: 60px; /* 增加顶部内边距，避免内容太靠上 */
+    padding-top: calc(60px + env(safe-area-inset-top)); /* 顶部安全区域 */
+    padding-bottom: env(safe-area-inset-bottom);
     box-sizing: border-box;
 }
 .time-display { font-size: 64px; font-weight: 200; }
@@ -70,7 +95,13 @@ body, html {
 #home-screen { z-index: 5; }
 #home-screen h1 { margin-bottom: 20px; }
 #ai-name-display { color: #764ba2; font-weight: bold; }
-.app-grid { margin-top: 30px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+.app-grid {
+    margin-top: 30px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    padding-bottom: env(safe-area-inset-bottom); /* 底部安全区域 */
+}
 .app-icon { display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; }
 .app-icon-bg { width: 60px; height: 60px; background-color: #e0e0e0; border-radius: 15px; display: flex; justify-content: center; align-items: center; font-size: 30px; transition: transform 0.2s; }
 .app-icon:hover .app-icon-bg { transform: scale(1.1); }
@@ -79,10 +110,25 @@ body, html {
 /* ▼▼▼ 新增/修改 ▼▼▼ */
 #chat-screen, #wallet-screen, #store-screen, #backpack-screen, #world-book-screen, #settings-screen, #general-settings-screen, #mqtt-room-screen { padding: 0; display: none; flex-direction: column; z-index: 6; }
 /* ▲▲▲ 新增/修改 ▲▲▲ */
-.chat-header, .wallet-header, .store-header, .backpack-header, .world-book-header, .settings-header { display: flex; align-items: center; padding: 10px 15px; border-bottom: 1px solid #e0e0e0; background-color: #f8f8f8; }
+.chat-header, .wallet-header, .store-header, .backpack-header, .world-book-header, .settings-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    padding-top: calc(10px + env(safe-area-inset-top)); /* 顶部安全区域 */
+    border-bottom: 1px solid #e0e0e0;
+    background-color: #f8f8f8;
+}
 .chat-header h2, .wallet-header h2, .store-header h2, .backpack-header h2, .world-book-header h2, .settings-header h2 { font-size: 18px; margin: 0; text-align: center; flex-grow: 1; }
 .message-container { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-.chat-input-form { display: flex; align-items: center; gap: 10px; padding: 10px; border-top: 1px solid #e0e0e0; background-color: #f8f8f8; }
+.chat-input-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom)); /* 底部安全区域 */
+    border-top: 1px solid #e0e0e0;
+    background-color: #f8f8f8;
+}
 .chat-input-form input { flex-grow: 1; border: 1px solid #ccc; border-radius: 18px; padding: 8px 12px; font-size: 16px; }
 .chat-input-form button { background-color: #007aff; color: white; border: none; border-radius: 18px; padding: 8px 15px; font-size: 16px; cursor: pointer; flex-shrink: 0; }
 .chat-action-btn { background: none; border: none; font-size: 24px; cursor: pointer; padding: 5px; flex-shrink: 0; color: #555; }
