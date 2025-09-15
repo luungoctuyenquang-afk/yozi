@@ -1793,6 +1793,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             emojiPicker: mountEl.querySelector('#emoji-picker'),
             emojiPickerContent: mountEl.querySelector('#emoji-picker-content'),
             onlineCount: mountEl.querySelector('#online-count'),
+            onlineCountDisplay: mountEl.querySelector('.online-count'), // 添加这行用于点击事件
             onlineList: mountEl.querySelector('#online-list'),
             onlineListContent: mountEl.querySelector('#online-list-content'),
 
