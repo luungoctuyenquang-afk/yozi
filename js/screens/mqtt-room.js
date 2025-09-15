@@ -475,12 +475,17 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     
     function applyTheme(theme) {
         const mqttScreen = mountEl.querySelector('.mqtt-room-screen');
-        const themeBtn = elements.themeToggleBtn;
-        
-        if (!mqttScreen) return;
-        
+        const themeBtn = elements.themeToggleBtn || mountEl.querySelector('#theme-toggle-btn');
+
+        if (!mqttScreen) {
+            console.warn('MQTT: 找不到.mqtt-room-screen元素');
+            return;
+        }
+
         // 移除所有主题类
         mqttScreen.classList.remove('light-theme', 'dark-theme');
+        // 同时移除可能存在的data-theme属性
+        mqttScreen.removeAttribute('data-theme');
         
         switch (theme) {
             case 'light':
@@ -504,11 +509,19 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         const currentIndex = themes.indexOf(currentTheme);
         const nextIndex = (currentIndex + 1) % themes.length;
         const nextTheme = themes[nextIndex];
-        
+
         currentTheme = nextTheme;
         applyTheme(nextTheme);
         saveTheme(nextTheme);
-        
+
+        // 更新全局主题色以匹配MQTT主题
+        if (window.Utils && typeof window.Utils.updateThemeColor === 'function') {
+            // 延迟执行以确保主题已应用
+            setTimeout(() => {
+                window.Utils.updateThemeColor('mqtt-room-screen');
+            }, 50);
+        }
+
         // 显示主题切换提示
         log('system', `已切换到${nextTheme === 'auto' ? '自动' : nextTheme === 'light' ? '浅色' : '深色'}主题`);
     }

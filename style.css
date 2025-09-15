@@ -10,14 +10,16 @@ body, html {
     align-items: center; 
     color: #333;
 }
-.mobile-container { 
-    width: 375px; 
-    height: 667px; 
-    background-color: #ffffff; 
-    border-radius: 20px; 
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); 
-    position: relative; 
+.mobile-container {
+    width: 375px;
+    height: 667px;
+    background-color: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    position: relative;
     overflow: hidden;
+    /* 添加过渡动画 */
+    transition: background 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
 }
 
 /* 移动端和PWA布局修复 - 解决垂直居中问题 */
@@ -39,7 +41,7 @@ body, html {
     }
 }
 .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 20px; box-sizing: border-box; background-color: #f9f9f9; display: none; }
-#lock-screen { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; z-index: 10; }
+#lock-screen { background: var(--theme-gradient); color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; z-index: 10; transition: background 0.5s ease; }
 .time-display { font-size: 64px; font-weight: 200; }
 .unlock-prompt { margin-top: 20px; font-size: 18px; opacity: 0.8; }
 #home-screen { z-index: 5; }
@@ -114,7 +116,7 @@ body, html {
 /* 钱包刷新按钮 */
 #wallet-refresh-btn {
     margin-left: auto;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--theme-gradient);
     border: none;
     font-size: 18px;
     cursor: pointer;
@@ -124,7 +126,7 @@ body, html {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease, background 0.5s ease;
     color: white;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
@@ -285,7 +287,7 @@ body, html {
     padding: 10px 16px;
     border: none;
     border-radius: 12px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--theme-gradient);
     color: white;
     font-size: 14px;
     font-weight: 500;
@@ -377,7 +379,7 @@ body, html {
     padding: 10px 20px;
     border: none;
     border-radius: 10px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--theme-gradient);
     color: white;
     font-size: 14px;
     cursor: pointer;
@@ -633,7 +635,7 @@ body, html {
 }
 
 .wb-btn-save {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--theme-gradient);
     color: white;
 }
 
@@ -725,7 +727,7 @@ body, html {
 }
 
 .wb-btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--theme-gradient);
     color: white;
 }
 
@@ -824,7 +826,7 @@ body, html {
 }
 
 .wb-mode-btn.active {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--theme-gradient);
     color: white;
     border-color: transparent;
 }
@@ -964,7 +966,7 @@ body, html {
     align-items: center;
     gap: 4px;
     padding: 4px 10px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--theme-gradient);
     color: white;
     border-radius: 16px;
     font-size: 13px;
@@ -1016,7 +1018,7 @@ body, html {
     justify-content: space-between;
     align-items: center;
     padding: 12px 15px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--theme-gradient);
     color: white;
     border-radius: 8px 8px 0 0;
     font-weight: 600;
@@ -1121,7 +1123,7 @@ body, html {
 }
 
 .wb-save-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--theme-gradient);
     color: white;
     border: none;
     padding: 8px 20px;
@@ -1335,7 +1337,7 @@ body, html {
 }
 
 .btn-copy-invite {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--theme-gradient);
     color: white;
     border: none;
     padding: 8px 15px;
@@ -1952,6 +1954,23 @@ body, html {
     --iosm-sep: rgba(0,0,0,.12);
     --iosm-shadow: 0 8px 24px rgba(17,17,20,.06);
     --iosm-radius: 16px;
+
+    /* 动态主题色系统 */
+    --theme-primary: #667eea;
+    --theme-secondary: #764ba2;
+    --theme-gradient: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-secondary) 100%);
+
+    /* 界面主题色定义 */
+    --theme-lock: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --theme-home: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+    --theme-chat: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+    --theme-wallet: linear-gradient(135deg, #ffd700 0%, #ffb347 100%);
+    --theme-store: linear-gradient(135deg, #ff7043 0%, #ff5722 100%);
+    --theme-backpack: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%);
+    --theme-worldbook: linear-gradient(135deg, #5c6bc0 0%, #3f51b5 100%);
+    --theme-settings: linear-gradient(135deg, #78909c 0%, #546e7a 100%);
+    --theme-ios-settings: linear-gradient(135deg, #007aff 0%, #0051d5 100%);
+    --theme-mqtt: linear-gradient(135deg, #26c6da 0%, #00acc1 100%);
 }
 
 /* iOS设置容器 */
@@ -2823,7 +2842,7 @@ body .mqtt-room-screen.dark-theme .room-list-section {
 }
 
 .btn-create-room {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--theme-gradient);
     color: white;
     box-shadow: var(--shadow-md);
 }
@@ -3365,7 +3384,7 @@ body .mqtt-room-screen.dark-theme .room-list-section {
 
 /* 私聊消息样式 */
 .message.private {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--theme-gradient);
     color: white;
     border: 2px solid rgba(118, 75, 162, 0.3);
     position: relative;

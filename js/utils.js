@@ -103,6 +103,118 @@ const Utils = {
                 ? (flexScreens.includes(s.id) ? 'flex' : 'block')
                 : 'none';
         });
+
+        // 动态主题色切换
+        this.updateThemeColor(screenId);
+    },
+
+    // 更新主题色
+    updateThemeColor(screenId) {
+        // 先尝试自动检测界面颜色
+        const screen = document.getElementById(screenId);
+        let theme = null;
+
+        if (screen) {
+            // 尝试从界面背景色自动提取
+            const computedStyle = window.getComputedStyle(screen);
+            const bgColor = computedStyle.backgroundColor;
+            const bgImage = computedStyle.backgroundImage;
+
+            // 如果有渐变背景，提取渐变色
+            if (bgImage && bgImage.includes('gradient')) {
+                const colors = this.extractGradientColors(bgImage);
+                if (colors) {
+                    theme = { primary: colors[0], secondary: colors[1] };
+                }
+            }
+            // 如果是纯色背景
+            else if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+                theme = { primary: bgColor, secondary: this.darkenColor(bgColor, 20) };
+            }
+
+            // 特殊处理MQTT聊天室的暗黑模式
+            if (screenId === 'mqtt-room-screen') {
+                const mqttScreen = screen.querySelector('.mqtt-room-screen');
+                if (mqttScreen) {
+                    // 检查是否是暗黑模式（使用classList）
+                    if (mqttScreen.classList.contains('dark-theme')) {
+                        theme = { primary: '#1a1a2e', secondary: '#0f0f1e' };
+                    } else if (mqttScreen.classList.contains('light-theme')) {
+                        theme = { primary: '#26c6da', secondary: '#00acc1' };
+                    }
+                }
+            }
+        }
+
+        // 如果自动检测失败，使用预设主题
+        if (!theme) {
+            const themeMap = {
+                'lock-screen': { primary: '#667eea', secondary: '#764ba2' },
+                'home-screen': { primary: '#f8f9fa', secondary: '#e9ecef' },
+                'chat-screen': { primary: '#4a90e2', secondary: '#357abd' },
+                'wallet-screen': { primary: '#ffd700', secondary: '#ffb347' },
+                'store-screen': { primary: '#ff7043', secondary: '#ff5722' },
+                'backpack-screen': { primary: '#66bb6a', secondary: '#4caf50' },
+                'world-book-screen': { primary: '#5c6bc0', secondary: '#3f51b5' },
+                'settings-screen': { primary: '#78909c', secondary: '#546e7a' },
+                'general-settings-screen': { primary: '#78909c', secondary: '#546e7a' },
+                'ios-settings-minimal': { primary: '#007aff', secondary: '#0051d5' },
+                'mqtt-room-screen': { primary: '#26c6da', secondary: '#00acc1' }
+            };
+
+            theme = themeMap[screenId] || { primary: '#667eea', secondary: '#764ba2' };
+        }
+
+        // 更新CSS变量
+        document.documentElement.style.setProperty('--theme-primary', theme.primary);
+        document.documentElement.style.setProperty('--theme-secondary', theme.secondary);
+        document.documentElement.style.setProperty('--theme-gradient',
+            `linear-gradient(135deg, ${theme.primary} 0%, ${theme.secondary} 100%)`);
+
+        // 更新mobile-container的背景（仅在非PWA模式下）
+        if (!window.matchMedia('(display-mode: standalone)').matches &&
+            !window.matchMedia('(display-mode: fullscreen)').matches) {
+            const container = document.querySelector('.mobile-container');
+            if (container) {
+                // 为容器添加渐变边框效果
+                container.style.background = `linear-gradient(white, white) padding-box,
+                                             linear-gradient(135deg, ${theme.primary}, ${theme.secondary}) border-box`;
+                container.style.border = '2px solid transparent';
+            }
+        }
+    },
+
+    // 从渐变字符串提取颜色
+    extractGradientColors(gradientStr) {
+        const colorRegex = /#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}|rgb\([^)]+\)|rgba\([^)]+\)/g;
+        const colors = gradientStr.match(colorRegex);
+        if (colors && colors.length >= 2) {
+            return [colors[0], colors[colors.length - 1]];
+        }
+        return null;
+    },
+
+    // 加深颜色
+    darkenColor(color, percent) {
+        // 如果是rgb/rgba格式
+        if (color.startsWith('rgb')) {
+            const values = color.match(/\d+/g);
+            if (values) {
+                const r = Math.max(0, parseInt(values[0]) - percent * 2.55);
+                const g = Math.max(0, parseInt(values[1]) - percent * 2.55);
+                const b = Math.max(0, parseInt(values[2]) - percent * 2.55);
+                return `rgb(${r}, ${g}, ${b})`;
+            }
+        }
+        // 如果是hex格式
+        else if (color.startsWith('#')) {
+            const num = parseInt(color.replace('#', ''), 16);
+            const r = Math.max(0, (num >> 16) - percent * 2.55);
+            const g = Math.max(0, ((num >> 8) & 0x00FF) - percent * 2.55);
+            const b = Math.max(0, (num & 0x0000FF) - percent * 2.55);
+            return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+        }
+        return color;
     },
     
     // 安全绑定事件
