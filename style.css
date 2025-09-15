@@ -1675,9 +1675,11 @@ body, html {
 .mqtt-room-screen[data-theme="dark"] .room-input,
 .mqtt-room-screen[data-theme="dark"] .nickname-input,
 .mqtt-room-screen[data-theme="dark"] .room-password-input,
+.mqtt-room-screen[data-theme="dark"] .room-key-input,
 .mqtt-room-screen.theme-dark .room-input,
 .mqtt-room-screen.theme-dark .nickname-input,
-.mqtt-room-screen.theme-dark .room-password-input {
+.mqtt-room-screen.theme-dark .room-password-input,
+.mqtt-room-screen.theme-dark .room-key-input {
     background: #1a1f26 !important;
     border-color: rgba(255,255,255,0.1) !important;
     color: #e9eef6 !important;
@@ -2721,6 +2723,35 @@ body .mqtt-room-screen.dark-theme .room-list-section {
     padding: 4px 8px;
     border-radius: var(--border-radius-sm);
     font-size: 11px;
+}
+
+.key-input-group {
+    margin-top: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.room-key-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 60px;
+    background: white;
+    transition: border-color 0.3s;
+}
+
+.room-key-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.room-key-input::placeholder {
+    color: #999;
+    font-size: 12px;
+    line-height: 1.4;
 }
 
 .password-input-group,
@@ -3992,6 +4023,41 @@ body .mqtt-room-screen.dark-theme .room-list-section {
     padding: var(--spacing-xs) 0;
 }
 
+#room-key-row .info-value {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+#settings-room-key {
+    background: var(--bg-secondary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--card-border);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--primary-color);
+}
+
+.key-toggle-btn,
+.key-copy-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 10px;
+    transition: all 0.2s;
+    font-size: 12px;
+}
+
+.key-toggle-btn:hover,
+.key-copy-btn:hover {
+    opacity: 0.8;
+    transform: scale(1.05);
+}
+
 .info-label {
     color: var(--text-secondary);
     font-size: 14px;
@@ -4085,6 +4151,15 @@ body .mqtt-room-screen.dark-theme .room-list-section {
 .settings-btn.btn-danger {
     background: var(--error-color);
     color: white;
+    border: 2px solid var(--error-color);
+    font-weight: bold;
+}
+
+.settings-btn.btn-danger:hover {
+    background: #c82333;
+    border-color: #bd2130;
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
 }
 
 .admin-list {

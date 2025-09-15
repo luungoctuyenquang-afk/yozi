@@ -110,6 +110,8 @@ const Utils = {
 
     // 更新主题色
     updateThemeColor(screenId) {
+        // 获取用户设置的状态栏模式
+        const statusBarMode = localStorage.getItem('statusbar-mode') || 'light';
         // 先尝试自动检测界面颜色
         const screen = document.getElementById(screenId);
         let theme = null;
@@ -170,6 +172,13 @@ const Utils = {
         document.documentElement.style.setProperty('--theme-secondary', theme.secondary);
         document.documentElement.style.setProperty('--theme-gradient',
             `linear-gradient(135deg, ${theme.primary} 0%, ${theme.secondary} 100%)`);
+
+        // 更新状态栏颜色（使用固定的黑白模式）
+        const themeColorMeta = document.getElementById('theme-color-meta');
+        if (themeColorMeta) {
+            // 只使用黑白两种颜色，根据用户设置
+            themeColorMeta.setAttribute('content', statusBarMode === 'light' ? '#ffffff' : '#000000');
+        }
 
         // 更新mobile-container的背景（仅在非PWA模式下）
         if (!window.matchMedia('(display-mode: standalone)').matches &&

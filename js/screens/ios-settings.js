@@ -10,6 +10,11 @@ const IOSSettings = {
 
         this.bindEvents();
         this.updateProfile();
+
+        // 应用保存的状态栏模式
+        const savedMode = localStorage.getItem('statusbar-mode') || 'light';
+        this.applyStatusBarMode(savedMode);
+
         this.initialized = true;
     },
 
@@ -222,20 +227,41 @@ const IOSSettings = {
 
     // 外观设置
     showAppearanceSettings() {
-        const themes = ['默认', '暗黑', '护眼绿', '粉色'];
-        const currentTheme = localStorage.getItem('app-theme') || '默认';
+        // 获取当前状态栏模式
+        const currentStatusBarMode = localStorage.getItem('statusbar-mode') || 'light';
 
-        const themeList = themes.map(theme =>
-            `${theme === currentTheme ? '✓ ' : ''}${theme}`
-        ).join('\n');
+        const message = `
+外观设置
 
-        const choice = prompt(`选择主题:\n${themeList}\n\n输入主题名称:`, currentTheme);
+状态栏模式：
+${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' : '🌙 夜间模式（黑色状态栏）'}
 
-        if (choice && themes.includes(choice)) {
-            localStorage.setItem('app-theme', choice);
-            this.applyTheme(choice);
-            alert(`主题已切换为: ${choice}`);
+选择操作：
+1. 切换日夜间模式
+2. 取消
+        `.trim();
+
+        const choice = prompt(message, '1');
+
+        if (choice === '1') {
+            // 切换日夜间模式
+            const newMode = currentStatusBarMode === 'light' ? 'dark' : 'light';
+            localStorage.setItem('statusbar-mode', newMode);
+            this.applyStatusBarMode(newMode);
+            alert(`已切换为${newMode === 'light' ? '日间' : '夜间'}模式`);
         }
+    },
+
+    // 应用状态栏模式
+    applyStatusBarMode(mode) {
+        const themeColorMeta = document.getElementById('theme-color-meta');
+        if (themeColorMeta) {
+            // 日间模式用白色，夜间模式用黑色
+            themeColorMeta.setAttribute('content', mode === 'light' ? '#ffffff' : '#000000');
+        }
+
+        // 更新CSS变量供其他组件使用
+        document.documentElement.style.setProperty('--statusbar-mode', mode);
     },
 
     // 应用主题

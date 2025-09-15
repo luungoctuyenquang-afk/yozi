@@ -1497,6 +1497,13 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                                 <button class="btn-generate-room" id="btn-generate-room" title="生成随机房间号" style="display: none;">🎲</button>
                             </div>
                             <input type="text" class="nickname-input" placeholder="昵称" value="">
+                            <div class="key-input-group">
+                                <textarea class="room-key-input" placeholder="密钥/邀请链接（可选）
+• 粘贴完整邀请链接
+• 或输入密钥
+• 留空则以访客身份进入" rows="3"></textarea>
+                                <button class="verify-key-btn" id="verify-key-btn" style="display: none;">验证密钥</button>
+                            </div>
                             <div class="password-input-group" style="display: none;">
                                 <input type="password" class="room-password-input" placeholder="输入房间密码" maxlength="50">
                                 <button class="confirm-password-btn" id="confirm-password-btn">确认</button>
@@ -1667,6 +1674,14 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                                         <span class="info-label">房间类型：</span>
                                         <span class="info-value" id="settings-room-type">-</span>
                                     </div>
+                                    <div class="info-row" id="room-key-row" style="display: none;">
+                                        <span class="info-label">房间密钥：</span>
+                                        <span class="info-value">
+                                            <span id="settings-room-key" style="font-family: monospace; font-size: 12px;">********</span>
+                                            <button class="key-toggle-btn" id="toggle-key-btn" style="margin-left: 10px; padding: 2px 8px; font-size: 12px; cursor: pointer;">显示</button>
+                                            <button class="key-copy-btn" id="copy-key-btn" style="margin-left: 5px; padding: 2px 8px; font-size: 12px; cursor: pointer;">复制</button>
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1763,6 +1778,8 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             themeToggleBtn: mountEl.querySelector('#theme-toggle-btn'),
             roomInput: mountEl.querySelector('.room-input'),
             nicknameInput: mountEl.querySelector('.nickname-input'),
+            roomKeyInput: mountEl.querySelector('.room-key-input'),
+            verifyKeyBtn: mountEl.querySelector('#verify-key-btn'),
             createRoomBtn: mountEl.querySelector('#btn-create-room'),
             joinRoomBtn: mountEl.querySelector('#btn-join-room'),
             leaveBtn: mountEl.querySelector('.leave-btn'),
@@ -1789,6 +1806,10 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             settingsRoomOwner: mountEl.querySelector('#settings-room-owner'),
             settingsCreateTime: mountEl.querySelector('#settings-create-time'),
             settingsRoomType: mountEl.querySelector('#settings-room-type'),
+            settingsRoomKey: mountEl.querySelector('#settings-room-key'),
+            roomKeyRow: mountEl.querySelector('#room-key-row'),
+            toggleKeyBtn: mountEl.querySelector('#toggle-key-btn'),
+            copyKeyBtn: mountEl.querySelector('#copy-key-btn'),
 
             ownerSettings: mountEl.querySelector('#owner-settings'),
             settingsPrivateRoom: mountEl.querySelector('#settings-private-room'),
@@ -1822,6 +1843,9 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         }
         if (!elements.themeToggleBtn) {
             console.warn('MQTT聊天室：主题切换按钮未找到');
+        }
+        if (!elements.roomKeyInput) {
+            console.warn('MQTT聊天室：密钥输入框未找到');
         }
 
         // 设置默认昵称
@@ -2073,6 +2097,25 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
 
         // 保存远程配置供密码验证使用
         window.__remoteRoomConfig__ = remoteConfig;
+
+        // 更新本地roomConfig的类型（特别是访客进入时）
+        if (roomConfig && !roomConfig.roomType) {
+            roomConfig.roomType = configData.roomType || ROOM_TYPES.CASUAL;
+            roomConfig.createdBy = configData.createdBy;
+
+            // 如果是正式房间且没有密钥，禁用发送功能
+            const roomKey = window.__ROOM_UID__ || roomConfig.roomKey;
+            if (roomConfig.roomType === ROOM_TYPES.REGISTERED && !roomKey) {
+                if (elements.messageInput) {
+                    elements.messageInput.disabled = true;
+                    elements.messageInput.placeholder = '需要密钥才能发送消息，请向房主索取邀请链接';
+                }
+                if (elements.sendBtn) {
+                    elements.sendBtn.disabled = true;
+                }
+                log('system', '🔐 这是正式房间，需要密钥才能发送消息');
+            }
+        }
 
         log('system', `📥 接收到房间配置（房主：${configData.createdBy}）`);
 
@@ -2333,6 +2376,49 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             });
         }
 
+        // 显示/隐藏密钥按钮
+        if (elements.toggleKeyBtn) {
+            let keyVisible = false;
+            elements.toggleKeyBtn.addEventListener('click', () => {
+                const roomKey = window.__ROOM_UID__ || (roomConfig && roomConfig.roomKey);
+                if (!roomKey) {
+                    showAlert('当前房间没有密钥');
+                    return;
+                }
+
+                keyVisible = !keyVisible;
+                if (keyVisible) {
+                    elements.settingsRoomKey.textContent = roomKey;
+                    elements.toggleKeyBtn.textContent = '隐藏';
+                } else {
+                    elements.settingsRoomKey.textContent = '********';
+                    elements.toggleKeyBtn.textContent = '显示';
+                }
+            });
+        }
+
+        // 复制密钥按钮
+        if (elements.copyKeyBtn) {
+            elements.copyKeyBtn.addEventListener('click', async () => {
+                const roomKey = window.__ROOM_UID__ || (roomConfig && roomConfig.roomKey);
+                if (!roomKey) {
+                    showAlert('当前房间没有密钥');
+                    return;
+                }
+
+                try {
+                    await navigator.clipboard.writeText(roomKey);
+                    elements.copyKeyBtn.textContent = '已复制';
+                    setTimeout(() => {
+                        elements.copyKeyBtn.textContent = '复制';
+                    }, 2000);
+                    log('system', '✅ 密钥已复制到剪贴板');
+                } catch (error) {
+                    showAlert('复制失败，请手动复制');
+                }
+            });
+        }
+
         // 释放房间按钮
         if (elements.releaseRoomBtn) {
             elements.releaseRoomBtn.addEventListener('click', () => {
@@ -2396,6 +2482,16 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         const isOwner = roomConfig && roomConfig.createdBy === nickname;
         if (elements.ownerSettings) {
             elements.ownerSettings.style.display = isOwner ? 'block' : 'none';
+        }
+
+        // 显示密钥行（仅房主和有密钥的正式房间）
+        const roomKey = window.__ROOM_UID__ || (roomConfig && roomConfig.roomKey);
+        if (elements.roomKeyRow) {
+            if (isOwner && roomKey && roomConfig && roomConfig.roomType === ROOM_TYPES.REGISTERED) {
+                elements.roomKeyRow.style.display = 'flex';
+            } else {
+                elements.roomKeyRow.style.display = 'none';
+            }
         }
 
         // 显示房主专属按钮
@@ -2635,6 +2731,69 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         }
     }
     
+    // 验证房间密钥
+    function verifyRoomKey() {
+        const keyInput = elements.roomKeyInput ? elements.roomKeyInput.value.trim() : '';
+        if (!keyInput) {
+            log('system', '💡 请输入密钥或邀请链接');
+            return;
+        }
+
+        // 智能识别输入类型
+        if (keyInput.includes('http') || keyInput.includes('?')) {
+            // 输入的是完整链接，解析参数
+            try {
+                const url = new URL(keyInput.includes('http') ? keyInput : 'http://dummy.com?' + keyInput);
+                const room = url.searchParams.get('room');
+                const nick = url.searchParams.get('nick');
+                const uid = url.searchParams.get('uid');
+                const token = url.searchParams.get('token');
+
+                if (room) {
+                    elements.roomInput.value = decodeURIComponent(room);
+                    log('system', `📎 从链接提取房间号: ${room}`);
+                }
+                if (nick && elements.nicknameInput.value === '') {
+                    elements.nicknameInput.value = decodeURIComponent(nick);
+                    log('system', `📎 从链接提取昵称: ${decodeURIComponent(nick)}`);
+                }
+                if (uid) {
+                    window.__ROOM_UID__ = uid;
+                    log('system', '🔑 从链接提取密钥成功');
+                    elements.verifyKeyBtn.textContent = '✅ 已验证';
+                    elements.verifyKeyBtn.style.background = '#28a745';
+                }
+                if (token) {
+                    const tokenData = verifyInviteToken(token);
+                    if (tokenData) {
+                        window.__INVITE_TOKEN__ = tokenData;
+                        if (tokenData.role === 'owner') {
+                            log('system', '👑 检测到房主邀请令牌');
+                        } else if (tokenData.role === 'admin') {
+                            log('system', '⭐ 检测到管理员邀请令牌');
+                        }
+                    }
+                }
+
+                showAlert('✅ 邀请链接解析成功！\n房间号和密钥已自动填入。');
+            } catch (e) {
+                log('system', '⚠️ 邀请链接格式无效');
+                showAlert('邀请链接格式无效，请检查后重试');
+            }
+        } else if (keyInput.length > 30 && /^[A-Za-z0-9\-_]+$/.test(keyInput)) {
+            // 输入的是密钥
+            window.__ROOM_UID__ = keyInput;
+            log('system', '🔑 密钥已设置');
+            elements.verifyKeyBtn.textContent = '✅ 已验证';
+            elements.verifyKeyBtn.style.background = '#28a745';
+            showAlert('✅ 密钥验证成功！');
+        } else {
+            // 格式不正确
+            log('system', '⚠️ 输入的内容格式不正确');
+            showAlert('请输入有效的密钥或邀请链接');
+        }
+    }
+
     // 复制邀请链接到剪贴板
     async function copyInviteLink() {
         const roomId = elements.roomInput?.value?.trim();
@@ -2727,12 +2886,16 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                     if (genBtn) genBtn.style.display = 'inline-block';
                     if (roomTypeSelector) roomTypeSelector.style.display = 'block';
                     elements.roomInput.placeholder = '输入房间号（或点击骰子生成）';
+                    // 创建模式隐藏密钥验证按钮
+                    if (elements.verifyKeyBtn) elements.verifyKeyBtn.style.display = 'none';
                 } else {
                     elements.createRoomBtn.style.display = 'none';
                     elements.joinRoomBtn.style.display = 'inline-block';
                     if (genBtn) genBtn.style.display = 'none';
                     if (roomTypeSelector) roomTypeSelector.style.display = 'none';
                     elements.roomInput.placeholder = '输入房间号';
+                    // 加入模式显示密钥验证按钮
+                    if (elements.verifyKeyBtn) elements.verifyKeyBtn.style.display = 'inline-block';
                 }
             });
         });
@@ -2741,6 +2904,21 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         const copyInviteBtn = mountEl.querySelector('#btn-copy-invite');
         if (copyInviteBtn) {
             copyInviteBtn.addEventListener('click', () => copyInviteLink());
+        }
+
+        // 验证密钥按钮
+        if (elements.verifyKeyBtn) {
+            elements.verifyKeyBtn.addEventListener('click', () => verifyRoomKey());
+        }
+
+        // 密钥输入框回车事件
+        if (elements.roomKeyInput) {
+            elements.roomKeyInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    verifyRoomKey();
+                }
+            });
         }
         
         // 创建房间按钮
@@ -3178,6 +3356,14 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         roomId = elements.roomInput.value.trim();
         nickname = elements.nicknameInput.value.trim();
 
+        // 创建房间时通常不需要输入密钥，但可以处理用户误输入的情况
+        const keyInput = elements.roomKeyInput ? elements.roomKeyInput.value.trim() : '';
+        if (keyInput) {
+            log('system', '💡 创建房间时无需输入密钥，系统将自动生成');
+            // 清空密钥输入框
+            elements.roomKeyInput.value = '';
+        }
+
         // 先检查本地是否有该房间的配置
         const existingConfig = loadRoomConfig(roomId);
         if (existingConfig && existingConfig.createdBy) {
@@ -3478,6 +3664,36 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             return;
         }
 
+        // 处理密钥输入
+        const keyInput = elements.roomKeyInput ? elements.roomKeyInput.value.trim() : '';
+        if (keyInput) {
+            // 智能识别输入类型
+            if (keyInput.includes('http') || keyInput.includes('?')) {
+                // 输入的是完整链接，解析密钥
+                try {
+                    const url = new URL(keyInput.includes('http') ? keyInput : 'http://dummy.com?' + keyInput);
+                    const uid = url.searchParams.get('uid');
+                    if (uid) {
+                        window.__ROOM_UID__ = uid;
+                        log('system', '🔑 从邀请链接中提取了密钥');
+                    }
+                } catch (e) {
+                    log('system', '⚠️ 邀请链接格式无效');
+                }
+            } else if (keyInput.length > 30 && /^[A-Za-z0-9\-_]+$/.test(keyInput)) {
+                // 输入的是密钥
+                window.__ROOM_UID__ = keyInput;
+                log('system', '🔑 已设置房间密钥');
+            } else {
+                // 可能是房间密码，稍后处理
+                log('system', '💡 输入的内容将作为房间密码尝试');
+            }
+        } else {
+            // 没有输入密钥，清除之前可能存在的密钥
+            window.__ROOM_UID__ = null;
+            log('system', '👤 将以访客身份加入（无密钥）');
+        }
+
         // 先检查房间是否已被占用（激活）
         log('system', '🔍 检查房间状态...');
         const roomOccupation = await checkRoomOccupation(roomId);
@@ -3493,9 +3709,19 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                 isRoomAdmin = true;
                 // 继续连接流程，会在后面发布占用信息
             } else {
-                // 不是房主，房间确实不存在
-                showAlert(`❌ 房间 "${roomId}" 不存在或未激活！\n\n可能原因：\n1. 房间ID输入错误\n2. 房主尚未创建此房间\n3. 房主已释放此房间\n\n请确认房间ID或联系房主。`);
-                return;
+                // 不是房主，允许作为访客尝试加入
+                log('system', '📡 正在尝试连接到房间...');
+                log('system', '💡 将在连接后获取房间配置');
+                // 创建基本的访客配置（房间类型待定）
+                roomConfig = {
+                    roomId: roomId,
+                    roomType: null,  // 类型待定，连接后从房主配置获取
+                    isLocallyCreated: false,
+                    createdBy: null,
+                    adminUsers: [],
+                    roomKey: window.__ROOM_UID__ || null  // 如果有URL传入的密钥则使用
+                };
+                // 继续连接，进入房间后会收到房主的配置
             }
         }
 
@@ -3844,6 +4070,20 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         addToRoomHistory(roomId, nickname);
                         // 加载历史聊天记录
                         loadChatHistoryToUI(roomId);
+
+                        // 检查正式房间的密钥状态，控制输入框
+                        const roomKey = window.__ROOM_UID__ || (roomConfig && roomConfig.roomKey);
+                        if (roomConfig && roomConfig.roomType === ROOM_TYPES.REGISTERED && !roomKey) {
+                            // 正式房间但没有密钥，禁用输入框
+                            if (elements.messageInput) {
+                                elements.messageInput.disabled = true;
+                                elements.messageInput.placeholder = '需要密钥才能发送消息，请向房主索取邀请链接';
+                            }
+                            if (elements.sendBtn) {
+                                elements.sendBtn.disabled = true;
+                            }
+                            log('system', '⚠️ 您没有密钥，只能查看（消息为乱码），无法发送消息');
+                        }
                         
                         // 保存房间配置到本地（确保房主权限和密钥被持久化）
                         if (roomConfig) {
@@ -4026,7 +4266,14 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             showAlert('消息长度不能超过500个字符');
             return;
         }
-        
+
+        // 检查是否有密钥（正式房间必须有密钥才能发送）
+        const roomKey = window.__ROOM_UID__ || (roomConfig && roomConfig.roomKey);
+        if (roomConfig && roomConfig.roomType === ROOM_TYPES.REGISTERED && !roomKey) {
+            showAlert('⚠️ 您没有房间密钥，无法发送消息！\n请向房主索取邀请链接。');
+            return;
+        }
+
         // 根据当前聊天类型发送消息
         if (currentChatType === 'private' && currentPrivateUser) {
             // 发送私聊消息
