@@ -1961,6 +1961,13 @@ body, html {
     color: var(--iosm-label);
     flex-direction: column;
     height: 100%;
+    overflow: hidden;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    touch-action: none;
 }
 
 .iosm-header {
@@ -1999,11 +2006,15 @@ body, html {
 }
 
 .iosm-body {
-    padding: 0 8px 16px 4px;
+    padding: 0 8px 40px 2px;
     height: calc(100% - 52px);
     overflow: auto;
     overflow-y: scroll;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    position: relative;
+    z-index: 10;
 }
 
 /* iOS风格极简滚动条 */
