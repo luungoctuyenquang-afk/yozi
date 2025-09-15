@@ -813,7 +813,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             });
 
             // 监听密码输入框变化，重置保存按钮状态
-            passwordInput.addEventListener('input', () => {
+            passwordCreateInput.addEventListener('input', () => {
                 if (savePasswordBtn) {
                     savePasswordBtn.textContent = '保存';
                     savePasswordBtn.style.background = '';
@@ -823,7 +823,7 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
             // 绑定保存密码按钮
             if (savePasswordBtn) {
                 savePasswordBtn.addEventListener('click', () => {
-                    const password = passwordInput.value.trim();
+                    const password = passwordCreateInput.value.trim();
                     if (password.length < 3) {
                         showAlert('密码长度至少3个字符！');
                         return;
@@ -4534,6 +4534,9 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
     
     return appInstance;
 }
+
+// 暴露到全局作用域，以便main.js可以调用
+window.createMqttRoomApp = createMqttRoomApp;
 
 // 导出模块（如果在模块环境中）
 if (typeof module !== 'undefined' && module.exports) {
