@@ -21,7 +21,7 @@ const SettingsScreen = {
             document.getElementById('preset-name-input').value = activePreset.name;
             document.getElementById('api-provider-select').value = activePreset.provider;
             document.getElementById('api-endpoint-input').value = activePreset.endpoint;
-            document.getElementById('api-key-input').value = activePreset.apiKey;
+            document.getElementById('settings-api-key-input').value = activePreset.apiKey;
             document.getElementById('api-model-input').value = activePreset.model;
             
             const apiModelsList = document.getElementById('api-models-list');
@@ -45,7 +45,7 @@ const SettingsScreen = {
             preset.name = document.getElementById('preset-name-input').value.trim() || '未命名预设';
             preset.provider = document.getElementById('api-provider-select').value;
             preset.endpoint = document.getElementById('api-endpoint-input').value.trim();
-            preset.apiKey = document.getElementById('api-key-input').value.trim();
+            preset.apiKey = document.getElementById('settings-api-key-input').value.trim();
             preset.model = document.getElementById('api-model-input').value.trim();
             
             state.apiConfig.presets = state.apiConfig.presets.map(p => 
@@ -99,7 +99,7 @@ const SettingsScreen = {
         
         const provider = document.getElementById('api-provider-select').value;
         let endpoint = document.getElementById('api-endpoint-input').value.trim();
-        const apiKey = document.getElementById('api-key-input').value.trim();
+        const apiKey = document.getElementById('settings-api-key-input').value.trim();
         
         if (!apiKey) {
             indicator.textContent = '失败: 请先填写API密钥。';
@@ -170,7 +170,7 @@ const SettingsScreen = {
         const config = {
             provider: document.getElementById('api-provider-select').value,
             endpoint: document.getElementById('api-endpoint-input').value.trim(),
-            apiKey: document.getElementById('api-key-input').value.trim(),
+            apiKey: document.getElementById('settings-api-key-input').value.trim(),
             model: document.getElementById('api-model-input').value
         };
         

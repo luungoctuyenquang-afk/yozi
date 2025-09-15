@@ -3242,8 +3242,19 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         log('system', '🔍 检查房间ID是否已被占用...');
         const roomOccupied = await checkRoomOccupation(roomId);
         if (roomOccupied) {
-            showAlert(`❌ 房间 "${roomId}" 已被占用！\n\n房主: ${roomOccupied.owner}\n创建时间: ${new Date(roomOccupied.createdAt).toLocaleString()}\n\n请选择其他房间号或联系房主。`);
-            return;
+            // 检查是否是房主本人
+            const localConfig = loadRoomConfig(roomId);
+            if (localConfig && localConfig.createdBy === nickname && localConfig.roomKey === roomOccupied.roomKey) {
+                // 是房主，允许继续
+                log('system', '👑 检测到您是房主，允许重新加入房间');
+                roomConfig = localConfig;
+                window.__ROOM_UID__ = localConfig.roomKey;
+                isRoomAdmin = true;
+            } else {
+                // 不是房主，房间已被占用
+                showAlert(`❌ 房间 "${roomId}" 已被占用！\n\n房主: ${roomOccupied.owner}\n创建时间: ${new Date(roomOccupied.createdAt).toLocaleString()}\n\n请选择其他房间号或联系房主。`);
+                return;
+            }
         }
         
         if (!roomId || !nickname) {
@@ -3472,26 +3483,41 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
         const roomOccupation = await checkRoomOccupation(roomId);
 
         if (!roomOccupation) {
-            // 房间未被占用，不能加入
-            showAlert(`❌ 房间 "${roomId}" 不存在或未激活！\n\n可能原因：\n1. 房间ID输入错误\n2. 房主尚未创建此房间\n3. 房主已释放此房间\n\n请确认房间ID或联系房主。`);
-            return;
+            // 房间未被占用，检查是否是房主
+            const localConfig = loadRoomConfig(roomId);
+            if (localConfig && localConfig.createdBy === nickname) {
+                // 是房主，但房间未激活，需要重新激活
+                log('system', '👑 检测到您是房主，正在重新激活房间...');
+                roomConfig = localConfig;
+                window.__ROOM_UID__ = localConfig.roomKey;
+                isRoomAdmin = true;
+                // 继续连接流程，会在后面发布占用信息
+            } else {
+                // 不是房主，房间确实不存在
+                showAlert(`❌ 房间 "${roomId}" 不存在或未激活！\n\n可能原因：\n1. 房间ID输入错误\n2. 房主尚未创建此房间\n3. 房主已释放此房间\n\n请确认房间ID或联系房主。`);
+                return;
+            }
         }
 
         // 房间已被占用，可以尝试加入
-        log('system', `✅ 找到房间 "${roomId}"，房主: ${roomOccupation.owner}`);
+        if (roomOccupation) {
+            log('system', `✅ 找到房间 "${roomId}"，房主: ${roomOccupation.owner}`);
 
-        // 检查是否是房主本人
-        const currentPlayerName = getPlayerName();
-        if (currentPlayerName === roomOccupation.owner || nickname === roomOccupation.owner) {
-            // 是房主，需要验证是否有本地备份
-            const localConfig = loadRoomConfig(roomId);
-            if (!localConfig || localConfig.roomKey !== roomOccupation.roomKey) {
-                showAlert(`⚠️ 检测到您是房主 "${roomOccupation.owner}"，但本地没有房间密钥！\n\n请使用房间备份文件恢复房间权限。`);
-                return;
+            // 检查是否是房主本人
+            const currentPlayerName = getPlayerName();
+            if (currentPlayerName === roomOccupation.owner || nickname === roomOccupation.owner) {
+                // 是房主，需要验证是否有本地备份
+                const localConfig = loadRoomConfig(roomId);
+                if (!localConfig || localConfig.roomKey !== roomOccupation.roomKey) {
+                    showAlert(`⚠️ 检测到您是房主 "${roomOccupation.owner}"，但本地没有房间密钥！\n\n请使用房间备份文件恢复房间权限。`);
+                    return;
+                }
+                // 恢复房主权限
+                roomConfig = localConfig;
+                window.__ROOM_UID__ = localConfig.roomKey;
+                isRoomAdmin = true;
+                log('system', `👑 房主身份确认，恢复房间权限`);
             }
-            // 恢复房主权限
-            window.__ROOM_UID__ = localConfig.roomKey;
-            log('system', `👑 房主身份确认，恢复房间权限`);
         }
         
         // 检查昵称长度
@@ -3921,29 +3947,14 @@ function createMqttRoomApp({ mountEl, getPlayerName, brokerUrl = 'wss://test.mos
                         // 更新用户计数
                         updateRoomUserCount(roomId, nickname, 'leave');
                         
-                        // 如果是房主离开，询问是否释放房间
+                        // 房主离开时，房间保持运行
                         if (roomConfig && roomConfig.createdBy === nickname) {
-                            const releaseRoom = confirm(
-                                `您是房主，是否要释放房间 "${roomId}"？\n\n` +
-                                `⚠️ 释放风险：\n` +
-                                `- 房间ID将可被其他人占用\n` +
-                                `- 如果ID被占用，您需要使用新ID恢复房间\n` +
-                                `- 其他用户将无法再加入此房间\n\n` +
-                                `✅ 不释放的好处：\n` +
-                                `- 房间保持激活，其他用户可继续使用\n` +
-                                `- 您随时可以用房主身份重新加入\n` +
-                                `- 房间ID永远为您保留\n\n` +
-                                `建议：长期房间选择"取消"保留，临时房间选择"确定"释放`
-                            );
-
-                            if (releaseRoom) {
-                                // 清除房间占用信息
-                                clearRoomOccupation(roomId);
-                                publishRoomClosed(roomId);
-                                log('system', '房主离开，房间已释放');
-                            } else {
-                                log('system', '房主离开，房间保持激活状态');
-                            }
+                            log('system', '👑 房主离开，房间继续运行');
+                            log('system', '💡 提示：其他用户仍可继续使用房间');
+                            log('system', '📌 您可以随时以房主身份重新加入');
+                            log('system', '🗑️ 如需释放房间，请在设置面板中操作');
+                            // 不清除任何配置，不询问释放
+                            // 房间保持激活状态，保留所有数据
                         }
                         
                         log('system', '正在离开房间...');
