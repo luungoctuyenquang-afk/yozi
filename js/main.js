@@ -106,12 +106,56 @@ document.addEventListener('DOMContentLoaded', () => {
         // 全局MQTT应用实例
         let mqttRoomApp = null;
         
+        // 锁屏时间更新
+        function updateLockScreen() {
+            const pad2 = n => String(n).padStart(2, '0');
+            const week = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+            const d = new Date();
+            const hh = pad2(d.getHours()), mm = pad2(d.getMinutes());
+
+            // 更新时间
+            const timeEl = document.getElementById('big-time');
+            if (timeEl) timeEl.textContent = hh + ':' + mm;
+
+            // 更新日期
+            const dateEl = document.getElementById('date-text');
+            if (dateEl) {
+                const dateLine = (d.getMonth() + 1) + '月' + d.getDate() + '日' + week[d.getDay()];
+                dateEl.textContent = dateLine;
+            }
+
+            // 更新进度（今日进度和周进度）
+            const now = new Date();
+            const dayProgress = (now.getHours() * 60 + now.getMinutes()) / (24 * 60);
+            const weekProgress = ((now.getDay() || 7) - 1 + dayProgress) / 7;
+
+            // 更新周进度
+            const weekPercent = Math.round(weekProgress * 100);
+            const leftPercentEl = document.getElementById('left-percent');
+            if (leftPercentEl) leftPercentEl.textContent = weekPercent + '%';
+
+            // 更新周进度条
+            const widgetsEl = document.querySelector('.widgets');
+            if (widgetsEl) widgetsEl.style.setProperty('--pct', weekProgress);
+
+            // 更新今日进度环
+            const ringEl = document.getElementById('ring');
+            if (ringEl) {
+                const dayPercent = Math.round(dayProgress * 100);
+                ringEl.style.setProperty('--val', dayProgress);
+            }
+        }
+
+        // 每分钟更新一次
+        setInterval(updateLockScreen, 60000);
+        updateLockScreen();
+
         // 锁屏解锁
         Utils.safeBind(document.getElementById('lock-screen'), 'click', async () => {
             Utils.showScreen('home-screen');
             renderHomeScreen();
             await Database.saveWorldState();
-            
+
             // iOS PWA提示
             const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
             const isStandalone = window.navigator.standalone === true;

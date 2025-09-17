@@ -785,7 +785,33 @@
         </section>
                 <section id="lock-screen" class="screen">
             <div class="lock-content">
-                <div class="time-display">10:24</div>
+                <div class="date-row">
+                    <span id="date-text">6月1日周日</span>
+                    <span class="dot">·</span>
+                    <span id="lunar-text">乙巳年五月初六</span>
+                </div>
+                <div class="time-display" id="big-time">10:24</div>
+
+                <div class="widgets" style="--pct:.84">
+                    <div class="w-left">
+                        <div class="line1">
+                            <span class="title">This week</span>
+                            <span class="percent" id="left-percent">84%</span>
+                        </div>
+                        <div class="bar"><i></i></div>
+                    </div>
+                    <div class="w-mid">
+                        <div class="icon-box" aria-label="icon"></div>
+                    </div>
+                    <div class="w-right">
+                        <div class="ring" id="ring"></div>
+                        <div class="text">
+                            <b>80%</b>
+                            <span>今日</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="unlock-prompt">点击屏幕以解锁</div>
             </div>
         </section>
