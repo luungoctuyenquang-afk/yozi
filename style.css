@@ -2833,7 +2833,7 @@ input:checked + .iosm-slider:before {
 
     /* 2. 主界面 - 背景全屏，内容智能避让 */
     #home-screen {
-        background-color: #f9f9f9 !important;
+        background-color: var(--home-safe-area-color, #f9f9f9) !important;
         padding: 0 !important;
         /* 确保填充整个屏幕 */
         min-height: 100vh !important;
@@ -2851,7 +2851,7 @@ input:checked + .iosm-slider:before {
         padding-right: 20px;
         padding-bottom: calc(10px + env(safe-area-inset-bottom));
         overflow-y: auto;
-        background-color: #f9f9f9 !important;
+        background-color: var(--home-safe-area-color, #f9f9f9) !important;
     }
 
     /* 3. 聊天界面 - 输入框智能保护 */
