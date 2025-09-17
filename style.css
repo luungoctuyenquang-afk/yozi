@@ -2703,13 +2703,13 @@ input:checked + .iosm-slider:before {
 
 /* PWA全屏模式智能安全区方案 */
 @media (display-mode: standalone), (display-mode: fullscreen) {
-    /* 设置整体背景避免白边 */
+    /* 设置整体背景避免白边 - 使用锁屏背景变量 */
     html, body {
-        background: var(--theme-gradient) !important;
+        background: var(--lock-screen-bg) !important;
     }
 
     #app {
-        background: var(--theme-gradient) !important;
+        background: var(--lock-screen-bg) !important;
         min-height: 100vh;
         min-height: -webkit-fill-available;
         height: 100%;
@@ -2733,7 +2733,7 @@ input:checked + .iosm-slider:before {
         box-sizing: border-box;
     }
 
-    /* 1. 锁屏界面 - 完全全屏 + 星空背景 */
+    /* 1. 锁屏界面 - 完全全屏 + 使用CSS变量背景 */
     #lock-screen {
         position: absolute !important;
         top: 0 !important;
@@ -2745,9 +2745,8 @@ input:checked + .iosm-slider:before {
         min-height: -webkit-fill-available !important;
         padding: 0 !important;
         margin: 0 !important;
-        /* 保持星空背景 */
-        background: radial-gradient(120% 100% at 50% 100%, rgba(0,0,0,.28), transparent 60%),
-                    linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%) !important;
+        /* 使用CSS变量，让颜色设置能生效 */
+        background: var(--lock-screen-bg) !important;
         overflow: hidden !important;
         z-index: 999 !important;
     }
