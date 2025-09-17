@@ -20,13 +20,14 @@
 <body>
     <div class="mobile-container">
         <main id="home-screen" class="screen">
-            <h1>主页</h1>
-            <p>
-                <span id="player-name-display" onclick="WorldBookV2.editPlayerName()" style="cursor:pointer;text-decoration:underline;">你</span>
-                好，我是 
-                <span id="ai-name-display">...</span>
-            </p>
-               <div class="app-grid">
+            <div class="home-content">
+                <h1>主页</h1>
+                <p>
+                    <span id="player-name-display" onclick="WorldBookV2.editPlayerName()" style="cursor:pointer;text-decoration:underline;">你</span>
+                    好，我是
+                    <span id="ai-name-display">...</span>
+                </p>
+                <div class="app-grid">
                 <div class="app-icon" id="open-chat-app"><div class="app-icon-bg">💬</div><span class="app-name">聊天</span></div>
                 <div class="app-icon" id="open-mqtt-room-app"><div class="app-icon-bg">🌐</div><span class="app-name">聊天室</span></div>
                 <div class="app-icon" id="open-wallet-app"><div class="app-icon-bg">💰</div><span class="app-name">钱包</span></div>
@@ -52,6 +53,7 @@
                 </div>
               </div>
             </details>
+            </div>
         </main>
         
         <section id="chat-screen" class="screen">
@@ -782,8 +784,10 @@
             <div id="mqtt-room-container"></div>
         </section>
                 <section id="lock-screen" class="screen">
-            <div class="time-display">10:24</div>
-            <div class="unlock-prompt">点击屏幕以解锁</div>
+            <div class="lock-content">
+                <div class="time-display">10:24</div>
+                <div class="unlock-prompt">点击屏幕以解锁</div>
+            </div>
         </section>
     </div>
 
