@@ -112,7 +112,8 @@ const IOSSettings = {
 
             case 'appearance':
                 // 外观主题设置
-                this.showAppearanceSettings();
+                Utils.showScreen('appearance-settings');
+                this.initAppearanceSettings();
                 break;
 
             case 'cache':
@@ -375,6 +376,394 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
         const root = document.querySelector('#ios-settings-minimal');
         if (root) {
             root.style.display = 'none';
+        }
+    },
+
+    // 初始化外观设置
+    initAppearanceSettings() {
+        const screenSelector = document.getElementById('screen-selector');
+        const colorSectionTitle = document.getElementById('color-section-title');
+        const resetBtnText = document.getElementById('reset-btn-text');
+        const preview = document.getElementById('color-preview');
+
+        // 默认颜色配置
+        const defaultColors = {
+            'lock-screen': 'default', // 星空背景
+            'home-screen': '#f9f9f9',
+            'chat-screen': '#ffffff',
+            'wallet-screen': '#ffffff',
+            'store-screen': '#ffffff',
+            'settings-screen': '#f8f8f8'
+        };
+
+        // 界面名称映射
+        const screenNames = {
+            'lock-screen': '锁屏',
+            'home-screen': '主界面',
+            'chat-screen': '聊天界面',
+            'wallet-screen': '钱包',
+            'store-screen': '商店',
+            'settings-screen': '设置'
+        };
+
+        // 切换界面时更新UI
+        if (screenSelector) {
+            screenSelector.addEventListener('change', () => {
+                const screen = screenSelector.value;
+                const savedColor = localStorage.getItem(`screen-color-${screen}`) || defaultColors[screen];
+
+                // 更新标题
+                if (colorSectionTitle) {
+                    colorSectionTitle.textContent = `🎨 ${screenNames[screen]}背景颜色`;
+                }
+                if (resetBtnText) {
+                    resetBtnText.textContent = `恢复${screenNames[screen]}默认颜色`;
+                }
+
+                // 更新颜色按钮状态
+                document.querySelectorAll('.color-btn').forEach(btn => {
+                    btn.classList.remove('color-btn-active');
+                    if (btn.dataset.color === savedColor) {
+                        btn.classList.add('color-btn-active');
+                    }
+                });
+
+                // 更新预览
+                this.updatePreview(screen, savedColor);
+            });
+        }
+
+        // 颜色按钮事件
+        document.querySelectorAll('.color-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const screen = screenSelector.value;
+                const color = btn.dataset.color;
+                this.setScreenColor(screen, color);
+
+                // 更新激活状态
+                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('color-btn-active'));
+                btn.classList.add('color-btn-active');
+            });
+        });
+
+        // 自定义颜色
+        const applyBtn = document.getElementById('apply-custom-color');
+        const hexInput = document.getElementById('custom-color-hex');
+        if (applyBtn && hexInput) {
+            applyBtn.addEventListener('click', () => {
+                const screen = screenSelector.value;
+                const color = hexInput.value;
+                if (color && /^#[0-9A-Fa-f]{6}$/.test(color)) {
+                    this.setScreenColor(screen, color);
+                    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('color-btn-active'));
+                } else {
+                    alert('请输入正确的颜色编码，如 #ff6b6b');
+                }
+            });
+        }
+
+        // 重置当前界面颜色
+        const resetBtn = document.getElementById('reset-screen-color');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                const screen = screenSelector.value;
+                this.setScreenColor(screen, defaultColors[screen]);
+                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('color-btn-active'));
+                const defaultBtn = document.querySelector(`[data-color="${defaultColors[screen]}"]`);
+                if (defaultBtn) defaultBtn.classList.add('color-btn-active');
+            });
+        }
+
+        // 重置所有颜色
+        const resetAllBtn = document.getElementById('reset-all-colors');
+        if (resetAllBtn) {
+            resetAllBtn.addEventListener('click', () => {
+                Object.keys(defaultColors).forEach(screen => {
+                    localStorage.removeItem(`screen-color-${screen}`);
+                    this.applyScreenColor(screen, defaultColors[screen]);
+                });
+                alert('所有界面颜色已重置');
+                screenSelector.dispatchEvent(new Event('change'));
+            });
+        }
+
+        // 初始加载时触发一次
+        screenSelector.dispatchEvent(new Event('change'));
+    },
+
+    // 设置界面颜色
+    setScreenColor(screen, color) {
+        localStorage.setItem(`screen-color-${screen}`, color);
+        this.applyScreenColor(screen, color);
+        this.updatePreview(screen, color);
+    },
+
+    // 应用界面颜色
+    applyScreenColor(screen, color) {
+        const element = document.getElementById(screen);
+        if (!element) return;
+
+        if (screen === 'lock-screen') {
+            // 锁屏特殊处理
+            if (color === 'default') {
+                element.style.background = `radial-gradient(120% 100% at 50% 100%, rgba(0,0,0,.28), transparent 60%),
+                                           linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%)`;
+                // PWA模式下同步更新容器背景
+                if (window.matchMedia('(display-mode: standalone)').matches) {
+                    document.documentElement.style.setProperty('--mobile-container-bg',
+                        'linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%)');
+                }
+            } else {
+                element.style.background = color;
+                // PWA模式下同步更新容器背景，解决底部白条
+                if (window.matchMedia('(display-mode: standalone)').matches) {
+                    document.documentElement.style.setProperty('--mobile-container-bg', color);
+                }
+            }
+        } else {
+            // 其他界面
+            element.style.backgroundColor = color;
+        }
+    },
+
+    // 更新预览
+    updatePreview(screen, color) {
+        const preview = document.getElementById('color-preview');
+        if (!preview) return;
+
+        if (screen === 'lock-screen' && color === 'default') {
+            preview.style.background = `radial-gradient(120% 100% at 50% 100%, rgba(0,0,0,.28), transparent 60%),
+                                       linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%)`;
+        } else {
+            preview.style.background = color;
+        }
+    },
+
+    // 加载所有保存的颜色
+    loadSavedColors() {
+        const screens = ['lock-screen', 'home-screen', 'chat-screen', 'wallet-screen', 'store-screen', 'backpack-screen', 'settings-screen'];
+
+        screens.forEach(screen => {
+            const savedColor = localStorage.getItem(`safe-area-${screen}`);
+            if (savedColor) {
+                this.applySafeAreaColor(screen, savedColor);
+            }
+        });
+    },
+
+    // 打开单个界面的安全区设置
+    openScreenSettings(screenName) {
+        Utils.showScreen('screen-color-settings');
+
+        // 更新标题
+        const titleEl = document.getElementById('screen-color-title');
+        const screenNames = {
+            'lock-screen': '锁屏',
+            'home-screen': '主页',
+            'chat-screen': '聊天',
+            'wallet-screen': '钱包',
+            'store-screen': '商店',
+            'backpack-screen': '背包',
+            'settings-screen': '设置'
+        };
+
+        if (titleEl) {
+            titleEl.textContent = `${screenNames[screenName] || screenName}底部安全区`;
+        }
+
+        // 保存当前编辑的界面名称
+        this.currentScreen = screenName;
+
+        // 加载该界面的已保存颜色
+        const savedColor = localStorage.getItem(`safe-area-${screenName}`) || 'default';
+
+        // 更新颜色按钮状态
+        this.updateColorButtons(savedColor);
+
+        // 更新预览
+        this.updateSafeAreaPreview(savedColor);
+
+        // 绑定颜色按钮事件
+        this.bindColorButtonEvents();
+
+        // 绑定自定义颜色输入
+        this.bindCustomColorInput();
+
+        // 绑定重置按钮
+        this.bindResetButton();
+    },
+
+    // 更新颜色按钮选中状态
+    updateColorButtons(activeColor) {
+        document.querySelectorAll('.color-btn').forEach(btn => {
+            btn.classList.remove('color-btn-active');
+            if (btn.dataset.color === activeColor) {
+                btn.classList.add('color-btn-active');
+            }
+        });
+
+        // 如果是自定义颜色，更新输入框
+        if (activeColor !== 'default' && activeColor.startsWith('#')) {
+            const input = document.getElementById('custom-safe-area-color');
+            if (input) input.value = activeColor;
+        }
+    },
+
+    // 更新预览
+    updateSafeAreaPreview(color) {
+        const previewEl = document.getElementById('preview-safe-area');
+        if (!previewEl) return;
+
+        if (color === 'default') {
+            // 默认使用渐变背景
+            if (this.currentScreen === 'lock-screen') {
+                previewEl.style.background = 'linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%)';
+            } else {
+                previewEl.style.background = '#f9f9f9';
+            }
+        } else {
+            previewEl.style.background = color;
+        }
+    },
+
+    // 绑定颜色按钮事件
+    bindColorButtonEvents() {
+        const buttons = document.querySelectorAll('.color-btn');
+        buttons.forEach(btn => {
+            // 使用新的事件处理器，避免重复绑定
+            btn.onclick = (e) => {
+                const color = e.currentTarget.dataset.color;
+                this.applySafeAreaColor(this.currentScreen, color);
+                this.updateColorButtons(color);
+                this.updateSafeAreaPreview(color);
+            };
+        });
+    },
+
+    // 绑定自定义颜色输入
+    bindCustomColorInput() {
+        const applyBtn = document.getElementById('apply-safe-area-color');
+        if (applyBtn) {
+            applyBtn.onclick = () => {
+                const input = document.getElementById('custom-safe-area-color');
+                if (!input) return;
+
+                const color = input.value.trim();
+                if (!color) return;
+
+                // 验证颜色格式
+                if (!/^#[0-9A-Fa-f]{6}$/.test(color)) {
+                    alert('请输入正确的颜色编码，如 #667eea');
+                    return;
+                }
+
+                this.applySafeAreaColor(this.currentScreen, color);
+                this.updateColorButtons(color);
+                this.updateSafeAreaPreview(color);
+            };
+        }
+    },
+
+    // 绑定重置按钮
+    bindResetButton() {
+        const resetBtn = document.getElementById('reset-safe-area-color');
+        if (resetBtn) {
+            resetBtn.onclick = () => {
+                this.applySafeAreaColor(this.currentScreen, 'default');
+                this.updateColorButtons('default');
+                this.updateSafeAreaPreview('default');
+
+                // 清空自定义颜色输入
+                const input = document.getElementById('custom-safe-area-color');
+                if (input) input.value = '';
+            };
+        }
+    },
+
+    // 应用安全区颜色到实际界面
+    applySafeAreaColor(screenName, color) {
+        // 保存到localStorage
+        localStorage.setItem(`safe-area-${screenName}`, color);
+
+        // 获取对应的screen元素
+        const screenEl = document.getElementById(screenName);
+        if (!screenEl) return;
+
+        // 应用颜色
+        if (color === 'default') {
+            // 恢复默认背景
+            if (screenName === 'lock-screen') {
+                // 锁屏特殊处理，恢复星空背景
+                screenEl.style.removeProperty('background');
+                // PWA模式下更新容器背景
+                if (window.matchMedia('(display-mode: standalone)').matches) {
+                    document.documentElement.style.setProperty('--mobile-container-bg',
+                        'linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%)');
+                }
+            } else {
+                screenEl.style.removeProperty('background-color');
+            }
+        } else {
+            // 应用自定义颜色
+            if (screenName === 'lock-screen') {
+                screenEl.style.background = color;
+                // PWA模式下同步更新容器背景
+                if (window.matchMedia('(display-mode: standalone)').matches) {
+                    document.documentElement.style.setProperty('--mobile-container-bg', color);
+                }
+            } else {
+                screenEl.style.backgroundColor = color;
+            }
+        }
+    },
+
+    // 重置所有界面主题
+    resetAllThemes() {
+        if (!confirm('确定要重置所有界面的美化设置吗？')) return;
+
+        const screens = [
+            'lock-screen',
+            'home-screen',
+            'chat-screen',
+            'wallet-screen',
+            'store-screen',
+            'backpack-screen',
+            'settings-screen'
+        ];
+
+        screens.forEach(screen => {
+            localStorage.removeItem(`safe-area-${screen}`);
+            this.applySafeAreaColor(screen, 'default');
+        });
+
+        alert('所有美化设置已重置！');
+    },
+
+    // 切换日夜间模式（预留功能）
+    toggleDarkMode(isDark) {
+        if (isDark) {
+            // 夜间模式配色方案（预留）
+            console.log('切换到夜间模式');
+            // 这里可以应用暗色主题
+            // document.body.classList.add('dark-mode');
+            localStorage.setItem('dark-mode', 'true');
+        } else {
+            // 日间模式配色方案（预留）
+            console.log('切换到日间模式');
+            // document.body.classList.remove('dark-mode');
+            localStorage.setItem('dark-mode', 'false');
+        }
+
+        // 提示用户功能待完善
+        alert('日夜间模式功能正在开发中，敬请期待！');
+    },
+
+    // 初始化日夜间模式开关状态
+    initDarkModeToggle() {
+        const toggle = document.getElementById('dark-mode-toggle');
+        if (toggle) {
+            const isDark = localStorage.getItem('dark-mode') === 'true';
+            toggle.checked = isDark;
         }
     }
 };

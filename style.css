@@ -316,6 +316,209 @@ body {
     bottom: calc(60px + env(safe-area-inset-bottom));
     color: #5b7dff;
 }
+
+/* 外观设置样式 */
+.color-palette {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    padding: 15px;
+}
+
+.color-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.color-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.color-btn-active {
+    border-color: #3f6cff !important;
+    box-shadow: 0 0 0 3px rgba(63, 108, 255, 0.2);
+}
+
+.custom-color-input {
+    display: flex;
+    gap: 10px;
+    padding: 0 15px;
+}
+
+.custom-color-input input {
+    flex: 1;
+    padding: 10px 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    font-size: 14px;
+}
+
+.iosm-btn-primary {
+    padding: 10px 20px;
+    background: #3f6cff;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.iosm-btn-primary:hover {
+    background: #2c5ce5;
+}
+
+.iosm-hint {
+    font-size: 12px;
+    color: #999;
+    padding: 0 15px;
+}
+
+.lockscreen-preview {
+    margin: 15px;
+    height: 200px;
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    background: radial-gradient(120% 100% at 50% 100%, rgba(0,0,0,.28), transparent 60%),
+                linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%);
+    transition: background 0.3s;
+}
+
+.preview-content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+}
+
+.preview-time {
+    font-size: 48px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+}
+
+.preview-date {
+    font-size: 14px;
+    opacity: 0.8;
+    margin-top: 5px;
+}
+
+/* 界面选择器 */
+.iosm-select {
+    width: 100%;
+    padding: 12px 15px;
+    margin: 0 15px;
+    width: calc(100% - 30px);
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    background: white;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* iOS式开关 */
+.iosm-switch {
+    position: relative;
+    display: inline-block;
+    width: 51px;
+    height: 31px;
+    margin-left: auto;
+}
+
+.iosm-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.iosm-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    border-radius: 31px;
+    transition: .4s;
+}
+
+.iosm-slider:before {
+    position: absolute;
+    content: "";
+    height: 27px;
+    width: 27px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    border-radius: 50%;
+    transition: .4s;
+}
+
+input:checked + .iosm-slider {
+    background-color: #4cd964;
+}
+
+input:checked + .iosm-slider:before {
+    transform: translateX(20px);
+}
+
+/* 安全区预览 */
+.safe-area-preview {
+    margin: 15px;
+    height: 250px;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.preview-phone {
+    width: 100%;
+    height: 100%;
+    background: #f0f0f0;
+    position: relative;
+}
+
+.preview-screen {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.preview-content-area {
+    flex: 1;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    font-size: 14px;
+}
+
+.preview-safe-area {
+    height: 60px;
+    background: linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+    transition: background 0.3s;
+}
 #home-screen { z-index: 5; }
 #home-screen h1 { margin-bottom: 20px; }
 #ai-name-display { color: #764ba2; font-weight: bold; }
@@ -2473,12 +2676,12 @@ body {
         position: relative;
     }
 
-    /* 确保容器链完全撑满 - 使用星空背景作为保底 */
+    /* 确保容器链完全撑满 - 动态背景色 */
     .mobile-container {
         min-height: 100vh !important;
         min-height: -webkit-fill-available !important;
-        /* 锁屏时显示星空背景 */
-        background: linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%) !important;
+        /* 使用CSS变量方便动态切换 */
+        background: var(--mobile-container-bg, linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%)) !important;
     }
     /* 基础设置 - 所有screen元素 */
     .screen {

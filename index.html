@@ -731,7 +731,7 @@
                     </button>
                     <button class="iosm-row" data-key="appearance">
                         <span class="iosm-leading">🎨</span>
-                        <span class="iosm-label">外观主题</span>
+                        <span class="iosm-label">美化外观主题</span>
                         <span class="iosm-value">自定义</span>
                         <span class="iosm-chev">›</span>
                     </button>
@@ -739,6 +739,153 @@
                         <span class="iosm-leading">🧹</span>
                         <span class="iosm-label">清理缓存</span>
                         <span class="iosm-value">释放空间</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 美化外观主题主页面 -->
+        <section id="appearance-settings" class="screen iosm" role="region" aria-label="美化外观主题">
+            <header class="iosm-header">
+                <button class="iosm-back" onclick="Utils.showScreen('ios-settings-minimal')" aria-label="返回">‹</button>
+            </header>
+            <h2 class="iosm-title">美化外观主题</h2>
+
+            <div class="iosm-body">
+                <!-- 界面列表 -->
+                <div class="iosm-group" aria-label="界面设置">
+                    <button class="iosm-row" onclick="IOSSettings.openScreenSettings('lock-screen')">
+                        <span class="iosm-leading">🔒</span>
+                        <span class="iosm-label">锁屏</span>
+                        <span class="iosm-value">底部安全区</span>
+                        <span class="iosm-chev">›</span>
+                    </button>
+                    <button class="iosm-row" onclick="IOSSettings.openScreenSettings('home-screen')">
+                        <span class="iosm-leading">🏠</span>
+                        <span class="iosm-label">主页</span>
+                        <span class="iosm-value">底部安全区</span>
+                        <span class="iosm-chev">›</span>
+                    </button>
+                    <button class="iosm-row" onclick="IOSSettings.openScreenSettings('chat-screen')">
+                        <span class="iosm-leading">💬</span>
+                        <span class="iosm-label">聊天</span>
+                        <span class="iosm-value">底部安全区</span>
+                        <span class="iosm-chev">›</span>
+                    </button>
+                    <button class="iosm-row" onclick="IOSSettings.openScreenSettings('wallet-screen')">
+                        <span class="iosm-leading">💰</span>
+                        <span class="iosm-label">钱包</span>
+                        <span class="iosm-value">底部安全区</span>
+                        <span class="iosm-chev">›</span>
+                    </button>
+                    <button class="iosm-row" onclick="IOSSettings.openScreenSettings('store-screen')">
+                        <span class="iosm-leading">🛍️</span>
+                        <span class="iosm-label">商店</span>
+                        <span class="iosm-value">底部安全区</span>
+                        <span class="iosm-chev">›</span>
+                    </button>
+                    <button class="iosm-row" onclick="IOSSettings.openScreenSettings('backpack-screen')">
+                        <span class="iosm-leading">🎒</span>
+                        <span class="iosm-label">背包</span>
+                        <span class="iosm-value">底部安全区</span>
+                        <span class="iosm-chev">›</span>
+                    </button>
+                    <button class="iosm-row" onclick="IOSSettings.openScreenSettings('settings-screen')">
+                        <span class="iosm-leading">⚙️</span>
+                        <span class="iosm-label">设置</span>
+                        <span class="iosm-value">底部安全区</span>
+                        <span class="iosm-chev">›</span>
+                    </button>
+                </div>
+
+                <!-- 一键日夜间模式 -->
+                <div class="iosm-group" aria-label="快捷设置">
+                    <div class="iosm-row">
+                        <span class="iosm-leading">🌙</span>
+                        <span class="iosm-label">一键日夜间模式</span>
+                        <label class="iosm-switch">
+                            <input type="checkbox" id="dark-mode-toggle" onchange="IOSSettings.toggleDarkMode(this.checked)">
+                            <span class="iosm-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 全局重置 -->
+                <div class="iosm-group">
+                    <button class="iosm-row" onclick="IOSSettings.resetAllThemes()">
+                        <span class="iosm-leading">🔄</span>
+                        <span class="iosm-label">重置所有美化设置</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 单个界面的安全区颜色设置页 -->
+        <section id="screen-color-settings" class="screen iosm" role="region" aria-label="安全区颜色">
+            <header class="iosm-header">
+                <button class="iosm-back" onclick="Utils.showScreen('appearance-settings')" aria-label="返回">‹</button>
+            </header>
+            <h2 class="iosm-title" id="screen-color-title">锁屏底部安全区</h2>
+
+            <div class="iosm-body">
+                <!-- 底部安全区颜色 -->
+                <div class="iosm-group" aria-label="底部安全区颜色">
+                    <div class="iosm-row">
+                        <span class="iosm-label" style="font-weight:600">🎨 底部安全区颜色</span>
+                    </div>
+
+                    <!-- 预设颜色 -->
+                    <div class="color-palette">
+                        <button class="color-btn color-btn-active" data-color="default" title="默认">
+                            <span style="font-size:20px">✨</span>
+                        </button>
+                        <button class="color-btn" data-color="#dc2626" style="background:#dc2626" title="红色"></button>
+                        <button class="color-btn" data-color="#ea580c" style="background:#ea580c" title="橙色"></button>
+                        <button class="color-btn" data-color="#fbbf24" style="background:#fbbf24" title="黄色"></button>
+                        <button class="color-btn" data-color="#16a34a" style="background:#16a34a" title="绿色"></button>
+                        <button class="color-btn" data-color="#06b6d4" style="background:#06b6d4" title="青色"></button>
+                        <button class="color-btn" data-color="#2563eb" style="background:#2563eb" title="蓝色"></button>
+                        <button class="color-btn" data-color="#9333ea" style="background:#9333ea" title="紫色"></button>
+                        <button class="color-btn" data-color="#000000" style="background:#000000" title="黑色"></button>
+                        <button class="color-btn" data-color="#ffffff" style="background:#ffffff;border:1px solid #ddd" title="白色"></button>
+                    </div>
+                </div>
+
+                <!-- 自定义颜色 -->
+                <div class="iosm-group" aria-label="自定义颜色">
+                    <div class="iosm-row">
+                        <span class="iosm-label">自定义颜色</span>
+                    </div>
+                    <div class="custom-color-input">
+                        <input type="text" id="custom-safe-area-color" placeholder="#667eea" class="iosm-input" maxlength="7">
+                        <button id="apply-safe-area-color" class="iosm-btn-primary">应用</button>
+                    </div>
+                    <div class="iosm-row">
+                        <span class="iosm-hint">输入颜色编码，如 #ff6b6b</span>
+                    </div>
+                </div>
+
+                <!-- 预览 -->
+                <div class="iosm-group" aria-label="预览">
+                    <div class="safe-area-preview" id="safe-area-preview">
+                        <div class="preview-phone">
+                            <div class="preview-screen">
+                                <div class="preview-content-area">
+                                    <span>内容区域</span>
+                                </div>
+                                <div class="preview-safe-area" id="preview-safe-area">
+                                    <span>底部安全区</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 重置按钮 -->
+                <div class="iosm-group">
+                    <button class="iosm-row" id="reset-safe-area-color">
+                        <span class="iosm-leading">🔄</span>
+                        <span class="iosm-label">恢复默认颜色</span>
                     </button>
                 </div>
             </div>

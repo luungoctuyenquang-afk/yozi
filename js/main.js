@@ -5,6 +5,11 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('未处理的Promise错误：', event.reason);
         event.preventDefault();
     });
+
+    // 加载保存的界面颜色
+    if (window.IOSSettings && window.IOSSettings.loadSavedColors) {
+        window.IOSSettings.loadSavedColors();
+    }
     
     // 初始化数据库
     Database.init();
