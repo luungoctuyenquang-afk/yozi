@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>色卡展示 - 美化外观主题配色方案</title>
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+h1 {
+    text-align: center;
+    color: white;
+    font-size: 32px;
+    margin-bottom: 10px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.subtitle {
+    text-align: center;
+    color: rgba(255,255,255,0.9);
+    font-size: 16px;
+    margin-bottom: 40px;
+}
+
+/* 预设颜色区域 */
+.section {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+}
+
+.section-title {
+    font-size: 20px;
+    color: #333;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.color-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 20px;
+}
+
+.color-card {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+    cursor: pointer;
+}
+
+.color-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+.color-preview {
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+}
+
+.color-info {
+    background: white;
+    padding: 15px;
+}
+
+.color-name {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.color-code {
+    font-family: "SF Mono", Monaco, "Courier New", monospace;
+    color: #666;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.copy-btn {
+    background: #f0f0f0;
+    border: none;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.copy-btn:hover {
+    background: #e0e0e0;
+}
+
+/* 渐变色卡 */
+.gradient-card {
+    grid-column: span 2;
+}
+
+.gradient-preview {
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+    font-weight: 600;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* 推荐配色方案 */
+.scheme-grid {
+    display: grid;
+    gap: 20px;
+}
+
+.scheme-card {
+    display: flex;
+    gap: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.scheme-color {
+    flex: 1;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.scheme-info {
+    background: white;
+    padding: 15px;
+    width: 100%;
+}
+
+.scheme-name {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.scheme-desc {
+    color: #666;
+    font-size: 14px;
+}
+
+/* 提示信息 */
+.tips {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    margin-top: 30px;
+}
+
+.tips h3 {
+    margin-bottom: 10px;
+}
+
+.tips ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.tips li {
+    padding: 5px 0;
+    padding-left: 20px;
+    position: relative;
+}
+
+.tips li:before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .color-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    }
+
+    .gradient-card {
+        grid-column: span 1;
+    }
+
+    h1 {
+        font-size: 24px;
+    }
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>🎨 色卡展示</h1>
+    <p class="subtitle">虚拟手机美化外观主题配色方案</p>
+
+    <!-- 预设颜色 -->
+    <div class="section">
+        <h2 class="section-title">
+            <span>🎯</span>
+            <span>预设颜色</span>
+        </h2>
+        <div class="color-grid">
+            <div class="color-card" onclick="copyColor('#dc2626')">
+                <div class="color-preview" style="background: #dc2626;">🔴</div>
+                <div class="color-info">
+                    <div class="color-name">热情红</div>
+                    <div class="color-code">
+                        <span>#dc2626</span>
+                        <button class="copy-btn">复制</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="color-card" onclick="copyColor('#ea580c')">
+                <div class="color-preview" style="background: #ea580c;">🟠</div>
+                <div class="color-info">
+                    <div class="color-name">活力橙</div>
+                    <div class="color-code">
+                        <span>#ea580c</span>
+                        <button class="copy-btn">复制</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="color-card" onclick="copyColor('#fbbf24')">
+                <div class="color-preview" style="background: #fbbf24;">🟡</div>
+                <div class="color-info">
+                    <div class="color-name">明亮黄</div>
+                    <div class="color-code">
+                        <span>#fbbf24</span>
+                        <button class="copy-btn">复制</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="color-card" onclick="copyColor('#16a34a')">
+                <div class="color-preview" style="background: #16a34a;">🟢</div>
+                <div class="color-info">
+                    <div class="color-name">自然绿</div>
+                    <div class="color-code">
+                        <span>#16a34a</span>
+                        <button class="copy-btn">复制</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="color-card" onclick="copyColor('#06b6d4')">
+                <div class="color-preview" style="background: #06b6d4;">🟦</div>
+                <div class="color-info">
+                    <div class="color-name">清新青</div>
+                    <div class="color-code">
+                        <span>#06b6d4</span>
+                        <button class="copy-btn">复制</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="color-card" onclick="copyColor('#2563eb')">
+                <div class="color-preview" style="background: #2563eb;">🔵</div>
+                <div class="color-info">
+                    <div class="color-name">科技蓝</div>
+                    <div class="color-code">
+                        <span>#2563eb</span>
+                        <button class="copy-btn">复制</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="color-card" onclick="copyColor('#9333ea')">
+                <div class="color-preview" style="background: #9333ea;">🟣</div>
+                <div class="color-info">
+                    <div class="color-name">梦幻紫</div>
+                    <div class="color-code">
+                        <span>#9333ea</span>
+                        <button class="copy-btn">复制</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="color-card" onclick="copyColor('#ec4899')">
+                <div class="color-preview" style="background: #ec4899;">💖</div>
+                <div class="color-info">
+                    <div class="color-name">甜心粉</div>
+                    <div class="color-code">
+                        <span>#ec4899</span>
+                        <button class="copy-btn">复制</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="color-card" onclick="copyColor('#000000')">
+                <div class="color-preview" style="background: #000000;">⚫</div>
+                <div class="color-info">
+                    <div class="color-name">纯黑</div>
+                    <div class="color-code">
+                        <span>#000000</span>
+                        <button class="copy-btn">复制</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="color-card" onclick="copyColor('#ffffff')">
+                <div class="color-preview" style="background: #ffffff; border: 1px solid #e0e0e0;">⚪</div>
+                <div class="color-info">
+                    <div class="color-name">纯白</div>
+                    <div class="color-code">
+                        <span>#ffffff</span>
+                        <button class="copy-btn">复制</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 渐变色推荐 -->
+    <div class="section">
+        <h2 class="section-title">
+            <span>🌈</span>
+            <span>渐变色推荐</span>
+        </h2>
+        <div class="color-grid">
+            <div class="color-card gradient-card">
+                <div class="gradient-preview" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    紫罗兰星空
+                </div>
+                <div class="color-info">
+                    <div class="color-name">紫罗兰星空</div>
+                    <div class="color-code">linear-gradient(135deg, #667eea, #764ba2)</div>
+                </div>
+            </div>
+
+            <div class="color-card gradient-card">
+                <div class="gradient-preview" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    粉红落日
+                </div>
+                <div class="color-info">
+                    <div class="color-name">粉红落日</div>
+                    <div class="color-code">linear-gradient(135deg, #f093fb, #f5576c)</div>
+                </div>
+            </div>
+
+            <div class="color-card gradient-card">
+                <div class="gradient-preview" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    海洋之心
+                </div>
+                <div class="color-info">
+                    <div class="color-name">海洋之心</div>
+                    <div class="color-code">linear-gradient(135deg, #4facfe, #00f2fe)</div>
+                </div>
+            </div>
+
+            <div class="color-card gradient-card">
+                <div class="gradient-preview" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                    薄荷清新
+                </div>
+                <div class="color-info">
+                    <div class="color-name">薄荷清新</div>
+                    <div class="color-code">linear-gradient(135deg, #43e97b, #38f9d7)</div>
+                </div>
+            </div>
+
+            <div class="color-card gradient-card">
+                <div class="gradient-preview" style="background: linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%);">
+                    星空夜幕
+                </div>
+                <div class="color-info">
+                    <div class="color-name">星空夜幕（锁屏默认）</div>
+                    <div class="color-code">linear-gradient(180deg, #060d22, #0a173f, #0a1a4a)</div>
+                </div>
+            </div>
+
+            <div class="color-card gradient-card">
+                <div class="gradient-preview" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                    夏日阳光
+                </div>
+                <div class="color-info">
+                    <div class="color-name">夏日阳光</div>
+                    <div class="color-code">linear-gradient(135deg, #fa709a, #fee140)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主题配色方案 -->
+    <div class="section">
+        <h2 class="section-title">
+            <span>🎭</span>
+            <span>主题配色方案</span>
+        </h2>
+        <div class="scheme-grid">
+            <div class="scheme-card">
+                <div class="scheme-color" style="background: #1a1a1a;">暗夜</div>
+                <div class="scheme-color" style="background: #2d2d2d;">深灰</div>
+                <div class="scheme-color" style="background: #404040;">中灰</div>
+                <div class="scheme-color" style="background: #ffffff; color: #333;">白色</div>
+            </div>
+            <div class="scheme-info">
+                <div class="scheme-name">暗黑模式</div>
+                <div class="scheme-desc">适合夜间使用，保护眼睛</div>
+            </div>
+
+            <div class="scheme-card">
+                <div class="scheme-color" style="background: #fce4ec;">粉</div>
+                <div class="scheme-color" style="background: #f8bbd0;">桃</div>
+                <div class="scheme-color" style="background: #f48fb1;">玫</div>
+                <div class="scheme-color" style="background: #f06292;">红</div>
+            </div>
+            <div class="scheme-info">
+                <div class="scheme-name">少女心</div>
+                <div class="scheme-desc">温柔甜美的粉色系列</div>
+            </div>
+
+            <div class="scheme-card">
+                <div class="scheme-color" style="background: #e8f5e9;">淡绿</div>
+                <div class="scheme-color" style="background: #a5d6a7;">草绿</div>
+                <div class="scheme-color" style="background: #66bb6a;">叶绿</div>
+                <div class="scheme-color" style="background: #43a047;">森林</div>
+            </div>
+            <div class="scheme-info">
+                <div class="scheme-name">护眼绿</div>
+                <div class="scheme-desc">自然清新，缓解眼疲劳</div>
+            </div>
+
+            <div class="scheme-card">
+                <div class="scheme-color" style="background: #e3f2fd;">天蓝</div>
+                <div class="scheme-color" style="background: #90caf9;">晴空</div>
+                <div class="scheme-color" style="background: #42a5f5;">海洋</div>
+                <div class="scheme-color" style="background: #1e88e5;">深海</div>
+            </div>
+            <div class="scheme-info">
+                <div class="scheme-name">科技蓝</div>
+                <div class="scheme-desc">专业简约的商务风格</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 使用提示 -->
+    <div class="tips">
+        <h3>💡 使用提示</h3>
+        <ul>
+            <li>点击色卡可以复制颜色代码</li>
+            <li>在美化设置中输入颜色代码即可应用</li>
+            <li>建议锁屏使用深色，其他界面使用浅色</li>
+            <li>可以为不同界面设置不同的主题色</li>
+            <li>渐变色暂时只支持锁屏界面</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+function copyColor(color) {
+    // 创建临时输入框
+    const input = document.createElement('input');
+    input.value = color;
+    document.body.appendChild(input);
+    input.select();
+    document.execCommand('copy');
+    document.body.removeChild(input);
+
+    // 显示提示
+    const toast = document.createElement('div');
+    toast.textContent = `已复制: ${color}`;
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        z-index: 9999;
+        animation: fadeIn 0.3s ease;
+    `;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => document.body.removeChild(toast), 300);
+    }, 2000);
+}
+
+// 添加动画
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+        to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    @keyframes fadeOut {
+        from { opacity: 1; transform: translateX(-50%) translateY(0); }
+        to { opacity: 0; transform: translateX(-50%) translateY(20px); }
+    }
+`;
+document.head.appendChild(style);
+</script>
+</body>
+</html>

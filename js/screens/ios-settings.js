@@ -545,8 +545,20 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
 
         screens.forEach(screen => {
             const savedColor = localStorage.getItem(`safe-area-${screen}`);
-            if (savedColor) {
-                this.applySafeAreaColor(screen, savedColor);
+            if (savedColor && savedColor !== 'default') {
+                // 直接应用颜色，不需要保存（因为已经在localStorage中了）
+                const screenEl = document.getElementById(screen);
+                if (!screenEl) return;
+
+                if (screen === 'lock-screen') {
+                    screenEl.style.background = savedColor;
+                    // PWA模式下同步更新容器背景
+                    if (window.matchMedia('(display-mode: standalone)').matches) {
+                        document.documentElement.style.setProperty('--mobile-container-bg', savedColor);
+                    }
+                } else {
+                    screenEl.style.backgroundColor = savedColor;
+                }
             }
         });
     },
@@ -571,23 +583,24 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
             titleEl.textContent = `${screenNames[screenName] || screenName}底部安全区`;
         }
 
-        // 保存当前编辑的界面名称
+        // 保存当前编辑的界面名称和临时颜色
         this.currentScreen = screenName;
-
-        // 加载该界面的已保存颜色
-        const savedColor = localStorage.getItem(`safe-area-${screenName}`) || 'default';
+        this.tempColor = localStorage.getItem(`safe-area-${screenName}`) || 'default';
 
         // 更新颜色按钮状态
-        this.updateColorButtons(savedColor);
+        this.updateColorButtons(this.tempColor);
 
         // 更新预览
-        this.updateSafeAreaPreview(savedColor);
+        this.updateSafeAreaPreview(this.tempColor);
 
         // 绑定颜色按钮事件
         this.bindColorButtonEvents();
 
         // 绑定自定义颜色输入
         this.bindCustomColorInput();
+
+        // 绑定保存按钮
+        this.bindSaveButton();
 
         // 绑定重置按钮
         this.bindResetButton();
@@ -633,7 +646,7 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
             // 使用新的事件处理器，避免重复绑定
             btn.onclick = (e) => {
                 const color = e.currentTarget.dataset.color;
-                this.applySafeAreaColor(this.currentScreen, color);
+                this.tempColor = color; // 保存到临时颜色
                 this.updateColorButtons(color);
                 this.updateSafeAreaPreview(color);
             };
@@ -657,9 +670,21 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
                     return;
                 }
 
-                this.applySafeAreaColor(this.currentScreen, color);
+                this.tempColor = color; // 保存到临时颜色
                 this.updateColorButtons(color);
                 this.updateSafeAreaPreview(color);
+            };
+        }
+    },
+
+    // 绑定保存按钮
+    bindSaveButton() {
+        const saveBtn = document.getElementById('save-safe-area-color');
+        if (saveBtn) {
+            saveBtn.onclick = () => {
+                // 保存颜色到localStorage并应用到实际界面
+                this.applySafeAreaColor(this.currentScreen, this.tempColor);
+                alert('设置已保存！');
             };
         }
     },
@@ -669,7 +694,7 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
         const resetBtn = document.getElementById('reset-safe-area-color');
         if (resetBtn) {
             resetBtn.onclick = () => {
-                this.applySafeAreaColor(this.currentScreen, 'default');
+                this.tempColor = 'default'; // 重置为默认
                 this.updateColorButtons('default');
                 this.updateSafeAreaPreview('default');
 
