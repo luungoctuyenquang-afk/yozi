@@ -31,10 +31,10 @@ body {
     width: 100vw;
     height: 100vh;
     height: -webkit-fill-available; /* iOS真实视口高度 */
-    background-color: #ffffff; /* 白色背景作为默认 */
+    background-color: transparent; /* 透明背景 */
     border-radius: 0;
     box-shadow: none;
-    position: relative; /* 改回relative */
+    position: relative;
     overflow: hidden;
     /* 添加过渡动画 */
     transition: background 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
@@ -88,10 +88,10 @@ body {
     width: 100%;
     height: 100%;
     padding: 20px;
-    padding-top: calc(20px + env(safe-area-inset-top));
-    padding-bottom: env(safe-area-inset-bottom); /* 只保留安全区高度，不额外增加 */
-    padding-left: max(15px, env(safe-area-inset-left));
-    padding-right: max(15px, env(safe-area-inset-right));
+    padding-top: env(safe-area-inset-top); /* 只用安全区，不额外加 */
+    padding-bottom: env(safe-area-inset-bottom); /* 只用安全区 */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
     box-sizing: border-box;
     background-color: #f9f9f9;
     display: none;
@@ -140,7 +140,7 @@ body {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 15px;
-    padding-bottom: max(20px, env(safe-area-inset-bottom)); /* 确保图标不被遮挡 */
+    padding-bottom: env(safe-area-inset-bottom); /* 只用安全区 */
 }
 .app-icon { display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; }
 .app-icon-bg { width: 60px; height: 60px; background-color: #e0e0e0; border-radius: 15px; display: flex; justify-content: center; align-items: center; font-size: 30px; transition: transform 0.2s; }
@@ -165,11 +165,10 @@ body {
     align-items: center;
     gap: 10px;
     padding: 10px;
-    padding-bottom: max(10px, env(safe-area-inset-bottom)); /* 确保有足够间距但不过多 */
+    padding-bottom: calc(10px + env(safe-area-inset-bottom)); /* 底部安全区加小间距 */
     border-top: 1px solid #e0e0e0;
     background-color: #f8f8f8;
-    /* 确保输入框区域背景延伸到底部 */
-    margin-bottom: 0;
+    margin: 0;
 }
 .chat-input-form input { flex-grow: 1; border: 1px solid #ccc; border-radius: 18px; padding: 8px 12px; font-size: 16px; }
 .chat-input-form button { background-color: #007aff; color: white; border: none; border-radius: 18px; padding: 8px 15px; font-size: 16px; cursor: pointer; flex-shrink: 0; }
@@ -2270,15 +2269,13 @@ body {
 
 /* PWA全屏模式特别优化 */
 @media (display-mode: standalone), (display-mode: fullscreen) {
-    /* 移动端容器全屏 */
-    .mobile-container {
-        background-color: transparent; /* 让各screen背景显示 */
-    }
-
-    /* 所有屏幕在PWA模式下的间距调整 */
+    /* 所有屏幕在PWA模式下真正全屏 */
     .screen {
-        padding-top: calc(20px + env(safe-area-inset-top)) !important;
+        /* 只用安全区，不额外增加padding */
+        padding-top: env(safe-area-inset-top) !important;
         padding-bottom: env(safe-area-inset-bottom) !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
         /* 确保背景色充满整个屏幕 */
         min-height: 100vh;
         min-height: -webkit-fill-available;
@@ -2292,8 +2289,9 @@ body {
 
     /* 主屏幕特殊处理 */
     #home-screen {
-        padding-top: calc(20px + env(safe-area-inset-top)) !important;
-        padding-bottom: 0 !important; /* 底部由app-grid处理 */
+        padding: 15px; /* 内容边距 */
+        padding-top: calc(15px + env(safe-area-inset-top)) !important;
+        padding-bottom: env(safe-area-inset-bottom) !important;
         background-color: #f9f9f9;
     }
 
@@ -2301,16 +2299,21 @@ body {
     .chat-header, .wallet-header, .store-header,
     .backpack-header, .world-book-header, .settings-header {
         padding-top: calc(10px + env(safe-area-inset-top));
+        margin: 0;
+        padding-left: 15px;
+        padding-right: 15px;
     }
 
     /* 聊天屏幕特殊处理 */
     #chat-screen {
         background-color: #ffffff;
+        padding: 0;
     }
 
-    /* 确保消息容器背景正确 */
+    /* 消息容器调整 */
     .message-container {
         background-color: #ffffff;
+        padding: 15px;
     }
 
     .screen.iosm {
