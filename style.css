@@ -109,6 +109,16 @@ body {
     --store-screen-bg: #ffffff;
     --backpack-screen-bg: #ffffff;
     --settings-screen-bg: #f8f8f8;
+
+    /* 安全区元素背景色（导航栏、输入框等） */
+    --safe-area-color: #f8f8f8; /* 全局默认安全区颜色 */
+    --chat-safe-area-color: #f8f8f8; /* 聊天界面安全区颜色 */
+    --wallet-safe-area-color: #f8f8f8; /* 钱包界面安全区颜色 */
+    --store-safe-area-color: #f8f8f8; /* 商店界面安全区颜色 */
+    --backpack-safe-area-color: #f8f8f8; /* 背包界面安全区颜色 */
+    --settings-safe-area-color: #f8f8f8; /* 设置界面安全区颜色 */
+    --home-safe-area-color: transparent; /* 主页安全区颜色（透明） */
+    --lock-safe-area-color: transparent; /* 锁屏安全区颜色（透明） */
 }
 
 /* 应用CSS变量到各个界面 */
@@ -583,13 +593,58 @@ input:checked + .iosm-slider:before {
     background-color: #ffffff;
 }
 /* ▲▲▲ 新增/修改 ▲▲▲ */
-.chat-header, .wallet-header, .store-header, .backpack-header, .world-book-header, .settings-header {
+.chat-header {
     display: flex;
     align-items: center;
     padding: 10px 15px;
-    padding-top: calc(10px + env(safe-area-inset-top)); /* 适当的顶部间距 */
+    padding-top: calc(10px + env(safe-area-inset-top));
     border-bottom: 1px solid #e0e0e0;
-    background-color: #f8f8f8;
+    background-color: var(--chat-safe-area-color);
+}
+
+.wallet-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    padding-top: calc(10px + env(safe-area-inset-top));
+    border-bottom: 1px solid #e0e0e0;
+    background-color: var(--wallet-safe-area-color);
+}
+
+.store-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    padding-top: calc(10px + env(safe-area-inset-top));
+    border-bottom: 1px solid #e0e0e0;
+    background-color: var(--store-safe-area-color);
+}
+
+.backpack-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    padding-top: calc(10px + env(safe-area-inset-top));
+    border-bottom: 1px solid #e0e0e0;
+    background-color: var(--backpack-safe-area-color);
+}
+
+.world-book-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    padding-top: calc(10px + env(safe-area-inset-top));
+    border-bottom: 1px solid #e0e0e0;
+    background-color: var(--safe-area-color);
+}
+
+.settings-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    padding-top: calc(10px + env(safe-area-inset-top));
+    border-bottom: 1px solid #e0e0e0;
+    background-color: var(--settings-safe-area-color);
 }
 .chat-header h2, .wallet-header h2, .store-header h2, .backpack-header h2, .world-book-header h2, .settings-header h2 { font-size: 18px; margin: 0; text-align: center; flex-grow: 1; }
 .message-container { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
@@ -601,7 +656,7 @@ input:checked + .iosm-slider:before {
     /* 输入框需要适当保护 */
     padding-bottom: calc(8px + env(safe-area-inset-bottom));
     border-top: 1px solid #e0e0e0;
-    background-color: #f8f8f8;
+    background-color: var(--chat-safe-area-color);
     margin: 0;
 }
 .chat-input-form input { flex-grow: 1; border: 1px solid #ccc; border-radius: 18px; padding: 8px 12px; font-size: 16px; }
@@ -2833,14 +2888,24 @@ input:checked + .iosm-slider:before {
     }
 
     /* 通用标题栏 */
-    .wallet-header, .store-header, .backpack-header,
-    .world-book-header, .settings-header {
-        padding-top: calc(10px + env(safe-area-inset-top));
-        padding-bottom: 10px;
-        padding-left: 15px;
-        padding-right: 15px;
-        flex-shrink: 0;
-        background-color: #f8f8f8;
+    /* PWA模式下保持使用CSS变量 */
+    .chat-header {
+        background-color: var(--chat-safe-area-color);
+    }
+    .wallet-header {
+        background-color: var(--wallet-safe-area-color);
+    }
+    .store-header {
+        background-color: var(--store-safe-area-color);
+    }
+    .backpack-header {
+        background-color: var(--backpack-safe-area-color);
+    }
+    .world-book-header {
+        background-color: var(--safe-area-color);
+    }
+    .settings-header {
+        background-color: var(--settings-safe-area-color);
     }
 
     /* 通用内容区 */
