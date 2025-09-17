@@ -2473,11 +2473,12 @@ body {
         position: relative;
     }
 
-    /* 确保容器链完全撑满 */
+    /* 确保容器链完全撑满 - 使用星空背景作为保底 */
     .mobile-container {
         min-height: 100vh !important;
         min-height: -webkit-fill-available !important;
-        background: var(--theme-gradient) !important;
+        /* 锁屏时显示星空背景 */
+        background: linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%) !important;
     }
     /* 基础设置 - 所有screen元素 */
     .screen {
@@ -2495,14 +2496,17 @@ body {
         top: 0 !important;
         left: 0 !important;
         width: 100% !important;
+        /* 使用100vh + 额外高度确保覆盖 */
         height: 100% !important;
+        min-height: 100vh !important;
+        min-height: -webkit-fill-available !important;
         padding: 0 !important;
         margin: 0 !important;
         /* 保持星空背景 */
         background: radial-gradient(120% 100% at 50% 100%, rgba(0,0,0,.28), transparent 60%),
                     linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%) !important;
         overflow: hidden !important;
-        z-index: 10;
+        z-index: 999 !important;
     }
 
     #lock-screen .lock-content {
