@@ -546,19 +546,8 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
         screens.forEach(screen => {
             const savedColor = localStorage.getItem(`safe-area-${screen}`);
             if (savedColor && savedColor !== 'default') {
-                // 直接应用颜色，不需要保存（因为已经在localStorage中了）
-                const screenEl = document.getElementById(screen);
-                if (!screenEl) return;
-
-                if (screen === 'lock-screen') {
-                    screenEl.style.background = savedColor;
-                    // PWA模式下同步更新容器背景
-                    if (window.matchMedia('(display-mode: standalone)').matches) {
-                        document.documentElement.style.setProperty('--mobile-container-bg', savedColor);
-                    }
-                } else {
-                    screenEl.style.backgroundColor = savedColor;
-                }
+                // 使用CSS变量设置颜色
+                document.documentElement.style.setProperty(`--${screen}-bg`, savedColor);
             }
         });
     },
@@ -710,35 +699,22 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
         // 保存到localStorage
         localStorage.setItem(`safe-area-${screenName}`, color);
 
-        // 获取对应的screen元素
-        const screenEl = document.getElementById(screenName);
-        if (!screenEl) return;
-
-        // 应用颜色
+        // 根据颜色类型设置CSS变量
         if (color === 'default') {
             // 恢复默认背景
-            if (screenName === 'lock-screen') {
-                // 锁屏特殊处理，恢复星空背景
-                screenEl.style.removeProperty('background');
-                // PWA模式下更新容器背景
-                if (window.matchMedia('(display-mode: standalone)').matches) {
-                    document.documentElement.style.setProperty('--mobile-container-bg',
-                        'linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%)');
-                }
-            } else {
-                screenEl.style.removeProperty('background-color');
-            }
+            const defaults = {
+                'lock-screen': 'radial-gradient(120% 100% at 50% 100%, rgba(0,0,0,.28), transparent 60%), linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%)',
+                'home-screen': '#f9f9f9',
+                'chat-screen': '#ffffff',
+                'wallet-screen': '#ffffff',
+                'store-screen': '#ffffff',
+                'backpack-screen': '#ffffff',
+                'settings-screen': '#f8f8f8'
+            };
+            document.documentElement.style.setProperty(`--${screenName}-bg`, defaults[screenName]);
         } else {
-            // 应用自定义颜色
-            if (screenName === 'lock-screen') {
-                screenEl.style.background = color;
-                // PWA模式下同步更新容器背景
-                if (window.matchMedia('(display-mode: standalone)').matches) {
-                    document.documentElement.style.setProperty('--mobile-container-bg', color);
-                }
-            } else {
-                screenEl.style.backgroundColor = color;
-            }
+            // 应用自定义颜色 - 使用CSS变量
+            document.documentElement.style.setProperty(`--${screenName}-bg`, color);
         }
     },
 

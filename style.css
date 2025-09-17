@@ -96,10 +96,49 @@ body {
     background-color: #f9f9f9;
     display: none;
 }
-/* 锁屏基础样式 - 星空渐变背景 */
+
+/* CSS变量定义 - 每个界面的背景色 */
+:root {
+    /* 默认锁屏背景 - 星空渐变 */
+    --lock-screen-bg: radial-gradient(120% 100% at 50% 100%, rgba(0,0,0,.28), transparent 60%),
+                      linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%);
+    /* 其他界面默认背景 */
+    --home-screen-bg: #f9f9f9;
+    --chat-screen-bg: #ffffff;
+    --wallet-screen-bg: #ffffff;
+    --store-screen-bg: #ffffff;
+    --backpack-screen-bg: #ffffff;
+    --settings-screen-bg: #f8f8f8;
+}
+
+/* 应用CSS变量到各个界面 */
+#home-screen {
+    background: var(--home-screen-bg) !important;
+}
+
+#chat-screen {
+    background: var(--chat-screen-bg) !important;
+}
+
+#wallet-screen {
+    background: var(--wallet-screen-bg) !important;
+}
+
+#store-screen {
+    background: var(--store-screen-bg) !important;
+}
+
+#backpack-screen {
+    background: var(--backpack-screen-bg) !important;
+}
+
+#settings-screen {
+    background: var(--settings-screen-bg) !important;
+}
+
+/* 锁屏基础样式 - 使用CSS变量 */
 #lock-screen {
-    background: radial-gradient(120% 100% at 50% 100%, rgba(0,0,0,.28), transparent 60%),
-                linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%);
+    background: var(--lock-screen-bg);
     color: #3f6cff;
     display: flex;
     flex-direction: column;
@@ -2545,42 +2584,43 @@ input:checked + .iosm-slider:before {
     z-index: 10;
 }
 
-/* iOS风格极简滚动条 */
+/* iOS风格滚动条 - 更易用 */
 .iosm-body::-webkit-scrollbar {
-    width: 1px;
+    width: 6px; /* 增加宽度，更容易拖动 */
     background: transparent;
 }
 
 .iosm-body::-webkit-scrollbar-track {
-    background: transparent;
-    margin: 0;
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 3px;
+    margin: 5px 0;
 }
 
 .iosm-body::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 1px;
+    background: rgba(0, 0, 0, 0.2); /* 加深颜色，更明显 */
+    border-radius: 3px;
     transition: background-color 0.3s ease;
-    border: none;
-    margin: 0;
+    min-height: 30px; /* 最小高度，防止太小 */
 }
 
 .iosm-body::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.12);
+    background: rgba(0, 0, 0, 0.35);
 }
 
 .iosm-body::-webkit-scrollbar-thumb:active {
-    background: rgba(0, 0, 0, 0.15);
+    background: rgba(0, 0, 0, 0.5);
 }
 
-/* 让滚动条贴近屏幕边缘 */
+/* 移除负margin，避免滚动条被遮挡 */
 .iosm-body {
-    margin-right: -15px;
+    margin-right: 0;
+    padding-right: 8px; /* 给滚动条留出空间 */
 }
 
 /* Firefox滚动条样式 */
 .iosm-body {
     scrollbar-width: thin;
-    scrollbar-color: rgba(0, 0, 0, 0.05) transparent;
+    scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.02);
 }
 
 /* 强制iOS PWA版本字体为黑色 */
@@ -2680,8 +2720,8 @@ input:checked + .iosm-slider:before {
     .mobile-container {
         min-height: 100vh !important;
         min-height: -webkit-fill-available !important;
-        /* 使用CSS变量方便动态切换 */
-        background: var(--mobile-container-bg, linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%)) !important;
+        /* 直接使用锁屏的CSS变量，确保同步 */
+        background: var(--lock-screen-bg) !important;
     }
     /* 基础设置 - 所有screen元素 */
     .screen {
