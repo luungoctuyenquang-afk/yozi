@@ -31,7 +31,7 @@ body {
     width: 100vw;
     height: 100vh;
     height: -webkit-fill-available; /* iOS真实视口高度 */
-    background-color: transparent; /* 透明，让各screen的背景显示 */
+    background-color: transparent; /* 保持透明，让各screen的背景显示 */
     border-radius: 0;
     box-shadow: none;
     position: absolute;
@@ -54,7 +54,7 @@ body {
         height: 852px; /* iPhone 15 Pro 高度 */
         border-radius: 40px;
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-        background-color: #ffffff; /* 桌面端需要白色背景 */
+        background-color: transparent; /* 桌面端也保持透明 */
         position: relative; /* 桌面端用relative */
     }
 }
@@ -471,6 +471,7 @@ body {
     text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2; /* 标准属性 */
     -webkit-box-orient: vertical;
 }
 
@@ -2290,14 +2291,6 @@ body {
         /* 确保背景色充满整个屏幕 */
         min-height: 100vh;
         min-height: -webkit-fill-available;
-        /* 确保背景从顶部开始延伸 */
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        width: 100%;
-        height: 100%;
     }
 
     /* 锁屏界面特殊处理 - 真正全屏显示 */
@@ -2314,12 +2307,6 @@ body {
         padding-top: calc(20px + env(safe-area-inset-top)) !important;
         padding-bottom: 0 !important; /* 底部由app-grid处理 */
         background-color: #f9f9f9;
-        /* 确保背景从顶部开始 */
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
     }
 
     /* 带标题栏的屏幕（如钱包、商店等）顶部调整 */
