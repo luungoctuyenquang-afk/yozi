@@ -31,12 +31,10 @@ body {
     width: 100vw;
     height: 100vh;
     height: -webkit-fill-available; /* iOS真实视口高度 */
-    background-color: transparent; /* 保持透明，让各screen的背景显示 */
+    background-color: #ffffff; /* 白色背景作为默认 */
     border-radius: 0;
     box-shadow: none;
-    position: absolute;
-    top: 0;
-    left: 0;
+    position: relative; /* 改回relative */
     overflow: hidden;
     /* 添加过渡动画 */
     transition: background 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
@@ -65,7 +63,7 @@ body {
         align-items: stretch; /* 让容器拉伸到全屏 */
         height: 100vh;
         height: -webkit-fill-available;
-        background: transparent; /* 透明背景，不再使用黑色 */
+        background: transparent; /* 透明背景 */
     }
 
     .mobile-container {
@@ -76,14 +74,11 @@ body {
         max-width: none;
         max-height: none;
         box-shadow: none;
-        /* 不设置padding，让内容背景充满全屏 */
         padding: 0;
-        /* 确保容器真正全屏 */
-        position: fixed;
+        /* 保持原来的position: absolute */
+        position: absolute;
         top: 0;
         left: 0;
-        right: 0;
-        bottom: 0;
     }
 }
 .screen {
@@ -2275,13 +2270,9 @@ body {
 
 /* PWA全屏模式特别优化 */
 @media (display-mode: standalone), (display-mode: fullscreen) {
-    /* HTML和body背景处理 */
-    html {
-        background: transparent; /* 透明，让各界面背景自然延伸 */
-    }
-
-    body {
-        background: transparent;
+    /* 移动端容器全屏 */
+    .mobile-container {
+        background-color: transparent; /* 让各screen背景显示 */
     }
 
     /* 所有屏幕在PWA模式下的间距调整 */
@@ -2297,9 +2288,6 @@ body {
     #lock-screen {
         padding-top: env(safe-area-inset-top) !important;
         padding-bottom: env(safe-area-inset-bottom) !important;
-        /* 渐变背景覆盖整个屏幕 */
-        background-attachment: fixed;
-        background-size: cover;
     }
 
     /* 主屏幕特殊处理 */
