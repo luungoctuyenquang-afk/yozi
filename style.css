@@ -2274,7 +2274,7 @@ body {
 
 /* PWA全屏模式特别优化 */
 @media (display-mode: standalone), (display-mode: fullscreen) {
-    /* 所有屏幕基础设置 - 完全覆盖 */
+    /* 所有屏幕基础设置 */
     .screen {
         position: absolute !important;
         top: 0 !important;
@@ -2282,38 +2282,27 @@ body {
         width: 100% !important;
         height: 100% !important;
         box-sizing: border-box;
-        /* 覆盖基础padding */
         padding: 0 !important;
-        /* 移除默认背景 */
-        background-color: transparent !important;
     }
 
     /* 锁屏界面 - 完全全屏 */
     #lock-screen {
         padding: 0 !important;
         background: var(--theme-gradient) !important;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
     }
 
-    /* 主屏幕 - 正确对齐 */
+    /* 主屏幕 */
     #home-screen {
         background-color: #f9f9f9 !important;
         padding: calc(30px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom)) 20px !important;
-        box-sizing: border-box;
-        display: block !important;
     }
 
-    /* 带标题栏的屏幕 - 正确布局 */
+    /* 带标题栏的屏幕 */
     #chat-screen, #wallet-screen, #store-screen,
     #backpack-screen, #world-book-screen, #settings-screen,
     #general-settings-screen {
         background-color: #ffffff !important;
         padding: 0 !important;
-        display: flex !important;
-        flex-direction: column !important;
     }
 
     /* 标题栏位置 */
