@@ -58,7 +58,7 @@ body {
         align-items: stretch; /* 让容器拉伸到全屏 */
         height: 100vh;
         height: -webkit-fill-available;
-        background: #000; /* 黑色背景匹配状态栏 */
+        background: transparent; /* 透明背景，不再使用黑色 */
     }
 
     .mobile-container {
@@ -71,6 +71,12 @@ body {
         box-shadow: none;
         /* 不设置padding，让内容背景充满全屏 */
         padding: 0;
+        /* 确保容器真正全屏 */
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
     }
 }
 .screen {
@@ -80,13 +86,16 @@ body {
     width: 100%;
     height: 100%;
     padding: 20px;
-    padding-top: calc(20px + env(safe-area-inset-top)); /* 减少顶部额外间距 */
-    padding-bottom: calc(10px + env(safe-area-inset-bottom)); /* 减少底部额外间距 */
+    padding-top: calc(20px + env(safe-area-inset-top));
+    padding-bottom: env(safe-area-inset-bottom); /* 只保留安全区高度，不额外增加 */
     padding-left: max(15px, env(safe-area-inset-left));
     padding-right: max(15px, env(safe-area-inset-right));
     box-sizing: border-box;
     background-color: #f9f9f9;
     display: none;
+    /* 确保背景色延伸到底部 */
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
 }
 #lock-screen {
     background: var(--theme-gradient);
@@ -98,7 +107,7 @@ body {
     cursor: pointer;
     z-index: 10;
     transition: background 0.5s ease;
-    /* 让背景充满整个屏幕 */
+    /* 让背景充满整个屏幕，包括安全区 */
     position: fixed;
     top: 0;
     left: 0;
@@ -106,7 +115,8 @@ body {
     bottom: 0;
     width: 100vw;
     height: 100vh;
-    padding: 0;
+    height: -webkit-fill-available;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;
     margin: 0;
     box-sizing: border-box;
 }
@@ -131,7 +141,7 @@ body {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 15px;
-    padding-bottom: calc(10px + env(safe-area-inset-bottom)); /* 减少底部额外间距 */
+    padding-bottom: max(20px, env(safe-area-inset-bottom)); /* 确保图标不被遮挡 */
 }
 .app-icon { display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; }
 .app-icon-bg { width: 60px; height: 60px; background-color: #e0e0e0; border-radius: 15px; display: flex; justify-content: center; align-items: center; font-size: 30px; transition: transform 0.2s; }
@@ -145,7 +155,7 @@ body {
     display: flex;
     align-items: center;
     padding: 10px 15px;
-    padding-top: calc(5px + env(safe-area-inset-top)); /* 减少顶部额外间距 */
+    padding-top: calc(10px + env(safe-area-inset-top)); /* 适当的顶部间距 */
     border-bottom: 1px solid #e0e0e0;
     background-color: #f8f8f8;
 }
@@ -156,9 +166,11 @@ body {
     align-items: center;
     gap: 10px;
     padding: 10px;
-    padding-bottom: calc(5px + env(safe-area-inset-bottom)); /* 减少底部额外间距 */
+    padding-bottom: max(10px, env(safe-area-inset-bottom)); /* 确保有足够间距但不过多 */
     border-top: 1px solid #e0e0e0;
     background-color: #f8f8f8;
+    /* 确保输入框区域背景延伸到底部 */
+    margin-bottom: 0;
 }
 .chat-input-form input { flex-grow: 1; border: 1px solid #ccc; border-radius: 18px; padding: 8px 12px; font-size: 16px; }
 .chat-input-form button { background-color: #007aff; color: white; border: none; border-radius: 18px; padding: 8px 15px; font-size: 16px; cursor: pointer; flex-shrink: 0; }
@@ -2258,26 +2270,54 @@ body {
 
 /* PWA全屏模式特别优化 */
 @media (display-mode: standalone), (display-mode: fullscreen) {
-    /* 所有屏幕在PWA模式下的顶部间距调整 - 减少额外padding */
-    .screen {
-        padding-top: calc(15px + env(safe-area-inset-top)) !important;
+    /* HTML和body背景处理 */
+    html {
+        background: #ffffff; /* 默认白色背景 */
     }
 
-    /* 锁屏界面特殊处理 - 不添加额外padding */
+    body {
+        background: transparent;
+    }
+
+    /* 所有屏幕在PWA模式下的间距调整 */
+    .screen {
+        padding-top: calc(20px + env(safe-area-inset-top)) !important;
+        padding-bottom: env(safe-area-inset-bottom) !important;
+        /* 确保背景色充满整个屏幕 */
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+    }
+
+    /* 锁屏界面特殊处理 - 真正全屏显示 */
     #lock-screen {
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
+        padding-top: env(safe-area-inset-top) !important;
+        padding-bottom: env(safe-area-inset-bottom) !important;
+        /* 渐变背景覆盖整个屏幕 */
+        background-attachment: fixed;
+        background-size: cover;
     }
 
     /* 主屏幕特殊处理 */
     #home-screen {
-        padding-top: calc(15px + env(safe-area-inset-top)) !important;
+        padding-top: calc(20px + env(safe-area-inset-top)) !important;
+        padding-bottom: 0 !important; /* 底部由app-grid处理 */
+        background-color: #f9f9f9;
     }
 
     /* 带标题栏的屏幕（如钱包、商店等）顶部调整 */
     .chat-header, .wallet-header, .store-header,
     .backpack-header, .world-book-header, .settings-header {
-        padding-top: calc(5px + env(safe-area-inset-top));
+        padding-top: calc(10px + env(safe-area-inset-top));
+    }
+
+    /* 聊天屏幕特殊处理 */
+    #chat-screen {
+        background-color: #ffffff;
+    }
+
+    /* 确保消息容器背景正确 */
+    .message-container {
+        background-color: #ffffff;
     }
 
     .screen.iosm {
