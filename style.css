@@ -2874,7 +2874,8 @@ input:checked + .iosm-slider:before {
         position: relative;
         /* 底部安全区减半，只保留基本间距 */
         padding-bottom: calc(5px + calc(env(safe-area-inset-bottom) * 0.5));
-        background: rgba(255, 255, 255, 0.98);
+        background-color: rgba(255, 255, 255, 0.98);
+        background-color: var(--chat-safe-area-color);
         backdrop-filter: blur(10px);
         border-top: 1px solid #e0e0e0;
     }
