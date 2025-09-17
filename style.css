@@ -117,13 +117,22 @@ body {
     --store-safe-area-color: #f8f8f8; /* 商店界面安全区颜色 */
     --backpack-safe-area-color: #f8f8f8; /* 背包界面安全区颜色 */
     --settings-safe-area-color: #f8f8f8; /* 设置界面安全区颜色 */
-    --home-safe-area-color: #f9f9f9; /* 主页安全区颜色（默认背景色） */
-    --lock-safe-area-color: transparent; /* 锁屏安全区颜色（透明） */
+    --home-safe-area-color: transparent; /* 主页安全区颜色（透明，支持背景图） */
+    --lock-safe-area-color: transparent; /* 锁屏安全区颜色（透明，支持背景图） */
+
+    /* 背景图片变量 */
+    --home-bg-image: none; /* 主页背景图片 */
+    --lock-bg-image: none; /* 锁屏背景图片 */
 }
 
 /* 应用CSS变量到各个界面 */
 #home-screen {
-    background: var(--home-screen-bg) !important;
+    /* 支持背景图片，如果没有图片则显示背景色 */
+    background-color: var(--home-screen-bg);
+    background-image: var(--home-bg-image);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 #chat-screen {
@@ -146,9 +155,14 @@ body {
     background: var(--settings-screen-bg) !important;
 }
 
-/* 锁屏基础样式 - 使用CSS变量 */
+/* 锁屏基础样式 - 支持背景图片 */
 #lock-screen {
+    /* 默认星空渐变，支持背景图片覆盖 */
     background: var(--lock-screen-bg);
+    background-image: var(--lock-bg-image);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     color: #3f6cff;
     display: flex;
     flex-direction: column;
@@ -419,10 +433,25 @@ body {
     border-radius: 10px;
     font-weight: 600;
     cursor: pointer;
+    margin-right: 10px;
 }
 
 .iosm-btn-primary:hover {
     background: #2c5ce5;
+}
+
+.iosm-btn-secondary {
+    padding: 10px 20px;
+    background: #f2f2f7;
+    color: #3f6cff;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.iosm-btn-secondary:hover {
+    background: #e5e5ea;
 }
 
 .iosm-hint {

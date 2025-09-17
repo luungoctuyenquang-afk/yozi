@@ -865,6 +865,21 @@
                     </div>
                 </div>
 
+                <!-- 背景图片上传（仅主页和锁屏显示） -->
+                <div class="iosm-group" id="bg-image-group" style="display:none;" aria-label="背景图片">
+                    <div class="iosm-row">
+                        <span class="iosm-label">🖼️ 背景图片</span>
+                    </div>
+                    <div class="iosm-row">
+                        <button class="iosm-btn-primary" onclick="IOSSettings.selectBackgroundImage()">选择图片</button>
+                        <button class="iosm-btn-secondary" onclick="IOSSettings.removeBackgroundImage()">移除图片</button>
+                    </div>
+                    <div id="bg-image-preview" style="margin-top:10px; display:none;">
+                        <img id="bg-image-preview-img" style="width:100%; border-radius:8px;" />
+                    </div>
+                    <input type="file" id="bg-image-input" accept="image/*" style="display:none;" onchange="IOSSettings.handleBackgroundImageSelect(event)">
+                </div>
+
                 <!-- 预览 -->
                 <div class="iosm-group" aria-label="预览">
                     <div class="safe-area-preview" id="safe-area-preview">

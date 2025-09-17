@@ -576,6 +576,9 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
                 document.documentElement.style.setProperty(variable, savedColor);
             }
         });
+
+        // 同时加载背景图片
+        this.loadSavedBackgroundImages();
     },
 
     // 打开单个界面的安全区设置
@@ -619,6 +622,17 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
 
         // 绑定重置按钮
         this.bindResetButton();
+
+        // 如果是主页或锁屏，显示背景图片选项
+        const bgImageGroup = document.getElementById('bg-image-group');
+        if (bgImageGroup) {
+            if (screenName === 'home-screen' || screenName === 'lock-screen') {
+                bgImageGroup.style.display = 'block';
+                this.loadBackgroundImage(screenName);
+            } else {
+                bgImageGroup.style.display = 'none';
+            }
+        }
     },
 
     // 更新颜色按钮选中状态
@@ -699,6 +713,12 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
             saveBtn.onclick = () => {
                 // 保存颜色到localStorage并应用到实际界面
                 this.applySafeAreaColor(this.currentScreen, this.tempColor);
+
+                // 如果是主页或锁屏，也保存背景图片
+                if (this.currentScreen === 'home-screen' || this.currentScreen === 'lock-screen') {
+                    this.saveBackgroundImage();
+                }
+
                 alert('设置已保存！');
             };
         }
@@ -801,6 +821,140 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
         if (toggle) {
             const isDark = localStorage.getItem('dark-mode') === 'true';
             toggle.checked = isDark;
+        }
+    },
+
+    // 选择背景图片
+    selectBackgroundImage() {
+        const input = document.getElementById('bg-image-input');
+        if (input) {
+            input.click();
+        }
+    },
+
+    // 处理背景图片选择
+    handleBackgroundImageSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // 限制文件大小（2MB）
+        if (file.size > 2 * 1024 * 1024) {
+            alert('图片太大！请选择小于2MB的图片。');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                // 压缩图片
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                // 设置最大宽高
+                const maxWidth = 1920;
+                const maxHeight = 1080;
+                let width = img.width;
+                let height = img.height;
+
+                // 计算缩放比例
+                if (width > maxWidth || height > maxHeight) {
+                    const ratio = Math.min(maxWidth / width, maxHeight / height);
+                    width = width * ratio;
+                    height = height * ratio;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // 转为base64（质量0.8）
+                const base64 = canvas.toDataURL('image/jpeg', 0.8);
+
+                // 显示预览
+                this.showImagePreview(base64);
+
+                // 暂存图片（点击保存时才真正保存）
+                this.tempBgImage = base64;
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    },
+
+    // 显示图片预览
+    showImagePreview(base64) {
+        const preview = document.getElementById('bg-image-preview');
+        const previewImg = document.getElementById('bg-image-preview-img');
+        if (preview && previewImg) {
+            previewImg.src = base64;
+            preview.style.display = 'block';
+        }
+    },
+
+    // 加载背景图片
+    loadBackgroundImage(screenName) {
+        const storageKey = `bg-image-${screenName}`;
+        const savedImage = localStorage.getItem(storageKey);
+
+        if (savedImage) {
+            this.showImagePreview(savedImage);
+            this.tempBgImage = savedImage;
+        } else {
+            // 隐藏预览
+            const preview = document.getElementById('bg-image-preview');
+            if (preview) {
+                preview.style.display = 'none';
+            }
+            this.tempBgImage = null;
+        }
+    },
+
+    // 移除背景图片
+    removeBackgroundImage() {
+        // 清除临时图片
+        this.tempBgImage = null;
+
+        // 隐藏预览
+        const preview = document.getElementById('bg-image-preview');
+        if (preview) {
+            preview.style.display = 'none';
+        }
+
+        alert('背景图片已移除，点击保存生效');
+    },
+
+    // 保存背景图片（在保存按钮点击时调用）
+    saveBackgroundImage() {
+        if (!this.currentScreen) return;
+
+        const storageKey = `bg-image-${this.currentScreen}`;
+        const cssVar = this.currentScreen === 'home-screen' ? '--home-bg-image' : '--lock-bg-image';
+
+        if (this.tempBgImage) {
+            // 保存图片到localStorage
+            localStorage.setItem(storageKey, this.tempBgImage);
+            // 应用到CSS变量
+            document.documentElement.style.setProperty(cssVar, `url("${this.tempBgImage}")`);
+        } else {
+            // 移除图片
+            localStorage.removeItem(storageKey);
+            document.documentElement.style.setProperty(cssVar, 'none');
+        }
+    },
+
+    // 加载所有保存的背景图片（在页面加载时调用）
+    loadSavedBackgroundImages() {
+        // 加载主页背景
+        const homeBg = localStorage.getItem('bg-image-home-screen');
+        if (homeBg) {
+            document.documentElement.style.setProperty('--home-bg-image', `url("${homeBg}")`);
+        }
+
+        // 加载锁屏背景
+        const lockBg = localStorage.getItem('bg-image-lock-screen');
+        if (lockBg) {
+            document.documentElement.style.setProperty('--lock-bg-image', `url("${lockBg}")`);
         }
     }
 };
