@@ -2868,6 +2868,11 @@ input:checked + .iosm-slider:before {
     /* 2. 主界面 - 背景全屏，内容智能避让 */
     #home-screen {
         background-color: var(--home-safe-area-color, #f9f9f9) !important;
+        /* 添加背景图片支持 */
+        background-image: var(--home-bg-image) !important;
+        background-size: cover !important;
+        background-position: center !important;
+        background-repeat: no-repeat !important;
         padding: 0 !important;
         /* 确保填充整个屏幕 */
         min-height: 100vh !important;
