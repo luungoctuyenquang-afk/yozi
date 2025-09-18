@@ -134,6 +134,7 @@ body {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    height: calc(100% - 8px) !important;  /* 减少底部黑色区域到8px */
 }
 
 #chat-screen {
