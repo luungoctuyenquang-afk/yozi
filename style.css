@@ -2830,7 +2830,12 @@ input:checked + .iosm-slider:before {
         padding: 0 !important;
         margin: 0 !important;
         /* 使用CSS变量，让颜色设置能生效 */
-        background: var(--lock-screen-bg) !important;
+        /* 分开设置背景色和背景图片，避免覆盖 */
+        background-color: var(--lock-screen-bg) !important;
+        background-image: var(--lock-bg-image) !important;
+        background-size: cover !important;
+        background-position: center !important;
+        background-repeat: no-repeat !important;
         overflow: hidden !important;
         z-index: 999 !important;
     }
