@@ -930,16 +930,29 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
 
         const storageKey = `bg-image-${this.currentScreen}`;
         const cssVar = this.currentScreen === 'home-screen' ? '--home-bg-image' : '--lock-bg-image';
+        const bgColorVar = this.currentScreen === 'home-screen' ? '--home-screen-bg' : '--lock-screen-bg';
 
         if (this.tempBgImage) {
             // 保存图片到localStorage
             localStorage.setItem(storageKey, this.tempBgImage);
             // 应用到CSS变量
             document.documentElement.style.setProperty(cssVar, `url("${this.tempBgImage}")`);
+
+            // 当设置背景图片时，自动将背景色设为透明
+            if (this.currentScreen === 'home-screen') {
+                document.documentElement.style.setProperty(bgColorVar, 'transparent');
+                localStorage.setItem('home-screen-bg-color', 'transparent');
+            }
         } else {
             // 移除图片
             localStorage.removeItem(storageKey);
             document.documentElement.style.setProperty(cssVar, 'none');
+
+            // 移除图片时，恢复默认背景色
+            if (this.currentScreen === 'home-screen') {
+                document.documentElement.style.setProperty(bgColorVar, '#f9f9f9');
+                localStorage.setItem('home-screen-bg-color', '#f9f9f9');
+            }
         }
     },
 
@@ -949,6 +962,12 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
         const homeBg = localStorage.getItem('bg-image-home-screen');
         if (homeBg) {
             document.documentElement.style.setProperty('--home-bg-image', `url("${homeBg}")`);
+            // 如果有背景图片，自动设置背景色为透明
+            document.documentElement.style.setProperty('--home-screen-bg', 'transparent');
+        } else {
+            // 如果没有背景图片，加载保存的背景色或使用默认值
+            const savedBgColor = localStorage.getItem('home-screen-bg-color') || '#f9f9f9';
+            document.documentElement.style.setProperty('--home-screen-bg', savedBgColor);
         }
 
         // 加载锁屏背景

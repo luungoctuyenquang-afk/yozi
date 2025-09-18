@@ -2867,7 +2867,7 @@ input:checked + .iosm-slider:before {
 
     /* 2. 主界面 - 背景全屏，内容智能避让 */
     #home-screen {
-        background-color: var(--home-safe-area-color, #f9f9f9) !important;
+        background-color: var(--home-screen-bg) !important;
         /* 添加背景图片支持 */
         background-image: var(--home-bg-image) !important;
         background-size: cover !important;
@@ -2890,7 +2890,7 @@ input:checked + .iosm-slider:before {
         padding-right: 20px;
         padding-bottom: calc(10px + env(safe-area-inset-bottom));
         overflow-y: auto;
-        background-color: var(--home-safe-area-color, #f9f9f9) !important;
+        background-color: transparent !important;
     }
 
     /* 3. 聊天界面 - 输入框智能保护 */
