@@ -983,6 +983,87 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
         }
     },
 
+    // 初始化背景图片设置
+    initBackgroundImageSettings(screenName) {
+        // 隐藏颜色选择区域
+        const colorGroups = document.querySelectorAll('#screen-color-settings .color-palette').forEach(el => {
+            el.parentElement.style.display = 'none';
+        });
+
+        // 显示图片上传区域
+        const bgImageGroup = document.getElementById('bg-image-group');
+        if (bgImageGroup) {
+            bgImageGroup.style.display = 'block';
+        }
+
+        // 绑定图片上传事件
+        const imageInput = document.getElementById('bg-image-upload');
+        const removeBtn = document.getElementById('remove-bg-image');
+
+        if (imageInput) {
+            imageInput.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const imageData = e.target.result;
+                        this.setBackgroundImage(screenName, imageData);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+        }
+
+        if (removeBtn) {
+            removeBtn.onclick = () => {
+                this.removeBackgroundImage(screenName);
+            };
+        }
+
+        // 显示当前背景图片状态
+        const hasImage = localStorage.getItem(`bg-image-${screenName}`);
+        const statusEl = document.getElementById('bg-image-status');
+        if (statusEl) {
+            statusEl.textContent = hasImage ? '已设置' : '未设置';
+        }
+    },
+
+    // 设置背景图片
+    setBackgroundImage(screenName, imageData) {
+        localStorage.setItem(`bg-image-${screenName}`, imageData);
+
+        if (screenName === 'lock-screen') {
+            document.documentElement.style.setProperty('--lock-bg-image', `url(${imageData})`);
+        } else if (screenName === 'home-screen') {
+            document.documentElement.style.setProperty('--home-bg-image', `url(${imageData})`);
+        }
+
+        const statusEl = document.getElementById('bg-image-status');
+        if (statusEl) {
+            statusEl.textContent = '已设置';
+        }
+
+        alert('背景图片设置成功！');
+    },
+
+    // 移除背景图片
+    removeBackgroundImage(screenName) {
+        localStorage.removeItem(`bg-image-${screenName}`);
+
+        if (screenName === 'lock-screen') {
+            document.documentElement.style.setProperty('--lock-bg-image', 'none');
+        } else if (screenName === 'home-screen') {
+            document.documentElement.style.setProperty('--home-bg-image', 'none');
+        }
+
+        const statusEl = document.getElementById('bg-image-status');
+        if (statusEl) {
+            statusEl.textContent = '未设置';
+        }
+
+        alert('背景图片已移除！');
+    },
+
     // 重置所有界面主题
     resetAllThemes() {
         if (!confirm('确定要重置所有界面的美化设置吗？')) return;

@@ -3174,6 +3174,25 @@ input:checked + .iosm-slider:before {
     font-size: 14px;
 }
 
+/* 修复PWA模式下的外观设置滚动问题 */
+#appearance-settings,
+#lock-text-color-settings,
+#lock-bg-color-settings,
+#screen-color-settings {
+    display: none;
+    flex-direction: column;
+    height: 100%;
+}
+
+#appearance-settings .iosm-body,
+#lock-text-color-settings .iosm-body,
+#lock-bg-color-settings .iosm-body,
+#screen-color-settings .iosm-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
 /* 精准修复房间列表区域 - 最高优先级 */
 body .mqtt-room-screen[data-theme="dark"] .room-list-section,
 body .mqtt-room-screen.theme-dark .room-list-section,
