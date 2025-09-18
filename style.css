@@ -184,6 +184,28 @@ body {
     box-sizing: border-box;
 }
 
+/* 锁屏安全区样式 */
+.lock-safe-area-top {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-top);
+    background-color: var(--lock-safe-area-color, transparent);
+    z-index: 10;
+}
+
+.lock-safe-area-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-bottom, 34px);
+    min-height: 34px;
+    background-color: var(--lock-safe-area-color, transparent);
+    z-index: 10;
+}
+
 /* 星空闪烁效果 */
 #lock-screen::after {
     content: "";

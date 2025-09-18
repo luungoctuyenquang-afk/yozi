@@ -754,10 +754,10 @@
             <div class="iosm-body">
                 <!-- 界面列表 -->
                 <div class="iosm-group" aria-label="界面设置">
-                    <button class="iosm-row" onclick="IOSSettings.openScreenSettings('lock-screen')">
+                    <button class="iosm-row" onclick="Utils.showScreen('lock-screen-settings')">
                         <span class="iosm-leading">🔒</span>
                         <span class="iosm-label">锁屏</span>
-                        <span class="iosm-value">底部安全区</span>
+                        <span class="iosm-value">背景与安全区</span>
                         <span class="iosm-chev">›</span>
                     </button>
                     <button class="iosm-row" onclick="IOSSettings.openScreenSettings('home-screen')">
@@ -815,6 +815,112 @@
                     <button class="iosm-row" onclick="IOSSettings.resetAllThemes()">
                         <span class="iosm-leading">🔄</span>
                         <span class="iosm-label">重置所有美化设置</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 锁屏专属设置页面 -->
+        <section id="lock-screen-settings" class="screen iosm" role="region" aria-label="锁屏设置">
+            <header class="iosm-header">
+                <button class="iosm-back" onclick="Utils.showScreen('appearance-settings')" aria-label="返回">‹</button>
+            </header>
+            <h2 class="iosm-title">锁屏设置</h2>
+
+            <div class="iosm-body">
+                <!-- 锁屏背景设置 -->
+                <div class="iosm-group" aria-label="锁屏背景">
+                    <button class="iosm-row" onclick="IOSSettings.openLockBgSettings()">
+                        <span class="iosm-leading">🎨</span>
+                        <span class="iosm-label">背景颜色</span>
+                        <span class="iosm-value" id="lock-bg-preview">默认星空</span>
+                        <span class="iosm-chev">›</span>
+                    </button>
+
+                    <button class="iosm-row" onclick="IOSSettings.openScreenSettings('lock-screen', 'image')">
+                        <span class="iosm-leading">🖼️</span>
+                        <span class="iosm-label">背景图片</span>
+                        <span class="iosm-value" id="lock-img-status">未设置</span>
+                        <span class="iosm-chev">›</span>
+                    </button>
+                </div>
+
+                <!-- 安全区颜色设置 -->
+                <div class="iosm-group" aria-label="安全区设置">
+                    <button class="iosm-row" onclick="IOSSettings.openScreenSettings('lock-screen', 'safe-area')">
+                        <span class="iosm-leading">🛡️</span>
+                        <span class="iosm-label">安全区颜色</span>
+                        <span class="iosm-value" id="lock-safe-preview">透明</span>
+                        <span class="iosm-chev">›</span>
+                    </button>
+                </div>
+
+                <!-- 说明 -->
+                <div class="iosm-group">
+                    <div class="iosm-row">
+                        <span class="iosm-hint">背景颜色：整个锁屏的背景色</span>
+                    </div>
+                    <div class="iosm-row">
+                        <span class="iosm-hint">背景图片：覆盖在背景色上的图片</span>
+                    </div>
+                    <div class="iosm-row">
+                        <span class="iosm-hint">安全区颜色：顶部状态栏和底部横条区域</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 锁屏背景色设置页 -->
+        <section id="lock-bg-color-settings" class="screen iosm" role="region" aria-label="锁屏背景色">
+            <header class="iosm-header">
+                <button class="iosm-back" onclick="Utils.showScreen('lock-screen-settings')" aria-label="返回">‹</button>
+            </header>
+            <h2 class="iosm-title">锁屏背景色</h2>
+
+            <div class="iosm-body">
+                <!-- 预览 -->
+                <div class="iosm-group">
+                    <div class="lockscreen-preview" id="lock-bg-color-preview"></div>
+                </div>
+
+                <!-- 颜色选择 -->
+                <div class="iosm-group" aria-label="背景颜色">
+                    <div class="iosm-row">
+                        <span class="iosm-label" style="font-weight:600">🎨 选择背景色</span>
+                    </div>
+
+                    <!-- 预设颜色 -->
+                    <div class="color-palette">
+                        <button class="color-btn color-btn-active" data-color="default" title="默认星空">
+                            <span style="font-size:20px">✨</span>
+                        </button>
+                        <button class="color-btn" data-color="#1a1a2e" style="background:#1a1a2e" title="深蓝"></button>
+                        <button class="color-btn" data-color="#16213e" style="background:#16213e" title="深海蓝"></button>
+                        <button class="color-btn" data-color="#0f3460" style="background:#0f3460" title="午夜蓝"></button>
+                        <button class="color-btn" data-color="#533483" style="background:#533483" title="深紫"></button>
+                        <button class="color-btn" data-color="#15202b" style="background:#15202b" title="暗夜"></button>
+                        <button class="color-btn" data-color="#192734" style="background:#192734" title="钢蓝"></button>
+                        <button class="color-btn" data-color="#22223b" style="background:#22223b" title="墨蓝"></button>
+                        <button class="color-btn" data-color="#000000" style="background:#000000" title="纯黑"></button>
+                        <button class="color-btn" data-color="#ffffff" style="background:#ffffff;border:1px solid #ddd" title="纯白"></button>
+                    </div>
+                </div>
+
+                <!-- 自定义颜色 -->
+                <div class="iosm-group" aria-label="自定义颜色">
+                    <div class="iosm-row">
+                        <span class="iosm-label">自定义颜色</span>
+                    </div>
+                    <div class="custom-color-input">
+                        <input type="text" id="custom-lock-bg-color" placeholder="#1a1a2e" class="iosm-input" maxlength="7">
+                        <button id="apply-lock-bg-color" class="iosm-btn-primary">应用</button>
+                    </div>
+                </div>
+
+                <!-- 保存按钮 -->
+                <div class="iosm-group">
+                    <button class="iosm-row iosm-btn-primary" onclick="IOSSettings.saveLockBgColor()">
+                        <span>保存背景色</span>
                     </button>
                 </div>
             </div>
@@ -950,6 +1056,9 @@
             <div id="mqtt-room-container"></div>
         </section>
                 <section id="lock-screen" class="screen">
+            <!-- 顶部安全区 -->
+            <div class="lock-safe-area-top"></div>
+
             <div class="lock-content">
                 <div class="date-row">
                     <span id="date-text">6月1日周日</span>
@@ -980,6 +1089,9 @@
 
                 <div class="unlock-prompt">点击屏幕以解锁</div>
             </div>
+
+            <!-- 底部安全区 -->
+            <div class="lock-safe-area-bottom"></div>
         </section>
     </div>
 

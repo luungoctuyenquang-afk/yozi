@@ -551,20 +551,23 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
 
     // 加载所有保存的颜色
     loadSavedColors() {
-        const screens = ['lock-screen', 'home-screen', 'chat-screen', 'wallet-screen', 'store-screen', 'backpack-screen', 'settings-screen'];
+        // 加载锁屏背景色
+        const lockBgColor = localStorage.getItem('lock-screen-bg-color');
+        if (lockBgColor) {
+            document.documentElement.style.setProperty('--lock-screen-bg', lockBgColor);
+        }
+
+        // 加载锁屏安全区颜色
+        const lockSafeColor = localStorage.getItem('safe-area-lock-screen');
+        if (lockSafeColor) {
+            document.documentElement.style.setProperty('--lock-safe-area-color', lockSafeColor);
+        }
+
+        const screens = ['home-screen', 'chat-screen', 'wallet-screen', 'store-screen', 'backpack-screen', 'settings-screen'];
 
         screens.forEach(screen => {
             const savedColor = localStorage.getItem(`safe-area-${screen}`);
             if (!savedColor) return;
-
-            if (screen === 'lock-screen') {
-                if (savedColor === 'default') {
-                    localStorage.removeItem(`safe-area-${screen}`);
-                } else {
-                    document.documentElement.style.setProperty('--lock-screen-bg', savedColor);
-                }
-                return;
-            }
 
             const variable = this.safeAreaConfig[screen];
             if (!variable) return;
@@ -581,8 +584,97 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
         this.loadSavedBackgroundImages();
     },
 
+    // 打开锁屏背景色设置页面
+    openLockBgSettings() {
+        Utils.showScreen('lock-bg-color-settings');
+        this.initLockBgColorSettings();
+    },
+
+    // 初始化锁屏背景色设置
+    initLockBgColorSettings() {
+        const preview = document.getElementById('lock-bg-color-preview');
+        const savedColor = localStorage.getItem('lock-screen-bg-color');
+
+        if (savedColor) {
+            preview.style.background = savedColor;
+        } else {
+            // 默认星空背景
+            preview.style.background = 'radial-gradient(120% 100% at 50% 100%, rgba(0,0,0,.28), transparent 60%), linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%)';
+        }
+
+        // 绑定颜色按钮事件
+        const colorBtns = document.querySelectorAll('#lock-bg-color-settings .color-btn');
+        colorBtns.forEach(btn => {
+            btn.onclick = () => {
+                const color = btn.getAttribute('data-color');
+                this.tempLockBgColor = color;
+
+                // 更新预览
+                if (color === 'default') {
+                    preview.style.background = 'radial-gradient(120% 100% at 50% 100%, rgba(0,0,0,.28), transparent 60%), linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%)';
+                } else {
+                    preview.style.background = color;
+                }
+
+                // 更新选中状态
+                colorBtns.forEach(b => b.classList.remove('color-btn-active'));
+                btn.classList.add('color-btn-active');
+            };
+        });
+
+        // 自定义颜色输入
+        const customInput = document.getElementById('custom-lock-bg-color');
+        const applyBtn = document.getElementById('apply-lock-bg-color');
+
+        applyBtn.onclick = () => {
+            const color = customInput.value;
+            if (color && /^#[0-9A-Fa-f]{6}$/.test(color)) {
+                this.tempLockBgColor = color;
+                preview.style.background = color;
+                colorBtns.forEach(b => b.classList.remove('color-btn-active'));
+            } else {
+                alert('请输入有效的颜色编码，如 #1a1a2e');
+            }
+        };
+    },
+
+    // 保存锁屏背景色
+    saveLockBgColor() {
+        if (this.tempLockBgColor) {
+            this.applyLockScreenBg(this.tempLockBgColor);
+
+            // 更新预览文本
+            const preview = document.getElementById('lock-bg-preview');
+            if (preview) {
+                preview.textContent = this.tempLockBgColor === 'default' ? '默认星空' : this.tempLockBgColor;
+            }
+
+            alert('锁屏背景色已保存！');
+            Utils.showScreen('lock-screen-settings');
+        }
+    },
+
     // 打开单个界面的安全区设置
-    openScreenSettings(screenName) {
+    openScreenSettings(screenName, type = 'color') {
+        // 特殊处理锁屏设置
+        if (screenName === 'lock-screen') {
+            if (type === 'safe-area') {
+                // 锁屏的安全区设置
+                this.currentScreen = screenName;
+                Utils.showScreen('screen-color-settings');
+                document.getElementById('screen-color-title').textContent = '锁屏安全区颜色';
+                this.initColorSettings(screenName);
+                return;
+            } else if (type === 'image') {
+                // 锁屏的背景图片设置
+                this.currentScreen = screenName;
+                Utils.showScreen('screen-color-settings');
+                document.getElementById('screen-color-title').textContent = '锁屏背景图片';
+                this.initBackgroundImageSettings(screenName);
+                return;
+            }
+        }
+
         Utils.showScreen('screen-color-settings');
 
         // 更新标题
@@ -740,22 +832,29 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
         }
     },
 
+    // 应用锁屏背景色
+    applyLockScreenBg(color) {
+        if (color === 'default') {
+            localStorage.removeItem('lock-screen-bg-color');
+            const defaultBg = 'radial-gradient(120% 100% at 50% 100%, rgba(0,0,0,.28), transparent 60%), linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%)';
+            document.documentElement.style.setProperty('--lock-screen-bg', defaultBg);
+        } else {
+            localStorage.setItem('lock-screen-bg-color', color);
+            document.documentElement.style.setProperty('--lock-screen-bg', color);
+        }
+    },
+
     // 应用安全区颜色到实际界面
     applySafeAreaColor(screenName, color) {
         // 根据界面类型设置不同的CSS变量
         if (screenName === 'lock-screen') {
+            // 锁屏现在只设置安全区颜色，不改变背景
             if (color === 'default') {
                 localStorage.removeItem(`safe-area-${screenName}`);
+                document.documentElement.style.setProperty('--lock-safe-area-color', 'transparent');
             } else {
                 localStorage.setItem(`safe-area-${screenName}`, color);
-            }
-
-            // 锁屏特殊处理 - 设置整体背景
-            if (color === 'default') {
-                const defaultBg = 'radial-gradient(120% 100% at 50% 100%, rgba(0,0,0,.28), transparent 60%), linear-gradient(180deg, #060d22 0%, #0a173f 55%, #0a1a4a 100%)';
-                document.documentElement.style.setProperty('--lock-screen-bg', defaultBg);
-            } else {
-                document.documentElement.style.setProperty('--lock-screen-bg', color);
+                document.documentElement.style.setProperty('--lock-safe-area-color', color);
             }
         } else {
             const variable = this.safeAreaConfig[screenName];
