@@ -134,7 +134,6 @@ body {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    height: 100% !important;  /* 让主页占满容器，不露出锁屏色 */
 }
 
 #chat-screen {
@@ -2662,9 +2661,10 @@ input:checked + .iosm-slider:before {
 
 .iosm-body {
     padding: 0 8px 40px 2px;
-    height: calc(100% - 52px);
-    overflow: auto;
-    overflow-y: scroll;
+    height: auto;  /* 改为auto，高度自适应 */
+    max-height: calc(100vh - 120px);  /* 添加最大高度限制 */
+    overflow-y: auto;  /* 内容超出时自动显示滚动条 */
+    overflow-x: hidden;  /* 防止横向滚动 */
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     touch-action: pan-y;
@@ -3128,6 +3128,50 @@ input:checked + .iosm-slider:before {
 
 .iosm-spacer {
     height: 16px;
+}
+
+/* 折叠组样式 */
+.iosm-collapse-group {
+    width: 100%;
+}
+
+.iosm-collapse-header {
+    position: relative;
+}
+
+.iosm-collapse-arrow {
+    transition: transform 0.3s ease;
+}
+
+.iosm-collapse-arrow.expanded {
+    transform: rotate(90deg);
+}
+
+.iosm-collapse-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.iosm-sub-item {
+    padding-left: 52px;
+    background: rgba(0,0,0,0.01);
+}
+
+.iosm-sub-item:hover {
+    background: rgba(0,0,0,0.04);
+}
+
+.iosm-sub-leading {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f7;
+    color: #5a5f66;
+    margin-right: 10px;
+    font-size: 14px;
 }
 
 /* 精准修复房间列表区域 - 最高优先级 */

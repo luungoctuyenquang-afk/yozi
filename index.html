@@ -754,46 +754,82 @@
             <div class="iosm-body">
                 <!-- 界面列表 -->
                 <div class="iosm-group" aria-label="界面设置">
-                    <button class="iosm-row" onclick="Utils.showScreen('lock-screen-settings')">
-                        <span class="iosm-leading">🔒</span>
-                        <span class="iosm-label">锁屏</span>
-                        <span class="iosm-value">背景与安全区</span>
-                        <span class="iosm-chev">›</span>
-                    </button>
-                    <button class="iosm-row" onclick="IOSSettings.openScreenSettings('home-screen')">
-                        <span class="iosm-leading">🏠</span>
-                        <span class="iosm-label">主页</span>
-                        <span class="iosm-value">底部安全区</span>
-                        <span class="iosm-chev">›</span>
-                    </button>
+                    <!-- 锁屏折叠组 -->
+                    <div class="iosm-collapse-group">
+                        <button class="iosm-row iosm-collapse-header" onclick="IOSSettings.toggleCollapse('lock-screen-group')">
+                            <span class="iosm-leading">🔒</span>
+                            <span class="iosm-label">锁屏</span>
+                            <span class="iosm-value">多项设置</span>
+                            <span class="iosm-chev iosm-collapse-arrow" id="lock-screen-arrow">›</span>
+                        </button>
+                        <div class="iosm-collapse-content" id="lock-screen-group" style="display: none;">
+                            <button class="iosm-row iosm-sub-item" onclick="IOSSettings.openLockBgSettings()">
+                                <span class="iosm-sub-leading">🎨</span>
+                                <span class="iosm-label">背景颜色</span>
+                                <span class="iosm-chev">›</span>
+                            </button>
+                            <button class="iosm-row iosm-sub-item" onclick="IOSSettings.openScreenSettings('lock-screen', 'image')">
+                                <span class="iosm-sub-leading">🖼️</span>
+                                <span class="iosm-label">背景图片</span>
+                                <span class="iosm-chev">›</span>
+                            </button>
+                            <button class="iosm-row iosm-sub-item" onclick="IOSSettings.openLockTextColor()">
+                                <span class="iosm-sub-leading">✏️</span>
+                                <span class="iosm-label">文字颜色</span>
+                                <span class="iosm-chev">›</span>
+                            </button>
+                            <button class="iosm-row iosm-sub-item" onclick="IOSSettings.openScreenSettings('lock-screen', 'safe-area')">
+                                <span class="iosm-sub-leading">🛡️</span>
+                                <span class="iosm-label">安全区颜色</span>
+                                <span class="iosm-chev">›</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 主页折叠组 -->
+                    <div class="iosm-collapse-group">
+                        <button class="iosm-row iosm-collapse-header" onclick="IOSSettings.toggleCollapse('home-screen-group')">
+                            <span class="iosm-leading">🏠</span>
+                            <span class="iosm-label">主页</span>
+                            <span class="iosm-value">背景设置</span>
+                            <span class="iosm-chev iosm-collapse-arrow" id="home-screen-arrow">›</span>
+                        </button>
+                        <div class="iosm-collapse-content" id="home-screen-group" style="display: none;">
+                            <button class="iosm-row iosm-sub-item" onclick="IOSSettings.openScreenSettings('home-screen')">
+                                <span class="iosm-sub-leading">🖼️</span>
+                                <span class="iosm-label">背景图片</span>
+                                <span class="iosm-chev">›</span>
+                            </button>
+                        </div>
+                    </div>
                     <button class="iosm-row" onclick="IOSSettings.openScreenSettings('chat-screen')">
                         <span class="iosm-leading">💬</span>
                         <span class="iosm-label">聊天</span>
-                        <span class="iosm-value">底部安全区</span>
+                        <span class="iosm-value">敬请期待</span>
                         <span class="iosm-chev">›</span>
                     </button>
                     <button class="iosm-row" onclick="IOSSettings.openScreenSettings('wallet-screen')">
                         <span class="iosm-leading">💰</span>
                         <span class="iosm-label">钱包</span>
-                        <span class="iosm-value">底部安全区</span>
+                        <span class="iosm-value">敬请期待</span>
                         <span class="iosm-chev">›</span>
                     </button>
                     <button class="iosm-row" onclick="IOSSettings.openScreenSettings('store-screen')">
                         <span class="iosm-leading">🛍️</span>
                         <span class="iosm-label">商店</span>
-                        <span class="iosm-value">底部安全区</span>
+                        <span class="iosm-value">敬请期待</span>
                         <span class="iosm-chev">›</span>
                     </button>
                     <button class="iosm-row" onclick="IOSSettings.openScreenSettings('backpack-screen')">
                         <span class="iosm-leading">🎒</span>
                         <span class="iosm-label">背包</span>
-                        <span class="iosm-value">底部安全区</span>
+                        <span class="iosm-value">敬请期待</span>
                         <span class="iosm-chev">›</span>
                     </button>
                     <button class="iosm-row" onclick="IOSSettings.openScreenSettings('settings-screen')">
                         <span class="iosm-leading">⚙️</span>
                         <span class="iosm-label">设置</span>
-                        <span class="iosm-value">底部安全区</span>
+                        <span class="iosm-value">敬请期待</span>
                         <span class="iosm-chev">›</span>
                     </button>
                 </div>
@@ -870,10 +906,59 @@
             </div>
         </section>
 
+        <!-- 锁屏文字颜色设置页 -->
+        <section id="lock-text-color-settings" class="screen iosm" role="region" aria-label="锁屏文字颜色">
+            <header class="iosm-header">
+                <button class="iosm-back" onclick="Utils.showScreen('appearance-settings')" aria-label="返回">‹</button>
+            </header>
+            <h2 class="iosm-title">锁屏文字颜色</h2>
+
+            <div class="iosm-body">
+                <!-- 预览 -->
+                <div class="iosm-group">
+                    <div class="lockscreen-preview" style="position: relative; padding: 40px; text-align: center;">
+                        <div id="lock-text-preview" style="font-size: 48px; font-weight: 600; color: #3f6cff;">12:34</div>
+                        <div style="color: inherit; margin-top: 10px;">预览文字颜色</div>
+                    </div>
+                </div>
+
+                <!-- 颜色选择 -->
+                <div class="iosm-group" aria-label="选择颜色">
+                    <div class="iosm-row">
+                        <span class="iosm-label" style="font-weight:600">🎨 选择文字颜色</span>
+                    </div>
+
+                    <!-- 预设颜色 -->
+                    <div class="color-palette">
+                        <button class="color-btn color-btn-active" data-color="#3f6cff" style="background:#3f6cff" title="默认蓝"></button>
+                        <button class="color-btn" data-color="#ffffff" style="background:#ffffff;border:1px solid #ddd" title="纯白"></button>
+                        <button class="color-btn" data-color="#000000" style="background:#000000" title="纯黑"></button>
+                        <button class="color-btn" data-color="#ff3b30" style="background:#ff3b30" title="红色"></button>
+                        <button class="color-btn" data-color="#ff9500" style="background:#ff9500" title="橙色"></button>
+                        <button class="color-btn" data-color="#ffcc00" style="background:#ffcc00" title="黄色"></button>
+                        <button class="color-btn" data-color="#34c759" style="background:#34c759" title="绿色"></button>
+                        <button class="color-btn" data-color="#5ac8fa" style="background:#5ac8fa" title="浅蓝"></button>
+                        <button class="color-btn" data-color="#007aff" style="background:#007aff" title="iOS蓝"></button>
+                        <button class="color-btn" data-color="#5856d6" style="background:#5856d6" title="紫色"></button>
+                        <button class="color-btn" data-color="#ff2d55" style="background:#ff2d55" title="粉红"></button>
+                        <button class="color-btn" data-color="#8e8e93" style="background:#8e8e93" title="灰色"></button>
+                    </div>
+                </div>
+
+                <!-- 自定义颜色 -->
+                <div class="iosm-group">
+                    <div class="iosm-row">
+                        <span class="iosm-label">自定义颜色</span>
+                        <input type="color" id="custom-text-color" style="margin-left: auto;" onchange="IOSSettings.setLockTextColor(this.value)">
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- 锁屏背景色设置页 -->
         <section id="lock-bg-color-settings" class="screen iosm" role="region" aria-label="锁屏背景色">
             <header class="iosm-header">
-                <button class="iosm-back" onclick="Utils.showScreen('lock-screen-settings')" aria-label="返回">‹</button>
+                <button class="iosm-back" onclick="Utils.showScreen('appearance-settings')" aria-label="返回">‹</button>
             </header>
             <h2 class="iosm-title">锁屏背景色</h2>
 

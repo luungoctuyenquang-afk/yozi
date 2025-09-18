@@ -25,6 +25,10 @@ const IOSSettings = {
         const savedMode = localStorage.getItem('statusbar-mode') || 'light';
         this.applyStatusBarMode(savedMode);
 
+        // 应用保存的锁屏文字颜色
+        const savedTextColor = localStorage.getItem('lock-text-color') || '#3f6cff';
+        this.applyLockTextColor(savedTextColor);
+
         this.initialized = true;
     },
 
@@ -675,13 +679,18 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
             }
         }
 
-        Utils.showScreen('screen-color-settings');
+        // 处理主页背景设置
+        if (screenName === 'home-screen') {
+            // 主页只有背景设置，直接跳转到背景图片设置
+            this.currentScreen = screenName;
+            Utils.showScreen('screen-color-settings');
+            document.getElementById('screen-color-title').textContent = '主页背景设置';
+            this.initBackgroundImageSettings(screenName);
+            return;
+        }
 
-        // 更新标题
-        const titleEl = document.getElementById('screen-color-title');
+        // 其他界面显示"敬请期待"提示
         const screenNames = {
-            'lock-screen': '锁屏',
-            'home-screen': '主页',
             'chat-screen': '聊天',
             'wallet-screen': '钱包',
             'store-screen': '商店',
@@ -689,6 +698,16 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
             'settings-screen': '设置'
         };
 
+        if (screenNames[screenName]) {
+            alert(`${screenNames[screenName]}界面的美化功能暂未开放，敬请期待！`);
+            return;
+        }
+
+        // 以下是原有的安全区颜色设置代码（目前不会执行到）
+        Utils.showScreen('screen-color-settings');
+
+        // 更新标题
+        const titleEl = document.getElementById('screen-color-title');
         if (titleEl) {
             titleEl.textContent = `${screenNames[screenName] || screenName}底部安全区`;
         }
@@ -870,6 +889,97 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
 
             // 其他界面设置安全区颜色（导航栏、输入框等）
             document.documentElement.style.setProperty(variable, color);
+        }
+    },
+
+    // 切换折叠状态
+    toggleCollapse(groupId) {
+        const content = document.getElementById(groupId);
+        const arrow = document.getElementById(groupId.replace('-group', '-arrow'));
+
+        if (content && arrow) {
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                content.style.maxHeight = content.scrollHeight + 'px';
+                arrow.classList.add('expanded');
+            } else {
+                content.style.display = 'none';
+                content.style.maxHeight = '0';
+                arrow.classList.remove('expanded');
+            }
+        }
+    },
+
+    // 打开锁屏文字颜色设置
+    openLockTextColor() {
+        Utils.showScreen('lock-text-color-settings');
+        this.initLockTextColorSettings();
+    },
+
+    // 初始化锁屏文字颜色设置
+    initLockTextColorSettings() {
+        const preview = document.getElementById('lock-text-preview');
+        const colorButtons = document.querySelectorAll('#lock-text-color-settings .color-btn');
+        const currentColor = localStorage.getItem('lock-text-color') || '#3f6cff';
+
+        // 更新预览
+        if (preview) {
+            preview.style.color = currentColor;
+        }
+
+        // 设置按钮状态
+        colorButtons.forEach(btn => {
+            btn.classList.remove('color-btn-active');
+            if (btn.dataset.color === currentColor) {
+                btn.classList.add('color-btn-active');
+            }
+
+            btn.onclick = () => {
+                const color = btn.dataset.color;
+                this.setLockTextColor(color);
+                colorButtons.forEach(b => b.classList.remove('color-btn-active'));
+                btn.classList.add('color-btn-active');
+            };
+        });
+    },
+
+    // 设置锁屏文字颜色
+    setLockTextColor(color) {
+        localStorage.setItem('lock-text-color', color);
+        this.applyLockTextColor(color);
+
+        // 更新预览
+        const preview = document.getElementById('lock-text-preview');
+        if (preview) {
+            preview.style.color = color;
+        }
+    },
+
+    // 应用锁屏文字颜色
+    applyLockTextColor(color) {
+        const style = document.getElementById('lock-text-color-style') || document.createElement('style');
+        style.id = 'lock-text-color-style';
+        style.textContent = `
+            #lock-screen .date-row,
+            #lock-screen .time-display,
+            #lock-screen .widgets,
+            #lock-screen .unlock-prompt {
+                color: ${color} !important;
+            }
+            #lock-screen .w-left,
+            #lock-screen .w-right {
+                color: ${color} !important;
+            }
+            #lock-screen .bar i {
+                background: ${color} !important;
+            }
+            #lock-screen .ring {
+                background: conic-gradient(${color} calc(var(--val) * 100%), rgba(255,255,255,.18) 0) !important;
+            }
+        `;
+
+        if (!document.getElementById('lock-text-color-style')) {
+            document.head.appendChild(style);
         }
     },
 
