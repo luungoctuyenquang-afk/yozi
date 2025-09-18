@@ -2819,6 +2819,8 @@ input:checked + .iosm-slider:before {
         min-height: 100% !important;
         height: auto !important;
         box-sizing: border-box;
+        /* PWA模式减小底部padding，避免过大的空白 */
+        padding-bottom: 10px !important;
     }
 
     /* 1. 锁屏界面 - 完全全屏 + 使用CSS变量背景 */
@@ -2854,7 +2856,7 @@ input:checked + .iosm-slider:before {
         align-items: center;
         padding: 20px;
         padding-top: calc(40px + env(safe-area-inset-top));
-        padding-bottom: 40px;
+        padding-bottom: 20px;  /* 从40px减小到20px */
         box-sizing: border-box;
     }
 
@@ -2866,7 +2868,7 @@ input:checked + .iosm-slider:before {
 
     /* 解锁提示在PWA模式下的位置 */
     #lock-screen .unlock-prompt {
-        bottom: 40px !important;
+        bottom: 20px !important;  /* 配合锁屏padding调整 */
     }
 
     /* 2. 主界面 - 背景全屏，内容智能避让 */
@@ -2892,7 +2894,7 @@ input:checked + .iosm-slider:before {
         padding-top: calc(30px + env(safe-area-inset-top));
         padding-left: 20px;
         padding-right: 20px;
-        padding-bottom: 10px;
+        padding-bottom: 5px;  /* 减小主页底部padding */
         overflow-y: auto;
         background-color: transparent !important;
     }
