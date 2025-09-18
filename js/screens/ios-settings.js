@@ -557,11 +557,11 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
             document.documentElement.style.setProperty('--lock-screen-bg', lockBgColor);
         }
 
-        // 加载锁屏安全区颜色
-        const lockSafeColor = localStorage.getItem('safe-area-lock-screen');
-        if (lockSafeColor) {
-            document.documentElement.style.setProperty('--lock-safe-area-color', lockSafeColor);
-        }
+        // 锁屏安全区颜色设置 - 暂时禁用，等待正确实现
+        // const lockSafeColor = localStorage.getItem('safe-area-lock-screen');
+        // if (lockSafeColor) {
+        //     document.documentElement.style.setProperty('--lock-safe-area-color', lockSafeColor);
+        // }
 
         const screens = ['home-screen', 'chat-screen', 'wallet-screen', 'store-screen', 'backpack-screen', 'settings-screen'];
 
@@ -848,13 +848,13 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
     applySafeAreaColor(screenName, color) {
         // 根据界面类型设置不同的CSS变量
         if (screenName === 'lock-screen') {
-            // 锁屏现在只设置安全区颜色，不改变背景
+            // 锁屏安全区颜色设置 - 暂时禁用，等待正确实现
             if (color === 'default') {
                 localStorage.removeItem(`safe-area-${screenName}`);
-                document.documentElement.style.setProperty('--lock-safe-area-color', 'transparent');
+                // document.documentElement.style.setProperty('--lock-safe-area-color', 'transparent');
             } else {
                 localStorage.setItem(`safe-area-${screenName}`, color);
-                document.documentElement.style.setProperty('--lock-safe-area-color', color);
+                // document.documentElement.style.setProperty('--lock-safe-area-color', color);
             }
         } else {
             const variable = this.safeAreaConfig[screenName];
