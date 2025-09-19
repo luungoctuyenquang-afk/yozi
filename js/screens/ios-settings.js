@@ -77,22 +77,22 @@ const IOSSettings = {
 
             case 'api':
                 // 跳转到原有的API设置界面
-                Utils.showScreen('settings');
+                Utils.showScreen('settings-screen');
                 break;
 
             case 'general':
                 // 跳转到原有的通用设置界面
-                Utils.showScreen('general-settings');
+                Utils.showScreen('general-settings-screen');
                 break;
 
             case 'worldbook':
                 // 跳转到世界书界面
-                Utils.showScreen('worldbook');
+                Utils.showScreen('world-book-screen');
                 break;
 
             case 'chat':
                 // 跳转到聊天界面
-                Utils.showScreen('chat');
+                Utils.showScreen('chat-screen');
                 break;
 
             case 'data':
@@ -102,17 +102,17 @@ const IOSSettings = {
 
             case 'wallet':
                 // 跳转到钱包界面
-                Utils.showScreen('wallet');
+                Utils.showScreen('wallet-screen');
                 break;
 
             case 'store':
                 // 跳转到商店界面
-                Utils.showScreen('store');
+                Utils.showScreen('store-screen');
                 break;
 
             case 'backpack':
                 // 跳转到背包界面
-                Utils.showScreen('backpack');
+                Utils.showScreen('backpack-screen');
                 break;
 
             case 'mqtt':
@@ -450,6 +450,7 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
         // 颜色按钮事件
         document.querySelectorAll('.color-btn').forEach(btn => {
             btn.addEventListener('click', () => {
+                if (!screenSelector) return;
                 const screen = screenSelector.value;
                 const color = btn.dataset.color;
                 this.setScreenColor(screen, color);
@@ -465,6 +466,7 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
         const hexInput = document.getElementById('custom-color-hex');
         if (applyBtn && hexInput) {
             applyBtn.addEventListener('click', () => {
+                if (!screenSelector) return;
                 const screen = screenSelector.value;
                 const color = hexInput.value;
                 if (color && /^#[0-9A-Fa-f]{6}$/.test(color)) {
@@ -480,6 +482,7 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
         const resetBtn = document.getElementById('reset-screen-color');
         if (resetBtn) {
             resetBtn.addEventListener('click', () => {
+                if (!screenSelector) return;
                 const screen = screenSelector.value;
                 this.setScreenColor(screen, defaultColors[screen]);
                 document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('color-btn-active'));
