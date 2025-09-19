@@ -497,12 +497,16 @@ ${currentStatusBarMode === 'light' ? '☀️ 日间模式（白色状态栏）' 
                     this.applyScreenColor(screen, defaultColors[screen]);
                 });
                 alert('所有界面颜色已重置');
-                screenSelector.dispatchEvent(new Event('change'));
+                if (screenSelector) {
+                    screenSelector.dispatchEvent(new Event('change'));
+                }
             });
         }
 
         // 初始加载时触发一次
-        screenSelector.dispatchEvent(new Event('change'));
+        if (screenSelector) {
+            screenSelector.dispatchEvent(new Event('change'));
+        }
     },
 
     // 设置界面颜色

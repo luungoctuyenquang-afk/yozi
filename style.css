@@ -2693,7 +2693,7 @@ input:checked + .iosm-slider:before {
 
 .iosm-body {
     padding: 0 8px 40px 2px;
-    height: calc(100% - 100px);  /* 使用百分比，减去标题和header的高度 */
+    height: calc(100% - 140px);  /* 减去标题(100px) + 父容器padding(40px) */
     overflow-y: auto;  /* 内容超出时自动显示滚动条 */
     overflow-x: hidden;  /* 防止横向滚动 */
     -webkit-overflow-scrolling: touch;
