@@ -105,6 +105,7 @@ body {
     overflow-y: auto;  /* 添加滚动支持 */
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;  /* iOS平滑滚动 */
+    z-index: 1; /* 确保界面层级正确 */
 }
 
 /* CSS变量定义 - 每个界面的背景色 */

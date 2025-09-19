@@ -94,9 +94,13 @@ const Utils = {
     // 显示屏幕
     showScreen(screenId) {
         const screens = document.querySelectorAll('.screen');
-        const flexScreens = ['lock-screen', 'chat-screen', 'wallet-screen', 'store-screen',
-                            'backpack-screen', 'world-book-screen', 'settings-screen',
-                            'general-settings-screen', 'mqtt-room-screen', 'ios-settings-minimal'];
+        const flexScreens = [
+            'lock-screen', 'home-screen', 'chat-screen', 'wallet-screen', 'store-screen',
+            'backpack-screen', 'world-book-screen', 'settings-screen',
+            'general-settings-screen', 'mqtt-room-screen', 'ios-settings-minimal',
+            'appearance-settings', 'lock-screen-settings', 'lock-text-color-settings',
+            'lock-bg-color-settings', 'screen-color-settings'
+        ];
 
         screens.forEach(s => {
             s.style.display = s.id === screenId
